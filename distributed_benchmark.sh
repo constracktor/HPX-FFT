@@ -2,26 +2,18 @@
 ################################################################################
 # Benchmark script for distributed memory 
 # $1: FFTW planning flag (estimate/measure)
-# $2: partition (buran/medusa with mpi/lci/shmem)
+# $2: partition (buran/medusa with mpi/lci/tcp/shmem)
 # $3 communication scheme (scatter/all_to_all)
-if [[ "$2" == "buran_mpi" ]] || [[ "$2" == "buran_lci" ]]
+if [[ "$2" == "buran" ]] || [[ "$2" == "buran_lci" ]] || [[ "$2" == "buran_tcp" ]] || [[ "$2" == "buran_shmem" ]]
 then
-    PARTITION=buran
-    THREADS=48
-    NODES_POW=4
-elif [[ "$2" == "buran_shmem" ]] || [[ "$2" == "buran_shmem_ucx" ]] || [[ "$2" == "buran_shmem_libfabric" ]]
-then
+    # 16 nodes available
     module load llvm/17.0.1
     PARTITION=buran
     THREADS=48
     NODES_POW=4
-elif [[ "$2" == "medusa_mpi" ]] || [[ "$2" == "medusa_lci" ]]
+elif [[ "$2" == "medusa_mpi" ]] || [[ "$2" == "medusa_lci" ]] || [[ "$2" == "medusa_tcp" ]] || [[ "$2" == "medusa_shmem" ]]
 then
-    PARTITION=medusa
-    THREADS=40
-    NODES_POW=3
-elif [[ "$2" == "medusa_shmem" ]] || [[ "$2" == "medusa_shmem_ucx" ]] || [[ "$2" == "medusa_shmem_libfabric" ]]
-then
+    # Only 14 nodes available
     module load llvm/17.0.1
     PARTITION=medusa
     THREADS=40

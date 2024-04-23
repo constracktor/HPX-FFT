@@ -81,28 +81,6 @@ then
 #     # MPI compiler
 #     #export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1/build/openmpi/bin/mpic++" 
 #     module load openmpi
-# elif [[ "$1" == "medusa_mpi" ]]
-# then
-#     # medusa with HPX using MPI parcelport
-#     export BUILD_DIR=build_$1
-#     export FFTW_DIR=buran
-#     module load gcc/11.2.1
-#     # HPX lib directory
-#     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/hpx/build/lib"
-#     # MPI compiler
-#     export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
-#     module load openmpi
-# elif [[ "$1" == "medusa_lci" ]]
-# then
-#     # medusa with HPX using LCI parcelport
-#     export BUILD_DIR=build_$1
-#     export FFTW_DIR=buran
-#     module load gcc/11.2.1
-#     # HPX lib directory
-#     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_lci_gcc_11.2.1_medusa/build/hpx/build/lib"
-#     # MPI compiler
-#     export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
-#     module load openmpi
 elif [[ "$1" == "medusa_mpi" ]]
 then
     # buran with HPX using MPI parcelport
