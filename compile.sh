@@ -32,6 +32,11 @@ then
     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9_mpi_clang_17.0.1/install/lib64"
     module load llvm/17.0.1
     module load openmpi
+    # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
+    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
+
+
+
     # module load gcc/11.2.1
     # # HPX lib directory
     # export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1/build/hpx/build/lib"
@@ -46,12 +51,6 @@ then
     # HPX lib directory
     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9_lci_clang_17.0.1/install/lib64"
     module load llvm/17.0.1
-    # module load gcc/11.2.1
-    # # HPX lib directory
-    # export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_lci_gcc_11.2.1/build/hpx/build/lib"
-    # # MPI compiler
-    # export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1/build/openmpi/bin/mpic++"
-    # module load openmpi
 elif [[ "$1" == "buran_tcp" ]]
 then
     # buran with HPX using LCI parcelport
@@ -82,28 +81,55 @@ then
 #     # MPI compiler
 #     #export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1/build/openmpi/bin/mpic++" 
 #     module load openmpi
+# elif [[ "$1" == "medusa_mpi" ]]
+# then
+#     # medusa with HPX using MPI parcelport
+#     export BUILD_DIR=build_$1
+#     export FFTW_DIR=buran
+#     module load gcc/11.2.1
+#     # HPX lib directory
+#     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/hpx/build/lib"
+#     # MPI compiler
+#     export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
+#     module load openmpi
+# elif [[ "$1" == "medusa_lci" ]]
+# then
+#     # medusa with HPX using LCI parcelport
+#     export BUILD_DIR=build_$1
+#     export FFTW_DIR=buran
+#     module load gcc/11.2.1
+#     # HPX lib directory
+#     export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_lci_gcc_11.2.1_medusa/build/hpx/build/lib"
+#     # MPI compiler
+#     export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
+#     module load openmpi
 elif [[ "$1" == "medusa_mpi" ]]
 then
-    # medusa with HPX using MPI parcelport
+    # buran with HPX using MPI parcelport
     export BUILD_DIR=build_$1
     export FFTW_DIR=buran
-    module load gcc/11.2.1
     # HPX lib directory
-    export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/hpx/build/lib"
-    # MPI compiler
-    export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
+    export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9_mpi_clang_17.0.1_medusa/install/lib64"
+    module load llvm/17.0.1
     module load openmpi
+    # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
+    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
 elif [[ "$1" == "medusa_lci" ]]
 then
-    # medusa with HPX using LCI parcelport
+    # buran with HPX using LCI parcelport
     export BUILD_DIR=build_$1
     export FFTW_DIR=buran
-    module load gcc/11.2.1
     # HPX lib directory
-    export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9.1_lci_gcc_11.2.1_medusa/build/hpx/build/lib"
-    # MPI compiler
-    export CXX="${HOME}/hpxsc_installations/hpx_1.9.1_mpi_gcc_11.2.1_medusa/build/openmpi/bin/mpic++"
-    module load openmpi
+    export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9_lci_clang_17.0.1_medusa/install/lib64"
+    module load llvm/17.0.1
+elif [[ "$1" == "medusa_tcp" ]]
+then
+    # buran with HPX using LCI parcelport
+    export BUILD_DIR=build_$1
+    export FFTW_DIR=buran
+    # HPX lib directory
+    export HPX_DIR="${HOME}/hpxsc_installations/hpx_1.9_tcp_clang_17.0.1_medusa/install/lib64"
+    module load llvm/17.0.1
 elif [[ "$1" == "medusa_shmem" ]]
 then
     # medusa with HPX using openshmem parcelport
@@ -112,26 +138,6 @@ then
     module load llvm/17.0.1
     # HPX lib directory
     export HPX_DIR="${HOME}/hpxsc_installations/hpx_openshmem_medusa/install/lib64"
-    module load openmpi
-    export C_COMPILER=/opt/apps/llvm/17.0.1/bin/clang
-elif [[ "$1" == "medusa_shmem_ucx" ]]
-then
-    # medusa with HPX using openshmem parcelport
-    export BUILD_DIR=build_$1
-    export FFTW_DIR=buran_clang
-    module load llvm/17.0.1
-    # HPX lib directory
-    export HPX_DIR="${HOME}/hpxsc_installations/hpx_openshmem_ucx_medusa/install/lib64"
-    module load openmpi
-    export C_COMPILER=/opt/apps/llvm/17.0.1/bin/clang
-elif [[ "$1" == "medusa_shmem_libfabric" ]]
-then
-    # medusa with HPX using openshmem parcelport
-    export BUILD_DIR=build_$1
-    export FFTW_DIR=buran_clang
-    module load llvm/17.0.1
-    # HPX lib directory
-    export HPX_DIR="${HOME}/hpxsc_installations/hpx_openshmem_libfabric_medusa/install/lib64"
     module load openmpi
     export C_COMPILER=/opt/apps/llvm/17.0.1/bin/clang
 elif [[ "$1" == "sven" ]]
@@ -160,5 +166,5 @@ export PKG_CONFIG_PATH="$FFTW_TH_DIR/pkgconfig":$PKG_CONFIG_PATH
 # Compilation
 ################################################################################
 rm -rf $BUILD_DIR && mkdir $BUILD_DIR && cd $BUILD_DIR
-$CMAKE_COMMAND .. -DCMAKE_BUILD_TYPE=Release -DHPX_DIR="${HPX_DIR}/cmake/HPX" -DCMAKE_C_COMPILER=$C_COMPILER
+LDFLAGS=$LDFLAGS CC=$C_COMPILER $CMAKE_COMMAND .. -DCMAKE_BUILD_TYPE=Release -DHPX_DIR="${HPX_DIR}/cmake/HPX"
 make -j $(grep -c ^processor /proc/cpuinfo)
