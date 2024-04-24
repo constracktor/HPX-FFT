@@ -3,14 +3,14 @@
 # Benchmark script for distributed memory 
 # $1: partition (buran/medusa with mpi/lci/tcp/shmem)
 # $2 communication scheme (scatter/all_to_all)
-if [[ "$2" == "buran" ]] || [[ "$2" == "buran_lci" ]] || [[ "$2" == "buran_tcp" ]] || [[ "$2" == "buran_shmem" ]]
+if [[ "$1" == "buran_mpi" ]] || [[ "$1" == "buran_lci" ]] || [[ "$1" == "buran_tcp" ]] || [[ "$1" == "buran_shmem" ]]
 then
     # 16 nodes available
     module load llvm/17.0.1
     PARTITION=buran
     THREADS=48
     NODES_POW=4
-elif [[ "$2" == "medusa_mpi" ]] || [[ "$2" == "medusa_lci" ]] || [[ "$2" == "medusa_tcp" ]] || [[ "$2" == "medusa_shmem" ]]
+elif [[ "$1" == "medusa_mpi" ]] || [[ "$1" == "medusa_lci" ]] || [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
 then
     # Only 14 nodes available
     module load llvm/17.0.1
@@ -25,8 +25,8 @@ LOOP=1
 #50
 FFTW_PLAN=measure
 NODES=$((2**$NODES_POW))
-COLLECTIVE=$3
-BUILD_DIR=build_$2
+COLLECTIVE=$2
+BUILD_DIR=build_$1
 # load modules
 module load openmpi
 cd benchmark
