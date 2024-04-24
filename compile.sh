@@ -33,7 +33,7 @@ then
     module load llvm/17.0.1
     module load openmpi
     # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
-    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
+    #export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
 
 
 
@@ -91,7 +91,7 @@ then
     module load llvm/17.0.1
     module load openmpi
     # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
-    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
+    #export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
 elif [[ "$1" == "medusa_lci" ]]
 then
     # buran with HPX using LCI parcelport
@@ -144,5 +144,8 @@ export PKG_CONFIG_PATH="$FFTW_TH_DIR/pkgconfig":$PKG_CONFIG_PATH
 # Compilation
 ################################################################################
 rm -rf $BUILD_DIR && mkdir $BUILD_DIR && cd $BUILD_DIR
-LDFLAGS=$LDFLAGS CC=$C_COMPILER $CMAKE_COMMAND .. -DCMAKE_BUILD_TYPE=Release -DHPX_DIR="${HPX_DIR}/cmake/HPX"
-make -j $(grep -c ^processor /proc/cpuinfo)
+#$LDFLAGS=$LDFLAGS 
+$CMAKE_COMMAND .. -DCMAKE_BUILD_TYPE=Release -DHPX_DIR="${HPX_DIR}/cmake/HPX" -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=/opt/apps/llvm/17.0.1/bin/clang++ 
+#-DMPI_CXX_COMPILER=/opt/apps/openmpi/4.1.5/bin/mpic++
+make VERBOSE=1 -j $(grep -c ^processor /proc/cpuinfo)
+ 

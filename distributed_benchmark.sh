@@ -1,9 +1,8 @@
 #!/bin/bash
 ################################################################################
 # Benchmark script for distributed memory 
-# $1: FFTW planning flag (estimate/measure)
-# $2: partition (buran/medusa with mpi/lci/tcp/shmem)
-# $3 communication scheme (scatter/all_to_all)
+# $1: partition (buran/medusa with mpi/lci/tcp/shmem)
+# $2 communication scheme (scatter/all_to_all)
 if [[ "$2" == "buran" ]] || [[ "$2" == "buran_lci" ]] || [[ "$2" == "buran_tcp" ]] || [[ "$2" == "buran_shmem" ]]
 then
     # 16 nodes available
@@ -24,7 +23,7 @@ else
 fi
 LOOP=1
 #50
-FFTW_PLAN=$1
+FFTW_PLAN=measure
 NODES=$((2**$NODES_POW))
 COLLECTIVE=$3
 BUILD_DIR=build_$2
