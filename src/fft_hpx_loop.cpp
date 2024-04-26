@@ -451,6 +451,7 @@ void print_vector_2d(const vector_2d<real>& input)
 
 int hpx_main(hpx::program_options::variables_map& vm)
 {
+    hpx::util::format_to(std::cout, "ENTERED HPX MAIN\n");
     ////////////////////////////////////////////////////////////////
     // Parameters and Data structures
     const std::size_t this_locality = hpx::get_locality_id(); 
