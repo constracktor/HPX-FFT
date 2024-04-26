@@ -573,9 +573,9 @@ int hpx_main(hpx::program_options::variables_map& vm)
 
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
-    hpx::util::format_to(hpx::cout, "BEFORE FINALIZE");
+    hpx::util::format_to(std::cout, "BEFORE FINALIZE");
     auto val = hpx::finalize();
-    hpx::util::format_to(hpx::cout, "AFTER FINALIZE");
+    hpx::util::format_to(std::cout, "AFTER FINALIZE");
     return val;
 }
 
