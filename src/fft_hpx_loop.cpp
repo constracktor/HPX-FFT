@@ -573,7 +573,10 @@ int hpx_main(hpx::program_options::variables_map& vm)
 
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
-    return hpx::finalize();
+    hpx::util::format_to(hpx::cout, "BEFORE FINALIZE");
+    auto val = hpx::finalize();
+    hpx::util::format_to(hpx::cout, "AFTER FINALIZE");
+    return val;
 }
 
 int main(int argc, char* argv[])
