@@ -11,7 +11,7 @@ then
     PARTITION=buran
     THREADS=48
     NODES_POW=4
-if [[ "$1" == "buran_lci" ]]
+elif [[ "$1" == "buran_lci" ]]
 then
     # 16 nodes available
     module load llvm/17.0.1
@@ -19,7 +19,7 @@ then
     THREADS=48
     NODES_POW=4
     export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1/install/lib64:$LD_LIBRARY_PATH
-if [[ "$1" == "buran_tcp" ]] || [[ "$1" == "buran_shmem" ]]
+elif [[ "$1" == "buran_tcp" ]] || [[ "$1" == "buran_shmem" ]]
 then
     # 16 nodes available
     module load llvm/17.0.1
