@@ -24,7 +24,7 @@ POW_STOP=$3
 THREADS=$4
 BASE_SIZE=128
 # Get run command
-COMMAND="srun -N 1 -n 1"
+COMMAND="srun -N 2 -n 2"
 EXECUTABLE="../$1"
 ARGUMENTS="$BASE_SIZE $BASE_SIZE $2"
 # Log Info
@@ -40,7 +40,7 @@ do
 done
 for (( i=2**$POW_START; i<=2**$POW_STOP; i=i*2 ))
 do
-    SIZE=$((i*$BASE_SIZE))
+    SIZE=$(($i*$BASE_SIZE))
     ARGUMENTS="$SIZE $SIZE $2"
     for (( j=0; j<$LOOP; j=j+1 ))
     do

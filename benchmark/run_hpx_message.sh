@@ -39,7 +39,7 @@ do
 done
 for (( i=2**$POW_START; i<=2**$POW_STOP; i=i*2 ))
 do
-    SIZE=$((i*$BASE_SIZE))
+    SIZE=$(($i*$BASE_SIZE))
     ARGUMENTS="--nx=$SIZE --ny=$SIZE --plan=$2 --run=$4"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
