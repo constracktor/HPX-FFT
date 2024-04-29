@@ -33,7 +33,7 @@ then
     module load llvm/17.0.1
     module load openmpi
     # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
-    #export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
+    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
 
 
 
