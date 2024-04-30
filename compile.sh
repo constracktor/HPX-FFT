@@ -91,7 +91,7 @@ then
     module load llvm/17.0.1
     module load openmpi
     # Required flags to also compile the distributed FFTW implementations - BREAKS fftw_hpx backend
-    #export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
+    export LDFLAGS="-pthread -L/opt/apps/openmpi/4.1.5/lib -L/opt/apps/hwloc/2.9.1/lib -Wl,-rpath -Wl,/opt/apps/openmpi/4.1.5/lib -Wl,-rpath -Wl,/opt/apps/hwloc/2.9.1/lib -Wl,--enable-new-dtags -lmpi"
 elif [[ "$1" == "medusa_lci" ]]
 then
     # buran with HPX using LCI parcelport
@@ -115,8 +115,7 @@ then
     export FFTW_DIR=buran_clang
     module load llvm/17.0.1
     # HPX lib directory
-    export HPX_DIR="${HOME}/hpxsc_installations/hpx_openshmem_medusa/install/lib64"
-    module load openmpi
+    export HPX_DIR="${HOME}/hpxsc_installations/hpx_dev_shmem_clang_17.0.1_medusa/install/lib64"./
     export C_COMPILER=/opt/apps/llvm/17.0.1/bin/clang
 elif [[ "$1" == "sven" ]]
 then

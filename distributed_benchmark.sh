@@ -26,13 +26,29 @@ then
     PARTITION=buran
     THREADS=48
     NODES_POW=4
-# elif [[ "$1" == "medusa_mpi" ]] || [[ "$1" == "medusa_lci" ]] || [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
-# then
-#     # Only 14 nodes available
-#     module load llvm/17.0.1
-#     PARTITION=medusa
-#     THREADS=40
-#     NODES_POW=3
+elif [[ "$1" == "medusa_mpi" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    module load openmpi
+    PARTITION=medusa
+    THREADS=40
+    NODES_POW=3
+elif [[ "$1" == "medusa_lci" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    PARTITION=medusa
+    THREADS=40
+    NODES_POW=3
+    export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1_medusa/install/lib64:$LD_LIBRARY_PATH
+elif [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    PARTITION=medusa
+    THREADS=40
+    NODES_POW=3
 else
   echo 'Please specify partition and parcelport'
   exit 1

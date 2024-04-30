@@ -1,8 +1,23 @@
-###
-# strong scaling data for hpx loop shared
-ss_loop_measure_shared_matrix = np.genfromtxt(os.path.abspath('./plot/data/strong_scaling/16384/strong_runtimes_hpx_loop_measure_shared.txt'), dtype='float', delimiter=';' , skip_header=1)
-n_entries = int(ss_loop_measure_shared_matrix.shape[0]/n_loop) 
-ss_loop_measure_shared_averaged = np.zeros((n_entries, ss_loop_measure_shared_matrix.shape[1]))
-for i in range (n_entries):
-    ss_loop_measure_shared_averaged[i,:] = np.mean(ss_loop_measure_shared_matrix[i*n_loop:(i+1)*n_loop,:],axis=0)
-###
+elif [[ "$1" == "medusa_mpi" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    module load openmpi
+    PARTITION=medusa
+    THREADS=40
+    SIZE_POW=8
+elif [[ "$1" == "medusa_lci" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    PARTITION=medusa
+    THREADS=40
+    SIZE_POW=8
+    export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1_medusa/install/lib64:$LD_LIBRARY_PATH
+elif [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
+then
+    # 14 nodes available
+    module load llvm/17.0.1
+    PARTITION=medusa
+    THREADS=40
+    SIZE_POW=8

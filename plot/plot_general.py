@@ -69,4 +69,12 @@ def extract_fft_sections(input_data):
     trans = input_data[:,11] + input_data[:,15]
     rearrange = input_data[:,9] + input_data[:,13]
     comm = input_data[:,10] + input_data[:,14]
+    #return [comm, fft, trans, rearrange]
     return [fft, trans, rearrange, comm]
+
+
+def extract_comm(input_data):
+    return input_data[:,10] + input_data[:,14]
+
+def extract_comm_error(input_data):
+    return [input_data(10)[0] + input_data(14)[0], input_data(10)[1] + input_data(14)[1]] 
