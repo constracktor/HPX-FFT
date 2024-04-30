@@ -53,8 +53,7 @@ else
   echo 'Please specify partition and parcelport'
   exit 1
 fi
-LOOP=1
-#50
+LOOP=50
 FFTW_PLAN=measure
 NODES=$((2**$NODES_POW))
 COLLECTIVE=$2

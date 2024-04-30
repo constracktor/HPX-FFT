@@ -10,14 +10,14 @@ then
     module load openmpi
     PARTITION=buran
     THREADS=48
-    SIZE_POW=8
+    SIZE_POW=7
 elif [[ "$1" == "buran_lci" ]]
 then
     # 16 nodes available
     module load llvm/17.0.1
     PARTITION=buran
     THREADS=48
-    SIZE_POW=8
+    SIZE_POW=7
     export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1/install/lib64:$LD_LIBRARY_PATH
 elif [[ "$1" == "buran_tcp" ]] || [[ "$1" == "buran_shmem" ]]
 then
@@ -25,7 +25,7 @@ then
     module load llvm/17.0.1
     PARTITION=buran
     THREADS=48
-    SIZE_POW=8
+    SIZE_POW=7
 elif [[ "$1" == "medusa_mpi" ]]
 then
     # 14 nodes available
@@ -33,14 +33,14 @@ then
     module load openmpi
     PARTITION=medusa
     THREADS=40
-    SIZE_POW=8
+    SIZE_POW=7
 elif [[ "$1" == "medusa_lci" ]]
 then
     # 14 nodes available
     module load llvm/17.0.1
     PARTITION=medusa
     THREADS=40
-    SIZE_POW=8
+    SIZE_POW=7
     export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1_medusa/install/lib64:$LD_LIBRARY_PATH
 elif [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
 then
@@ -48,13 +48,12 @@ then
     module load llvm/17.0.1
     PARTITION=medusa
     THREADS=40
-    SIZE_POW=8
+    SIZE_POW=7
 else
   echo 'Please specify partition and parcelport'
   exit 1
 fi
-LOOP=1
-#50
+LOOP=50
 FFTW_PLAN=measure
 COLLECTIVE=$2
 BUILD_DIR=build_$1
