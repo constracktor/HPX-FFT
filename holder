@@ -1,23 +1,52 @@
-elif [[ "$1" == "medusa_mpi" ]]
-then
-    # 14 nodes available
-    module load llvm/17.0.1
-    module load openmpi
-    PARTITION=medusa
-    THREADS=40
-    SIZE_POW=8
-elif [[ "$1" == "medusa_lci" ]]
-then
-    # 14 nodes available
-    module load llvm/17.0.1
-    PARTITION=medusa
-    THREADS=40
-    SIZE_POW=8
-    export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1_medusa/install/lib64:$LD_LIBRARY_PATH
-elif [[ "$1" == "medusa_tcp" ]] || [[ "$1" == "medusa_shmem" ]]
-then
-    # 14 nodes available
-    module load llvm/17.0.1
-    PARTITION=medusa
-    THREADS=40
-    SIZE_POW=8
+################################################################################
+# Strong scaling runtime on buran for scatter collective 
+plt.figure(figsize=(7,6))
+plt.grid()
+points = np.array([1,2,4,8,16])
+# # ideal scaling
+# ideal = 2 * fftw_reference_buran.median[1,6]/ points
+# plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
+# error bars
+plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 reference')
+plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP scatter')
+plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
+plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
+
+
+# plot parameters
+plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
+plt.xlabel('N nodes')
+plt.xscale("log")
+labels_x = ['1','2','4','8','16']
+plt.xticks(ticks=points, labels= labels_x)
+plt.yscale("log")
+plt.yticks(ticks=[0.1, 1.0, 10.0,100.0])
+plt.ylabel('Runtime in s')
+plt.savefig('plot/figures/strong_scaling_buran_parcelport_scatter_runtime.pdf', bbox_inches='tight')
+
+################################################################################
+# Strong scaling runtime on buran for all_to_all collective 
+plt.figure(figsize=(7,6))
+plt.grid()
+points = np.array([1,2,4,8,16])
+# # ideal scaling
+# ideal = 2 * fftw_reference_buran.median[1,6]/ points
+# plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
+
+# error bars
+plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 reference')
+plt.errorbar(points, all_to_all_buran_tcp.mean[:,7], yerr = all_to_all_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all_to_all')
+plt.errorbar(points, all_to_all_buran_mpi.mean[:,7], yerr = all_to_all_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all_to_all')
+plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all_to_all')
+
+
+# plot parameters
+plt.legend(bbox_to_anchor=(1.0, 0), loc="lower right")
+plt.xlabel('N nodes')
+plt.xscale("log")
+labels_x = ['1','2','4','8','16']
+plt.xticks(ticks=points, labels= labels_x)
+plt.yscale("log")
+plt.yticks(ticks=[0.1, 1.0, 10.0])
+plt.ylabel('Runtime in s')
+plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf', bbox_inches='tight')

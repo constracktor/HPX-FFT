@@ -1,0 +1,48 @@
+################################################################################
+# Message scaling runtime on buran for scatter collective 
+plt.figure(figsize=(7,6))
+matplotlib.rcParams.update({'errorbar.capsize': 2})
+# plot details
+bar_width = 0.25
+epsilon = .015
+ticks_x = np.linspace(1,8,8)
+labels_x = ['$2^{13}$','$2^{15}$','$2^{17}$','$2^{19}$','$2^{21}$','$2^{23}$','$2^{25}$','$2^{27}$']
+
+# error bars
+tcp_positions = ticks_x - bar_width
+mpi_positions = ticks_x
+lci_positions = ticks_x + bar_width
+
+plt.bar(tcp_positions, extract_comm(message_buran_tcp.mean), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_tcp.confidence_error),
+                                bottom = 0,
+                                color=colors[11],
+                                edgecolor='black',
+                                linewidth=0.5,
+                                alpha=1.0,
+                                label='TCP parcelport')
+plt.bar(mpi_positions, extract_comm(message_buran_mpi.mean), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_mpi.confidence_error),
+                                bottom = 0,
+                                color=colors[4],
+                                edgecolor='black',
+                                linewidth=0.5,
+                                alpha=1.0,
+                                label='MPI parcelport')
+plt.bar(lci_positions, extract_comm(message_buran_lci.mean), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_lci.confidence_error),
+                                bottom = 0,
+                                color=colors[2],
+                                edgecolor='black',
+                                linewidth=0.5,
+                                alpha=1.0,
+                                label='LCI parcelport')
+
+# plot parameters
+plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
+plt.xlabel('Message size (in double-precision floating-point numbers)')
+plt.xticks(ticks=ticks_x, labels= labels_x)
+plt.yscale("log")
+plt.yticks(ticks=[0.001, 0.01, 0.1, 1.0, 10.0])
+plt.ylabel('Communication time in s')
+plt.savefig('plot/figures/strong_scaling_buran_parcelport_message_comm_bars.pdf', bbox_inches='tight')
