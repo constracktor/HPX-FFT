@@ -15,7 +15,7 @@ pip install numpy matplotlib scipy
 # python3 plot/plot_medusa_ss.py
 # python3 plot/plot_fugaku.py
 
-python3 plot/plot_clusters.py
+#python3 plot/plot_clusters.py
 
 # python3 plot/plot_buran_50.py
 # python3 plot/plot_16384.py

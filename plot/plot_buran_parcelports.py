@@ -58,18 +58,17 @@ all_to_all_medusa_tcp = plot_object('./plot/data/parcelport/strong_scaling_medus
 
 ################################################################################
 # Strong scaling runtime on buran for scatter collective 
-plt.figure(figsize=(7,6))
+plt.figure(figsize=(7,5))
 plt.grid()
 points = np.linspace(1,5,5)
 # # ideal scaling
 # ideal = 2 * fftw_reference_buran.median[1,6]/ points
 # plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
 # error bars
-plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 reference')
+plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
 plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP scatter')
 plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
 plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
-
 
 # plot parameters
 plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
@@ -84,7 +83,7 @@ plt.savefig('plot/figures/strong_scaling_buran_parcelport_scatter_runtime.pdf', 
 
 ################################################################################
 # Strong scaling runtime on buran for all_to_all collective 
-plt.figure(figsize=(7,6))
+plt.figure(figsize=(7,5))
 plt.grid()
 points = np.linspace(1,5,5)
 # # ideal scaling
@@ -92,10 +91,10 @@ points = np.linspace(1,5,5)
 # plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
 
 # error bars
-plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 reference')
-plt.errorbar(points, all_to_all_buran_tcp.mean[:,7], yerr = all_to_all_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all_to_all')
-plt.errorbar(points, all_to_all_buran_mpi.mean[:,7], yerr = all_to_all_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all_to_all')
-plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all_to_all')
+plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
+plt.errorbar(points, all_to_all_buran_tcp.mean[:,7], yerr = all_to_all_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all-to-all')
+plt.errorbar(points, all_to_all_buran_mpi.mean[:,7], yerr = all_to_all_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all-to-all')
+plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all-to-all')
 
 
 # plot parameters
@@ -111,13 +110,14 @@ plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf
 
 ################################################################################
 # Message scaling runtime on buran for scatter collective 
-plt.figure(figsize=(7,6))
+#plt.figure(figsize=(7,6))
+plt.figure(figsize=(9,6))
 matplotlib.rcParams.update({'errorbar.capsize': 2})
 # plot details
 bar_width = 0.25
 epsilon = .015
-ticks_x = np.linspace(1,8,8)
-labels_x = ['$2^{13}$','$2^{15}$','$2^{17}$','$2^{19}$','$2^{21}$','$2^{23}$','$2^{25}$','$2^{27}$']
+ticks_x = np.linspace(1,13,13)
+labels_x = ['$2^{5}$','$2^{7}$','$2^{9}$','$2^{11}$','$2^{13}$','$2^{15}$','$2^{17}$','$2^{19}$','$2^{21}$','$2^{23}$','$2^{25}$','$2^{27}$','$2^{31}$']
 
 # error bars
 tcp_positions = ticks_x - bar_width
@@ -180,7 +180,7 @@ plt.errorbar(points, scatter_medusa_tcp.mean[:,7], yerr = scatter_medusa_tcp.con
 plt.errorbar(points, scatter_medusa_mpi.mean[:,7], yerr = scatter_medusa_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
 plt.errorbar(points, scatter_medusa_lci.mean[:,7], yerr = scatter_medusa_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
 
-
+print(fftw_reference_medusa.mean[:,6]/scatter_medusa_lci.mean[:,7])
 # plot parameters
 plt.legend(bbox_to_anchor=(1.0, 0), loc="lower right")
 plt.xlabel('N nodes')
@@ -233,7 +233,7 @@ labels_x = ['$2^{13}$','$2^{15}$','$2^{17}$','$2^{19}$','$2^{21}$','$2^{23}$','$
 tcp_positions = ticks_x - bar_width
 mpi_positions = ticks_x
 lci_positions = ticks_x + bar_width
-print(extract_comm(message_medusa_tcp.mean))
+
 
 plt.bar(tcp_positions, extract_comm(message_medusa_tcp.mean), bar_width-epsilon,
                                 yerr =  extract_comm_error(message_medusa_tcp.confidence_error),
