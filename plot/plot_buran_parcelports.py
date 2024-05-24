@@ -111,7 +111,7 @@ plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf
 ################################################################################
 # Message scaling runtime on buran for scatter collective 
 #plt.figure(figsize=(7,6))
-plt.figure(figsize=(9,6))
+plt.figure(figsize=(9,5))
 matplotlib.rcParams.update({'errorbar.capsize': 2})
 # plot details
 bar_width = 0.25

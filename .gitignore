@@ -2,3 +2,4 @@ plot_env
 build_*
 benchmark/plans
 benchmark/result
+plot/figures/
