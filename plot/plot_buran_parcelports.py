@@ -10,7 +10,7 @@ from plot_general import extract_fft_sections
 from plot_general import extract_comm
 from plot_general import extract_comm_error
 # Configure font and fontsize
-matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['text.usetex'] = True
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 matplotlib.rcParams.update({'font.size': 16})
@@ -65,10 +65,14 @@ points = np.linspace(1,5,5)
 # ideal = 2 * fftw_reference_buran.median[1,6]/ points
 # plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
 # error bars
-plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
-plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP scatter')
-plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
-plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
+# plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
+# plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP scatter')
+# plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
+# plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
+plt.errorbar(points, fftw_reference_buran.median[:,6], yerr = fftw_reference_buran.min_max_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
+plt.errorbar(points, scatter_buran_tcp.median[:,7], yerr = scatter_buran_tcp.min_max_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP scatter')
+plt.errorbar(points, scatter_buran_mpi.median[:,7], yerr = scatter_buran_mpi.min_max_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI scatter')
+plt.errorbar(points, scatter_buran_lci.median[:,7], yerr = scatter_buran_lci.min_max_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI scatter')
 
 # plot parameters
 plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
@@ -81,6 +85,8 @@ plt.yticks(ticks=[0.1, 1.0, 10.0,100.0])
 plt.ylabel('Runtime in s')
 plt.savefig('plot/figures/strong_scaling_buran_parcelport_scatter_runtime.pdf', bbox_inches='tight')
 
+print("Scatter speedup mean LCI/FFTW3: ", fftw_reference_buran.mean[:,6] / scatter_buran_lci.mean[:,7])
+print("Scatter speedup median LCI/FFTW3: ", fftw_reference_buran.median[:,6] / scatter_buran_lci.median[:,7])
 ################################################################################
 # Strong scaling runtime on buran for all_to_all collective 
 plt.figure(figsize=(7,5))
@@ -91,37 +97,14 @@ points = np.linspace(1,5,5)
 # plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
 
 # error bars
-plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
-plt.errorbar(points, all_to_all_buran_tcp.mean[:,7], yerr = all_to_all_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all-to-all')
-plt.errorbar(points, all_to_all_buran_mpi.mean[:,7], yerr = all_to_all_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all-to-all')
-plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all-to-all')
-
-
-# plot parameters
-plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
-
-plt.xlabel('N nodes')
-#plt.xscale("log")
-labels_x = ['1','2','4','8','16']
-plt.xticks(ticks=points, labels= labels_x)
-plt.yscale("log")
-plt.yticks(ticks=[0.1, 1.0, 10.0])
-plt.ylabel('Runtime in s')
-plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf', bbox_inches='tight')
-################################################################################
-#MODIFIED Strong scaling runtime on buran for all_to_all collective 
-plt.figure(figsize=(7,5))
-plt.grid()
-points = np.linspace(1,5,5)
-# # ideal scaling
-# ideal = 2 * fftw_reference_buran.median[1,6]/ points
-# plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
-
-# error bars
-plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI+X')
-#plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX with TCP')
-plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX with MPI')
-plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX with LCI')
+# plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
+# plt.errorbar(points, all_to_all_buran_tcp.mean[:,7], yerr = all_to_all_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all-to-all')
+# plt.errorbar(points, all_to_all_buran_mpi.mean[:,7], yerr = all_to_all_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all-to-all')
+# plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all-to-all')
+plt.errorbar(points, fftw_reference_buran.median[:,6], yerr = fftw_reference_buran.min_max_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI all-to-all')
+plt.errorbar(points, all_to_all_buran_tcp.median[:,7], yerr = all_to_all_buran_tcp.min_max_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX TCP all-to-all')
+plt.errorbar(points, all_to_all_buran_mpi.median[:,7], yerr = all_to_all_buran_mpi.min_max_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX MPI all-to-all')
+plt.errorbar(points, all_to_all_buran_lci.median[:,7], yerr = all_to_all_buran_lci.min_max_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX LCI all-to-all')
 
 
 # plot parameters
@@ -133,11 +116,14 @@ plt.xticks(ticks=points, labels= labels_x)
 plt.yscale("log")
 plt.yticks(ticks=[0.1, 1.0, 10.0])
 plt.ylabel('Runtime in s')
-plt.savefig('plot/figures/strong_scaling_buran_parcelport_cdss.pdf', bbox_inches='tight')
+plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf', bbox_inches='tight')
+
+print("ATA speedup mean LCI/FFTW3: ", fftw_reference_buran.mean[:,6] / all_to_all_buran_lci.mean[:,7])
+print("ATA speedup median LCI/FFTW3: ", fftw_reference_buran.median[:,6] / all_to_all_buran_lci.median[:,7])
 ################################################################################
 # Message scaling runtime on buran for scatter collective 
 #plt.figure(figsize=(7,6))
-plt.figure(figsize=(9,5))
+plt.figure(figsize=(9,6))
 matplotlib.rcParams.update({'errorbar.capsize': 2})
 # plot details
 bar_width = 0.25
@@ -150,24 +136,49 @@ tcp_positions = ticks_x - bar_width
 mpi_positions = ticks_x
 lci_positions = ticks_x + bar_width
 
-plt.bar(tcp_positions, extract_comm(message_buran_tcp.mean), bar_width-epsilon,
-                                yerr =  extract_comm_error(message_buran_tcp.confidence_error),
+# plt.bar(tcp_positions, extract_comm(message_buran_tcp.mean), bar_width-epsilon,
+#                                 yerr =  extract_comm_error(message_buran_tcp.confidence_error),
+#                                 bottom = 0,
+#                                 color=colors[11],
+#                                 edgecolor='black',
+#                                 linewidth=0.5,
+#                                 alpha=1.0,
+#                                 label='TCP parcelport')
+# plt.bar(mpi_positions, extract_comm(message_buran_mpi.mean), bar_width-epsilon,
+#                                 yerr =  extract_comm_error(message_buran_mpi.confidence_error),
+#                                 bottom = 0,
+#                                 color=colors[4],
+#                                 edgecolor='black',
+#                                 linewidth=0.5,
+#                                 alpha=1.0,
+#                                 label='MPI parcelport')
+# plt.bar(lci_positions, extract_comm(message_buran_lci.mean), bar_width-epsilon,
+#                                 yerr =  extract_comm_error(message_buran_lci.confidence_error),
+#                                 bottom = 0,
+#                                 color=colors[2],
+#                                 edgecolor='black',
+#                                 linewidth=0.5,
+#                                 alpha=1.0,
+#                                 label='LCI parcelport')
+#
+plt.bar(tcp_positions, extract_comm(message_buran_tcp.median), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_tcp.min_max_error),
                                 bottom = 0,
                                 color=colors[11],
                                 edgecolor='black',
                                 linewidth=0.5,
                                 alpha=1.0,
                                 label='TCP parcelport')
-plt.bar(mpi_positions, extract_comm(message_buran_mpi.mean), bar_width-epsilon,
-                                yerr =  extract_comm_error(message_buran_mpi.confidence_error),
+plt.bar(mpi_positions, extract_comm(message_buran_mpi.median), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_mpi.min_max_error),
                                 bottom = 0,
                                 color=colors[4],
                                 edgecolor='black',
                                 linewidth=0.5,
                                 alpha=1.0,
                                 label='MPI parcelport')
-plt.bar(lci_positions, extract_comm(message_buran_lci.mean), bar_width-epsilon,
-                                yerr =  extract_comm_error(message_buran_lci.confidence_error),
+plt.bar(lci_positions, extract_comm(message_buran_lci.median), bar_width-epsilon,
+                                yerr =  extract_comm_error(message_buran_lci.min_max_error),
                                 bottom = 0,
                                 color=colors[2],
                                 edgecolor='black',
@@ -175,9 +186,10 @@ plt.bar(lci_positions, extract_comm(message_buran_lci.mean), bar_width-epsilon,
                                 alpha=1.0,
                                 label='LCI parcelport')
 
+
 # plot parameters
 plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
-plt.xlabel('Data chunk size (in double-precision floating-point numbers)')
+plt.xlabel('Message size (in double-precision floating-point numbers)')
 plt.xticks(ticks=ticks_x, labels= labels_x)
 plt.yscale("log")
 plt.yticks(ticks=[0.001, 0.01, 0.1, 1.0, 10.0])
