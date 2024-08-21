@@ -98,7 +98,8 @@ plt.errorbar(points, all_to_all_buran_lci.mean[:,7], yerr = all_to_all_buran_lci
 
 
 # plot parameters
-plt.legend(bbox_to_anchor=(1.0, 0), loc="lower right")
+plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
+
 plt.xlabel('N nodes')
 #plt.xscale("log")
 labels_x = ['1','2','4','8','16']
@@ -107,7 +108,32 @@ plt.yscale("log")
 plt.yticks(ticks=[0.1, 1.0, 10.0])
 plt.ylabel('Runtime in s')
 plt.savefig('plot/figures/strong_scaling_buran_parcelport_all_to_all_runtime.pdf', bbox_inches='tight')
+################################################################################
+#MODIFIED Strong scaling runtime on buran for all_to_all collective 
+plt.figure(figsize=(7,5))
+plt.grid()
+points = np.linspace(1,5,5)
+# # ideal scaling
+# ideal = 2 * fftw_reference_buran.median[1,6]/ points
+# plt.plot(points, ideal, '--', c=greyscale[2], linewidth=1.5)
 
+# error bars
+plt.errorbar(points, fftw_reference_buran.mean[:,6], yerr = fftw_reference_buran.confidence_error(6), fmt='s-', c=colors[0], linewidth=2, label='FFTW3 MPI+X')
+#plt.errorbar(points, scatter_buran_tcp.mean[:,7], yerr = scatter_buran_tcp.confidence_error(7), fmt='o-', c=colors[11], linewidth=2, label='HPX with TCP')
+plt.errorbar(points, scatter_buran_mpi.mean[:,7], yerr = scatter_buran_mpi.confidence_error(7), fmt='o-', c=colors[4], linewidth=2, label='HPX with MPI')
+plt.errorbar(points, scatter_buran_lci.mean[:,7], yerr = scatter_buran_lci.confidence_error(7), fmt='o-', c=colors[2], linewidth=2, label='HPX with LCI')
+
+
+# plot parameters
+plt.legend(bbox_to_anchor=(1.0, 0), loc="lower right")
+plt.xlabel('N nodes')
+#plt.xscale("log")
+labels_x = ['1','2','4','8','16']
+plt.xticks(ticks=points, labels= labels_x)
+plt.yscale("log")
+plt.yticks(ticks=[0.1, 1.0, 10.0])
+plt.ylabel('Runtime in s')
+plt.savefig('plot/figures/strong_scaling_buran_parcelport_cdss.pdf', bbox_inches='tight')
 ################################################################################
 # Message scaling runtime on buran for scatter collective 
 #plt.figure(figsize=(7,6))
@@ -151,7 +177,7 @@ plt.bar(lci_positions, extract_comm(message_buran_lci.mean), bar_width-epsilon,
 
 # plot parameters
 plt.legend(bbox_to_anchor=(0, 1), loc="upper left")
-plt.xlabel('Message size (in double-precision floating-point numbers)')
+plt.xlabel('Data chunk size (in double-precision floating-point numbers)')
 plt.xticks(ticks=ticks_x, labels= labels_x)
 plt.yscale("log")
 plt.yticks(ticks=[0.001, 0.01, 0.1, 1.0, 10.0])
