@@ -1,6 +1,0 @@
-n_threads;n_x;n_y;plan;run_flag;total;initialization;fft_2d_total;
-48;16384;16384;measure;scatter;3.67681;2.61704;1.05976;
-48;16384;16384;measure;scatter;6.71869;2.31662;4.40207;
-48;16384;16384;measure;scatter;5.9732;2.25847;3.71473;
-48;16384;16384;measure;scatter;6.53443;2.22092;4.31351;
-48;16384;16384;measure;scatter;142.781;2.87068;139.91;
