@@ -13,71 +13,75 @@
 #include <fstream>
 #include <fftw3.h>
 
-#include "vector_2d.hpp"
+//#include "../../include/util/vector_2d.hpp"
 
-typedef double real;
+#include "../../include/hpxfft/shared/hpxfft_loop_shared.hpp"
 
-// FFT calculation struct
-struct fft
-{
-    typedef fftw_plan fft_backend_plan;
 
-    public:
-        fft() = default;
-
-        void initialize(vector_2d<real> values_vec, 
-                        const unsigned PLAN_FLAG);
-
-        vector_2d<real> fft_2d_r2c_par();
-
-        vector_2d<real> fft_2d_r2c_seq();
-
-        real get_measurement(std::string name);
-
-        void write_plans_to_file(FILE* file_name);
-
-        ~fft()
-        {
-            fftw_destroy_plan(plan_1d_r2c_);
-            fftw_destroy_plan(plan_1d_c2c_);
-            fftw_cleanup();
-        }
-
-    private:
-        // FFT backend
-        void fft_1d_r2c_inplace(const std::size_t i);
-        void fft_1d_c2c_inplace(const std::size_t i);
-
-        // transpose
-        void transpose_shared_y_to_x(const std::size_t index);
-        //void transpose_shared_y_to_x(const std::size_t index_trans);
-        //void transpose_shared_x_to_y(const std::size_t index);
-        void transpose_shared_x_to_y(const std::size_t index_trans);    
-   
-    private:
-        // parameters
-        std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
-        // FFTW plans
-        unsigned PLAN_FLAG_;
-        fft_backend_plan plan_1d_r2c_;
-        fft_backend_plan plan_1d_c2c_;
-        // value vectors
-        vector_2d<real> values_vec_;
-        vector_2d<real> trans_values_vec_;
-        // time measurement
-        hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
-        std::map<std::string, real> measurements_;
-};
+#include "../../include/hpxfft/util/print_vector_2d.hpp"
+// typedef double real;
+//
+// // FFT calculation struct
+// struct fft
+// {
+//     typedef fftw_plan fft_backend_plan;
+//
+//     public:
+//         fft() = default;
+//
+//         void initialize(vector_2d<real> values_vec, 
+//                         const unsigned PLAN_FLAG);
+//
+//         vector_2d<real> fft_2d_r2c_par();
+//
+//         vector_2d<real> fft_2d_r2c_seq();
+//
+//         real get_measurement(std::string name);
+//
+//         void write_plans_to_file(FILE* file_name);
+//
+//         ~fft()
+//         {
+//             fftw_destroy_plan(plan_1d_r2c_);
+//             fftw_destroy_plan(plan_1d_c2c_);
+//             fftw_cleanup();
+//         }
+//
+//     private:
+//         // FFT backend
+//         void fft_1d_r2c_inplace(const std::size_t i);
+//         void fft_1d_c2c_inplace(const std::size_t i);
+//
+//         // transpose
+//         void transpose_shared_y_to_x(const std::size_t index);
+//         //void transpose_shared_y_to_x(const std::size_t index_trans);
+//         //void transpose_shared_x_to_y(const std::size_t index);
+//         void transpose_shared_x_to_y(const std::size_t index_trans);    
+//    
+//     private:
+//         // parameters
+//         std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
+//         // FFTW plans
+//         unsigned PLAN_FLAG_;
+//         fft_backend_plan plan_1d_r2c_;
+//         fft_backend_plan plan_1d_c2c_;
+//         // value vectors
+//         vector_2d<real> values_vec_;
+//         vector_2d<real> trans_values_vec_;
+//         // time measurement
+//         hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
+//         std::map<std::string, real> measurements_;
+// };
 
 // FFT backend
-void fft::fft_1d_r2c_inplace(const std::size_t i)
+void hpxfft::fft_1d_r2c_inplace(const std::size_t i)
 {
     fftw_execute_dft_r2c(plan_1d_r2c_, 
                             values_vec_.row(i), 
                             reinterpret_cast<fftw_complex*>(values_vec_.row(i)));
 }
 
-void fft::fft_1d_c2c_inplace(const std::size_t i)
+void hpxfft::fft_1d_c2c_inplace(const std::size_t i)
 {
     fftw_execute_dft(plan_1d_c2c_, 
                         reinterpret_cast<fftw_complex*>(trans_values_vec_.row(i)), 
@@ -85,7 +89,7 @@ void fft::fft_1d_c2c_inplace(const std::size_t i)
 }
 
 // transpose with write running index
-void fft::transpose_shared_y_to_x(const std::size_t index)
+void hpxfft::transpose_shared_y_to_x(const std::size_t index)
 {
     for( std::size_t index_trans = 0; index_trans < dim_c_x_; ++index_trans)
     {
@@ -94,7 +98,7 @@ void fft::transpose_shared_y_to_x(const std::size_t index)
     }     
 }  
 
-// void fft::transpose_shared_x_to_y(const std::size_t index)
+// void hpxfft::transpose_shared_x_to_y(const std::size_t index)
 // {
 //     for( std::size_t index_trans = 0; index_trans < dim_c_y_; ++index_trans)
 //     {
@@ -104,7 +108,7 @@ void fft::transpose_shared_y_to_x(const std::size_t index)
 // } 
 
 // transpose with read running index
-// void fft::transpose_shared_y_to_x(const std::size_t index_trans)
+// void hpxfft::transpose_shared_y_to_x(const std::size_t index_trans)
 // {
 //     for( std::size_t index = 0; index < dim_c_y_; ++index)
 //     {
@@ -113,7 +117,7 @@ void fft::transpose_shared_y_to_x(const std::size_t index)
 //     }     
 // }
 
-void fft::transpose_shared_x_to_y(const std::size_t index_trans)
+void hpxfft::transpose_shared_x_to_y(const std::size_t index_trans)
 {
     for( std::size_t index = 0; index < dim_c_x_; ++index)
     {
@@ -123,7 +127,7 @@ void fft::transpose_shared_x_to_y(const std::size_t index_trans)
 }  
     
 // 2D FFT algorithm
-vector_2d<real> fft::fft_2d_r2c_par()
+vector_2d<real> hpxfft::fft_2d_r2c_par()
 {
     /////////////////////////////////////////////////////////////////
     // first dimension
@@ -166,7 +170,7 @@ vector_2d<real> fft::fft_2d_r2c_par()
     return std::move(values_vec_);
 }
 
-vector_2d<real> fft::fft_2d_r2c_seq()
+vector_2d<real> hpxfft::fft_2d_r2c_seq()
 {
     /////////////////////////////////////////////////////////////////
     // first dimension
@@ -209,7 +213,7 @@ vector_2d<real> fft::fft_2d_r2c_seq()
 }
 
 // initialization
-void fft::initialize(vector_2d<real> values_vec, 
+void hpxfft::initialize(vector_2d<real> values_vec, 
                      const unsigned PLAN_FLAG)
 {
     // move data into own data structure
@@ -246,12 +250,12 @@ void fft::initialize(vector_2d<real> values_vec,
 }
 
 // helpers
-real fft::get_measurement(std::string name)
+real hpxfft::get_measurement(std::string name)
 {
     return measurements_[name];
 }
 
-void fft::write_plans_to_file(FILE* file_name)
+void hpxfft::write_plans_to_file(FILE* file_name)
 {
     fprintf(file_name, "FFTW r2c 1D plan:\n");
     fftw_fprint_plan(plan_1d_r2c_, file_name);
@@ -259,36 +263,6 @@ void fft::write_plans_to_file(FILE* file_name)
     fprintf(file_name, "FFTW c2c 1D plan:\n");
     fftw_fprint_plan(plan_1d_c2c_, file_name);
     fprintf(file_name, "\n\n");
-}
-
-void print_vector_2d(const vector_2d<real>& input)
-{
-    const std::string msg = "\n";
-    
-    const std::size_t dim_x = input.n_row();
-    const std::size_t dim_y = input.n_col();
-
-    std::size_t counter = 0;
-    for( std::size_t i = 0; i < dim_x; ++i)
-    {
-        for( std::size_t j = 0; j < dim_y; ++j)
-        {
-            real element =  input(i,j);
-            if(counter%2 == 0)
-            {
-                std::string msg = "({1} ";
-                hpx::util::format_to(std::cout, msg, element) << std::flush;
-            }
-            else
-            {
-                std::string msg = "{1}) ";
-                hpx::util::format_to(std::cout, msg, element) << std::flush;
-            }
-            ++counter;
-        }    
-        hpx::util::format_to(std::cout, msg) << std::flush;
-    }
-    hpx::util::format_to(std::cout, msg) << std::flush;
 }
 
 int hpx_main(hpx::program_options::variables_map& vm)
@@ -338,7 +312,7 @@ int hpx_main(hpx::program_options::variables_map& vm)
 
     ////////////////////////////////////////////////////////////////
     // Computation   
-    fft fft_computer;
+    hpxfft fft_computer;
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), FFT_BACKEND_PLAN_FLAG);
     auto stop_init = t.now();
