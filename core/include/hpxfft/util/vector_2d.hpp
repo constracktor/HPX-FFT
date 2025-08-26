@@ -1,11 +1,10 @@
 #ifndef vector_2d_H_INCLUDED
 #define vector_2d_H_INCLUDED
 
-#include <cstddef>
-#include <algorithm> 
-
-//#include <iostream>
 #include <hpx/serialization.hpp>
+
+namespace hpxfft::util
+{
 
 template<typename T>
 struct vector_2d
@@ -274,5 +273,6 @@ inline bool operator==(const vector_2d<H>& lhs, const vector_2d<H>& rhs)
             return false;
 
     return true;
+}
 }
 #endif // vector_2d_H_INCLUDED

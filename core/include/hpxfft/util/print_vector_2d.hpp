@@ -1,7 +1,11 @@
 #ifndef print_vector_2d_H_INCLUDED
 #define ptint_vector_2d_H_INCLUDED
 
+#include <iostream>
 #include "vector_2d.hpp"
+
+namespace hpxfft::util
+{
 
 void print_vector_2d(const vector_2d<real>& input)
 {
@@ -31,5 +35,6 @@ void print_vector_2d(const vector_2d<real>& input)
         hpx::util::format_to(std::cout, msg) << std::flush;
     }
     hpx::util::format_to(std::cout, msg) << std::flush;
+}
 }
 #endif // print_vector_2d_H_INCLUDED
