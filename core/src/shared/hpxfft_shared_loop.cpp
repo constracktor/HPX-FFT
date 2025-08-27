@@ -1,6 +1,6 @@
 #include <hpx/parallel/algorithms/for_loop.hpp>
 
-#include "../../include/hpxfft/shared/hpxfft_loop_shared.hpp"
+#include "../../include/hpxfft/shared/hpxfft_shared_loop.hpp"
 
 // FFT backend
 void hpxfft::shared::loop::fft_1d_r2c_inplace(const std::size_t i)
