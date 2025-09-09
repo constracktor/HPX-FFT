@@ -156,7 +156,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
         r2c_futures_[i] = hpx::async(fft_1d_r2c_inplace_action(), get_id(), i);
         // prepare for communication
         split_vec_futures_[i] = r2c_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(split_vec_action(), get_id(), i);
@@ -171,7 +171,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
         for (std::size_t i = 0; i < num_localities_; ++i) 
         {
             communication_futures_[i] = all_split_vec_futures.then(
-                [=](hpx::shared_future<vector_future> r)
+                [=, this](hpx::shared_future<vector_future> r)
                 {
                     r.get();
                     return hpx::async(communicate_scatter_vec_action(), get_id(), i);
@@ -183,7 +183,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
             for(std::size_t i = 0; i < num_localities_; ++i)
             {          
                 trans_y_to_x_futures_[k][i] = communication_futures_[i].then(
-                        [=](hpx::shared_future<void> r)
+                        [=, this](hpx::shared_future<void> r)
                         {
                             r.get();
                             return hpx::async(transpose_y_to_x_action(), get_id(), k, i);
@@ -195,7 +195,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
     {
         // all to all operation
         communication_futures_[0] = all_split_vec_futures.then(
-            [=](hpx::shared_future<vector_future> r)
+            [=, this](hpx::shared_future<vector_future> r)
             {
                 r.get();
                 return hpx::async(communicate_all_to_all_vec_action(), get_id());
@@ -204,9 +204,9 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
         for(std::size_t k = 0; k < n_y_local_; ++k)
         {
             for(std::size_t i = 0; i < num_localities_; ++i)
-            {          
+            {
                 trans_y_to_x_futures_[k][i] = communication_futures_[0].then(
-                        [=](hpx::shared_future<void> r)
+                        [=, this](hpx::shared_future<void> r)
                         {
                             r.get();
                             return hpx::async(transpose_y_to_x_action(), get_id(), k, i);
@@ -226,14 +226,14 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
         hpx::future<vector_future> all_trans_y_to_x_i_futures = hpx::when_all(trans_y_to_x_futures_[i]);
         // 1D FFT in x-direction
         c2c_futures_[i] = all_trans_y_to_x_i_futures.then(
-            [=](hpx::future<vector_future> r)
+            [=, this](hpx::future<vector_future> r)
             {
                 r.get();
                 return hpx::async(fft_1d_c2c_inplace_action(), get_id(), i);
             });     
         // prepare for communication
         split_trans_vec_futures_[i] = c2c_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(split_trans_vec_action(), get_id(), i);
@@ -250,7 +250,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
         for (std::size_t i = 0; i < num_localities_; ++i) 
         {
             communication_futures_[i] = all_split_trans_vec_futures.then(
-                [=](hpx::shared_future<vector_future> r)
+                [=, this](hpx::shared_future<vector_future> r)
                 {
                     r.get();
                     return hpx::async(communicate_scatter_trans_vec_action(), get_id(), i);
@@ -262,7 +262,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
             for(std::size_t i = 0; i < num_localities_; ++i)
             {          
                 trans_x_to_y_futures_[j][i] = communication_futures_[i].then(
-                        [=](hpx::shared_future<void> r)
+                        [=, this](hpx::shared_future<void> r)
                         {
                             r.get();
                             return hpx::async(transpose_x_to_y_action(), get_id(), j, i);
@@ -274,7 +274,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
     {
         // all to all operation
         communication_futures_[0] = all_split_trans_vec_futures.then(
-            [=](hpx::shared_future<vector_future> r)
+            [=, this](hpx::shared_future<vector_future> r)
             {
                 r.get();
                 return hpx::async(communicate_all_to_all_trans_vec_action(), get_id());
@@ -285,7 +285,7 @@ hpxfft::distributed::vector_2d hpxfft::distributed::agas_server::fft_2d_r2c()
             for(std::size_t i = 0; i < num_localities_; ++i)
             {          
                 trans_x_to_y_futures_[k][i] = communication_futures_[0].then(
-                        [=](hpx::shared_future<void> r)
+                        [=, this](hpx::shared_future<void> r)
                         {
                             r.get();
                             return hpx::async(transpose_x_to_y_action(), get_id(), k, i);

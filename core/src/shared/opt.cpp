@@ -74,7 +74,7 @@ hpxfft::shared::vector_2d hpxfft::shared::opt::fft_2d_r2c()
     {
         // transpose from y-direction to x-direction
         trans_y_to_x_futures_[i] = all_r2c_futures.then(
-            [=](hpx::shared_future<vector_future> r)
+            [=, this](hpx::shared_future<vector_future> r)
             {
                 r.get();
                 return hpx::async(&hpxfft::shared::opt::transpose_shared_y_to_x_wrapper, this, i);
@@ -82,14 +82,14 @@ hpxfft::shared::vector_2d hpxfft::shared::opt::fft_2d_r2c()
         // second dimension
         // 1D FFT in x-direction
         c2c_futures_[i] = trans_y_to_x_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(&fft_1d_c2c_inplace_wrapper, this, i);
             });     
         // transpose from x-direction to y-direction
         trans_x_to_y_futures_[i] = c2c_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(&hpxfft::shared::opt::transpose_shared_x_to_y_wrapper, this, i);

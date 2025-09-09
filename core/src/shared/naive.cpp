@@ -68,7 +68,7 @@ hpxfft::shared::vector_2d hpxfft::shared::naive::fft_2d_r2c()
         r2c_futures_[i] = hpx::async(&fft_1d_r2c_inplace_wrapper, this, i);
         // transpose from y-direction to x-direction
         trans_y_to_x_futures_[i] = r2c_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(&hpxfft::shared::naive::transpose_shared_y_to_x_wrapper, this, i);
@@ -80,14 +80,14 @@ hpxfft::shared::vector_2d hpxfft::shared::naive::fft_2d_r2c()
     {
         // 1D FFT in x-direction
         c2c_futures_[i] = all_trans_y_to_x_futures.then(
-            [=](hpx::shared_future<vector_future> r)
+            [=, this](hpx::shared_future<vector_future> r)
             {
                 r.get();
                 return hpx::async(&fft_1d_c2c_inplace_wrapper, this, i);
             });     
         // transpose from x-direction to y-direction
         trans_x_to_y_futures_[i] = c2c_futures_[i].then(
-            [=](hpx::future<void> r)
+            [=, this](hpx::future<void> r)
             {
                 r.get();
                 return hpx::async(&hpxfft::shared::naive::transpose_shared_x_to_y_wrapper, this, i);
