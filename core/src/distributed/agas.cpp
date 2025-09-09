@@ -1,7 +1,7 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/modules/components.hpp>
 
-#include "../../include/hpxfft/distributed/hpxfft_distributed_agas.hpp"
+#include "../../include/hpxfft/distributed/agas.hpp"
 
 // HPX_REGISTER_COMPONENT() exposes the component creation
 // through hpx::new_<>().

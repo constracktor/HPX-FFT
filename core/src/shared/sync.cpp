@@ -1,4 +1,4 @@
-#include "../../include/hpxfft/shared/hpxfft_shared_sync.hpp"
+#include "../../include/hpxfft/shared/sync.hpp"
 
 // FFT backend
 void hpxfft::shared::sync::fft_1d_r2c_inplace(const std::size_t i)

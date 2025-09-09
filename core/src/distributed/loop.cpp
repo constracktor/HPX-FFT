@@ -1,7 +1,7 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
 
-#include "../../include/hpxfft/distributed/hpxfft_distributed_loop.hpp"
+#include "../../include/hpxfft/distributed/loop.hpp"
 
 // FFT backend
 void hpxfft::distributed::loop::fft_1d_r2c_inplace(const std::size_t i)

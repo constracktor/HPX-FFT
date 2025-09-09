@@ -1,8 +1,9 @@
+#pragma once
 #ifndef hpxfft_shared_agas_H_INCLUDED
 #define hpxfft_shared_agas_H_INCLUDED
 #include <hpx/hpx.hpp>
 
-#include "hpxfft_shared_agas_server.hpp"
+#include "agas_server.hpp"
 
 namespace hpxfft::shared
 {   ///////////////////////////////////////////////////////////////////////////////

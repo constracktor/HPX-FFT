@@ -1,3 +1,4 @@
+#pragma once
 #ifndef hpxfft_shared_sync_H_INCLUDED
 #define hpxfft_shared_sync_H_INCLUDED
 

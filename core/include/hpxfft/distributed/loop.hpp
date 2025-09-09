@@ -1,3 +1,4 @@
+#pragma once
 #ifndef hpxfft_distributed_loop_H_INCLUDED
 #define hpxfft_distributed_loop_H_INCLUDED
 

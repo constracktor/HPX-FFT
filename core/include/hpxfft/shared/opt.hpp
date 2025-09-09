@@ -1,5 +1,6 @@
-#ifndef hpxfft_shared_naive_H_INCLUDED
-#define hpxfft_shared_naive_H_INCLUDED
+#pragma once
+#ifndef hpxfft_shared_opt_H_INCLUDED
+#define hpxfft_shared_opt_H_INCLUDED
 
 #include <hpx/future.hpp>
 #include <hpx/timing/high_resolution_timer.hpp> // for hpx::chrono::high_resolution_timer
@@ -12,13 +13,13 @@ namespace hpxfft::shared
 {
     using vector_2d = hpxfft::util::vector_2d<real>;
 
-    struct naive
+    struct opt
     {
         typedef fftw_plan fft_backend_plan;
         typedef std::vector<hpx::future<void>> vector_future;
 
         public:
-            naive() = default;
+            opt() = default;
 
             void initialize(vector_2d values_vec, 
                             const unsigned PLAN_FLAG);
@@ -27,7 +28,7 @@ namespace hpxfft::shared
 
             real get_measurement(std::string name);
 
-            ~naive()
+            ~opt()
             {
                 fftw_destroy_plan(plan_1d_r2c_);
                 fftw_destroy_plan(plan_1d_c2c_);
@@ -40,17 +41,17 @@ namespace hpxfft::shared
             void fft_1d_c2c_inplace(const std::size_t i);
 
             // transpose
-            void transpose_shared_y_to_x(const std::size_t index_trans);
+            void transpose_shared_y_to_x(const std::size_t index);
             void transpose_shared_x_to_y(const std::size_t index_trans); 
 
             // static wrappers
-            static void fft_1d_r2c_inplace_wrapper(naive *th, 
+            static void fft_1d_r2c_inplace_wrapper(opt *th, 
                                                    const std::size_t i);
-            static void fft_1d_c2c_inplace_wrapper(naive *th, 
+            static void fft_1d_c2c_inplace_wrapper(opt *th, 
                                                    const std::size_t i);
-            static void transpose_shared_y_to_x_wrapper(naive *th, 
-                                                        const std::size_t index_trans);
-            static void transpose_shared_x_to_y_wrapper(naive *th, 
+            static void transpose_shared_y_to_x_wrapper(opt *th, 
+                                                        const std::size_t index);
+            static void transpose_shared_x_to_y_wrapper(opt *th, 
                                                         const std::size_t index_trans); 
         private:
             // parameters
@@ -72,4 +73,4 @@ namespace hpxfft::shared
             vector_future trans_x_to_y_futures_; 
     };
 }
-#endif // hpxfft_shared_naive_H_INCLUDED
+#endif // hpxfft_shared_opt_H_INCLUDED

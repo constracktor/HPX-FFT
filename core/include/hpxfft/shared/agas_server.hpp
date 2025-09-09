@@ -1,3 +1,4 @@
+#pragma once
 #ifndef hpxfft_shared_agas_server_H_INCLUDED
 #define hpxfft_shared_agas_server_H_INCLUDED
 

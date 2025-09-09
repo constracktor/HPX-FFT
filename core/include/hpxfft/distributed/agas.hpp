@@ -1,9 +1,10 @@
+#pragma once
 #ifndef hpxfft_distributed_agas_H_INCLUDED
 #define hpxfft_distributed_agas_H_INCLUDED
 
 #include <hpx/hpx.hpp>
 
-#include "hpxfft_distributed_agas_server.hpp"
+#include "agas_server.hpp"
 
 namespace hpxfft::distributed
 { 
