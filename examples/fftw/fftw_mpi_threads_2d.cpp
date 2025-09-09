@@ -51,8 +51,9 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char* argv[])
 {
-    //      nodes ranks prog  threads N_X N_Y    plan  header
-    // srun -N 2  -n 4 fftw_mpi  4     8   14  estimate  0
+    //      nodes ranks     prog       threads N_X N_Y    plan  header
+    // srun -N 2  -n 4 fftw_mpi_threads   4     8   14  estimate  0
+    //     mpirun -n 4 fftw_mpi_threads   4     8   14  estimate  0
     ////////////////////////////////////////////////////////////////
     // Parameters and Data Structures
     int n_threads = std::stoi(argv[1]);
@@ -161,14 +162,14 @@ int main(int argc, char* argv[])
         // print runtimes
         std::cout << "FFTW 2D with MPI + pthreads:" 
                   << "\n MPI ranks      = " << n_ranks
-                  << "\n pthreads       = " << n_threads
+                  << "\n POSIX threads  = " << n_threads
                   << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
                   << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"]
                   << "\n plan flops     = " << plan_flops
                   << std::endl;
         // store runtime and plan info
         std::ofstream runtime_file;
-        runtime_file.open("result/runtimes_mpi_threads.txt", std::ios_base::app);
+        runtime_file.open("result/runtimes/runtimes_mpi_threads.txt", std::ios_base::app);
         if(print_header)
         {
             runtime_file << "n_ranks;n_threads;n_x;n_y;plan;"
@@ -186,7 +187,7 @@ int main(int argc, char* argv[])
         
         // store plan info
         std::ofstream plan_info_file;
-        plan_info_file.open("plans/plan_mpi_threads.txt", std::ios_base::app);
+        plan_info_file.open("result/plans/plan_mpi_threads.txt", std::ios_base::app);
         plan_info_file  << "n_ranks;n_threads;n_x;n_y;plan;"
                         << "planning;fftw_2d_r2c;plan_flops;\n"
                         << n_ranks << ";" 
@@ -199,7 +200,7 @@ int main(int argc, char* argv[])
                         << plan_flops << ";\n";
         plan_info_file.close();
         // store plan
-        FILE* plan_file = fopen ("plans/plan_mpi_threads.txt", "a");
+        FILE* plan_file = fopen ("result/plans/plan_mpi_threads.txt", "a");
         fprintf(plan_file, "FFTW r2c 2D plan:\n");
         fftw_fprint_plan(plan_r2c_2d, plan_file);
         fprintf(plan_file, "\n\n");
