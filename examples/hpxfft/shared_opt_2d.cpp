@@ -3,9 +3,9 @@
 
 #include <hpx/hpx_init.hpp>
 
-#include "../../core/include/hpxfft/shared/opt.hpp" // for hpxfft::shared::opt, hpxfft::shared::vector_2d
-#include "../../core/include/hpxfft/util/print_vector_2d.hpp" // for hpxfft::util::print_vector_2d
-#include "../../core/include/hpxfft/util/create_dir.hpp" // for hpxfft::util::create_parent_dir
+#include "hpxfft/shared/opt.hpp" // for hpxfft::shared::opt, hpxfft::shared::vector_2d
+#include "hpxfft/util/print_vector_2d.hpp" // for hpxfft::util::print_vector_2d
+#include "hpxfft/util/create_dir.hpp" // for hpxfft::util::create_parent_dir
 
 int hpx_main(hpx::program_options::variables_map& vm)
 {
