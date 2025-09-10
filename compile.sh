@@ -1,4 +1,5 @@
-module load gcc/14.2.0
+#module load gcc/14.2.0
+spack load gcc@14.2.0
 spack load hpx%gcc@14.2.0
 spack load fftw%gcc@14.2.0
 ################################################################################

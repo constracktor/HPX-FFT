@@ -4,16 +4,21 @@ HPX-FFT is an open-source library for FFT computation. Leveraging the asynchrono
 
 ## Dependencies
 
-HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.html) for asynchronous task-based parallelization. Further one-dimensional FFTs are computed via an [FFTW](https://www.fftw.org/) backend.
+HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.html) for asynchronous task-based parallelization. Further one-dimensional FFTs are computed via an [FFTW](https://www.fftw.org/) backend. All dependencies can be installed using [Spack](https://github.com/spack/spack).
 
-### Install dependencies
+### Linux on x86
 
-All dependencies can be installed using [Spack](https://github.com/spack/spack).
 For HPX we recommend: `spack install hpx@1.10.0 networking={tcp/mpi/lci} max_cpu_count=256`
 For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
 
 Note that the LCI variant of HPX currently requires to add the [Octo-Tiger repo](https://github.com/G-071/octotiger-spack) to spack.
 Alternatively, both librarires can be built from source.
+
+### MacOS on Apple Silicon
+
+For Compiler we recommend: `spack install gcc@14.2.0`
+For HPX we recommend: `spack install hpx@1.10.0%gcc@14.2.0 networking={tcp/mpi/lci}`
+For FFTW we recommend `spack install fftw@3.3.10%gcc@14.2.0 +mpi +openmp platform=darwin precision=double`
 
 ## How to Compile HPX-FFT
 
