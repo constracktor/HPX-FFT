@@ -11,10 +11,10 @@ find_package(HPX REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
 
-option(GPRAT_ENABLE_FORMAT_TARGETS "Enable clang-format / cmake-format targets"
+option(HPXFFT_ENABLE_FORMAT_TARGETS "Enable clang-format / cmake-format targets"
        ${PROJECT_IS_TOP_LEVEL})
 
-if(GPRAT_ENABLE_FORMAT_TARGETS)
+if(HPXFFT_ENABLE_FORMAT_TARGETS)
   find_package(format QUIET)
   if(NOT format_FOUND)
     include(FetchContent)
