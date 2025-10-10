@@ -20,9 +20,6 @@ jobs:
     - name: Install cmakelang
       run: pip3 install cmakelang
 
-    - name: Configure dummy project
-      run: cmake -B build-fmt -D CLANG_FORMAT_PROGRAM=$(which clang-format-18)
-
     - name: Check code formatting
       id: clangformat
       run: |
