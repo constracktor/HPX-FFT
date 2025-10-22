@@ -1,18 +1,18 @@
 set(SOURCE_FILES
-                   src/shared/loop.cpp
-                   src/shared/sync.cpp
-                   src/shared/opt.cpp
-                   src/shared/naive.cpp
-                   src/shared/agas.cpp
-                   src/distributed/loop.cpp
-                   src/distributed/agas.cpp)
+    src/shared/loop.cpp
+    src/shared/sync.cpp
+    src/shared/opt.cpp
+    src/shared/naive.cpp
+    src/shared/agas.cpp
+    src/distributed/loop.cpp
+    src/distributed/agas.cpp)
 
 add_library(hpxfft STATIC ${SOURCE_FILES})
 
 # Add them as PRIVATE sources here so they show up in project files Can't use
 # PUBLIC etc., see: https://stackoverflow.com/a/62465051
 file(GLOB_RECURSE header_files CONFIGURE_DEPENDS include/hpxfft/shared/*.hpp
-                                                 include/hpxfft/distributed/*.hpp)
+     include/hpxfft/distributed/*.hpp)
 target_sources(hpxfft PRIVATE ${header_files})
 
 # Link HPX
@@ -21,7 +21,8 @@ target_link_libraries(hpxfft PUBLIC HPX::hpx)
 target_link_libraries(hpxfft PUBLIC PkgConfig::FFTW)
 
 # Include directories
-target_include_directories(hpxfft PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/core/include>")
+target_include_directories(
+  hpxfft PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/core/include>")
 
 target_compile_features(hpxfft PUBLIC cxx_std_20)
 
