@@ -10,27 +10,30 @@ if command -v spack &> /dev/null; then
     HOSTNAME=$(hostname -s)
 
     if [[ "$HOSTNAME" == "ipvs-epyc1" ]]; then
+	module load gcc/14.2.0
 	# Check if the spack environment exists
 	SPACK_ENV=hpxfft_x86_epyc
 	if spack env list | grep -q "${SPACK_ENV}"; then
 	    echo "Found ${SPACK_ENV} environment, activating it."
-	    module load gcc/14.2.0
 	    spack env activate ${SPACK_ENV}
 	fi
     elif [[ "$HOSTNAME" == "sven0"  ||  "$HOSTNAME" == "sven1" ]]; then
         echo "tbd."
     elif [[ $(uname -i) == "aarch64" ]]; then
-        echo "tbd."
+	spack load gcc@14.2.0
+	# Check if the spack environment exists
+	SPACK_ENV=hpxfft_arm_ookami
+	if spack env list | grep -q "${SPACK_ENV}"; then
+	    echo "Found ${SPACK_ENV} environment, activating it."
+	    spack env activate ${SPACK_ENV}
+	fi
     elif [[ "$HOSTNAME" == "simcl1n1" || "$HOSTNAME" == "simcl1n2" ]]; then
+        module load gcc/14.1.0
         # Check if the spack environment exists
         SPACK_ENV=hpxfft_x86_simcl
         if spack env list | grep -q "${SPACK_ENV}"; then
             echo "Found ${SPACK_ENV} environment, activating it."
-            module load gcc/14.1.0
             spack env activate ${SPACK_ENV}
-	    # FFTW paths
-	    export FFTW_DIR="$(spack -i location fftw)/lib"
-	    export PKG_CONFIG_PATH="$FFTW_DIR/pkgconfig":$PKG_CONFIG_PATH
         fi
     else
         echo "Hostname is $HOSTNAME — no action taken."
