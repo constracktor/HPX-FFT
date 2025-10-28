@@ -22,7 +22,7 @@ POW_STOP=$4
 BASE_SIZE=$5
 LOOP=$6
 # Get run command
-COMMAND="srun -N 1 -n 1 -c $((2**$POW_START))"
+COMMAND="srun -N 1 -n 1 -c $((2**POW_START))"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2"
 # Strong scaling loop from 2^pow_start to 2^pow_stop cores
