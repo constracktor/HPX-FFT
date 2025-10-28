@@ -311,7 +311,6 @@ void hpxfft::distributed::loop::initialize(
         FFTW_FORWARD,
         PLAN_FLAG_);
     // communication specific initialization
-    hpx::util::format_to(std::cout, "BEFORE COMM INIT\n");
     COMM_FLAG_ = COMM_FLAG;
     if (COMM_FLAG_ == "scatter")
     {
@@ -346,7 +345,6 @@ void hpxfft::distributed::loop::initialize(
         std::cout << "Specify communication scheme: scatter or all_to_all\n";
         hpx::finalize();
     }
-    hpx::util::format_to(std::cout, "AFTER COMM INIT\n");
 }
 
 // helpers

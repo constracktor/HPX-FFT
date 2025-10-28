@@ -151,6 +151,5 @@ int main(int argc, char *argv[])
     hpx::init_params init_args;
     init_args.desc_cmdline = desc_commandline;
     init_args.cfg = cfg;
-    hpx::util::format_to(std::cout, "BEFORE HPX MAIN\n");
     return hpx::init(argc, argv, init_args);
 }
