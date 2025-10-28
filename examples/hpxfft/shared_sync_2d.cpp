@@ -90,7 +90,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
         fft_computer.get_measurement("second_trans"))
         << std::flush;
 
-    std::string runtime_file_path = "result/runtimes/runtimes_hpx_shared_sync.txt";
+    std::string runtime_file_path = "runtimes/runtimes_hpx_shared_sync.txt";
     hpxfft::util::create_parent_dir(runtime_file_path);
     std::ofstream runtime_file;
     runtime_file.open(runtime_file_path, std::ios_base::app);
