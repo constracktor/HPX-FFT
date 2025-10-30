@@ -1,41 +1,82 @@
-#!/bin/bash
+#!/usr/bin/bash
+# Benchmark script for message size scaling between two nodes
+# $1: Collective (scatter/all_to_all)
 ################################################################################
-# Benchmark script for message scaling between two nodes of a cluster
-# $1: partition (buran/medusa with mpi/lci/tcp/shmem)
-# $2: communication scheme (scatter/all_to_all)
-if [[ "$1" == "buran_mpi" ]]
-then
-    # 16 nodes available
-    module load llvm/17.0.1
-    module load openmpi
-    PARTITION=buran
+# Config
+################################################################################
+TOP_DIR=$(pwd)
+EXAMPLES_DIR=$TOP_DIR/examples
+
+# HPX-FFT implementations
+HPXFFT_EXECUTABLES=(
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+)
+# FFTW implementations
+FFTW_EXECUTABLES=(
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads"
+)
+
+# Get current hostname
+HOSTNAME=$(hostname -s)
+if [[ "$HOSTNAME" == "ipvsmisc" ]]; then
+    echo "tbd."
+elif [[ "$HOSTNAME" == "rostam" ]]; then
+    echo "tbd."
+elif [[ "$HOSTNAME" == "login1" ]]; then
+    PARTITION=short
     THREADS=48
-    SIZE_POW=7
-elif [[ "$1" == "buran_lci" ]]
-then
-    # 16 nodes available
-    module load llvm/17.0.1
-    PARTITION=buran
-    THREADS=48
-    SIZE_POW=7
-    export LD_LIBRARY_PATH=/home/alex/hpxsc_installations/hpx_1.9_lci_clang_17.0.1/install/lib64:$LD_LIBRARY_PATH
-elif [[ "$1" == "buran_tcp" ]]
-then
-    # 16 nodes available
-    module load llvm/17.0.1
-    PARTITION=buran
-    THREADS=48
-    SIZE_POW=7
+elif [[ "$HOSTNAME" == "simcl1" ]]; then
+    echo "tbd."
 else
-  echo 'Please specify partition and parcelport'
-  exit 1
+    echo "Hostname is $HOSTNAME — no action taken."
+    exit 1
 fi
-LOOP=50
-FFTW_PLAN=measure
-COLLECTIVE=$2
-BUILD_DIR=build_$1
-cd sbatch_scripts
-# HPX implementations
-sbatch -p $PARTITION -N 2 -n 2 -c $THREADS run_hpx_message.sh $BUILD_DIR/fft_hpx_loop $FFTW_PLAN $SIZE_POW $COLLECTIVE $LOOP
-# FFTW backends
-sbatch -p $PARTITION -N 2 -n 2 -c $THREADS run_fftw_message.sh $BUILD_DIR/fftw_mpi_threads $FFTW_PLAN $NODES $THREADS $LOOP
+
+# Set Collective
+COLLECTIVE=$1
+# Check if COLLECITVE was provided
+if [ -z "$COLLECTIVE" ]; then
+    echo "Error: COLLECTIVE parameter not set."
+    echo "Usage: message_benchmark.sh scatter/all_to_all"
+    exit 1
+fi
+
+################################################################################
+# Run benchmarks
+################################################################################
+RESULT_DIR=$TOP_DIR/message_benchmark_on_$HOSTNAME
+SCRIPT_DIR=$TOP_DIR/benchmark/sbatch_scripts
+
+################################################################################
+# Directories
+mkdir -p $RESULT_DIR/runtimes
+mkdir -p $RESULT_DIR/plans
+cd $RESULT_DIR
+
+# Config
+LOOP=2
+BASE_SIZE=128
+STOP_POW=5
+
+# Loop over HPX-FFT executables
+RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_message_size.sh"
+for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
+  echo "Submitting job for executable: $EXE"
+
+  sbatch -p $PARTITION -N 2 -n 2 -c $THREADS \
+    $RUN_SCRIPT \
+    $EXE $BASE_SIZE $STOP_POW $COLLECTIVE $THREADS $LOOP
+done
+
+# Loop over FFTW executables
+RUN_SCRIPT="$SCRIPT_DIR/run_fftw_message_size.sh"
+# Loop over executables
+for EXE in "${FFTW_EXECUTABLES[@]}"; do
+  echo "Submitting job for executable: $EXE"
+
+  sbatch -p $PARTITION -N 2 -n 2 -c $THREADS \
+    $RUN_SCRIPT \
+    $EXE $BASE_SIZE $STOP_POW $THREADS $LOOP
+done

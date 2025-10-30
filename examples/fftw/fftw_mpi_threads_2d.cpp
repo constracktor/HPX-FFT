@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
                   << std::endl;
         // store runtime and plan info
         std::ofstream runtime_file;
-        runtime_file.open("result/runtimes/runtimes_mpi_threads.txt", std::ios_base::app);
+        runtime_file.open("runtimes/runtimes_mpi_threads.txt", std::ios_base::app);
         if (print_header)
         {
             runtime_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
@@ -178,13 +178,13 @@ int main(int argc, char *argv[])
 
         // store plan info
         std::ofstream plan_info_file;
-        plan_info_file.open("result/plans/plan_mpi_threads.txt", std::ios_base::app);
+        plan_info_file.open("plans/plan_mpi_threads.txt", std::ios_base::app);
         plan_info_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n"
                        << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                        << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
         plan_info_file.close();
         // store plan
-        FILE *plan_file = fopen("result/plans/plan_mpi_threads.txt", "a");
+        FILE *plan_file = fopen("plans/plan_mpi_threads.txt", "a");
         fprintf(plan_file, "FFTW r2c 2D plan:\n");
         fftw_fprint_plan(plan_r2c_2d, plan_file);
         fprintf(plan_file, "\n\n");
