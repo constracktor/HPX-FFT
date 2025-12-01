@@ -73,4 +73,11 @@ if(HPXFFT_BUILD_CORE)
       include(CPack)
     endif()
   endif()
+
+  if(HPXFFT_ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+  endif()
+
 endif()
+
