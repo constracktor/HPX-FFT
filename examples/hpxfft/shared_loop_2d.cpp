@@ -103,7 +103,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
         fft_computer.get_measurement("plan_flops"))
         << std::flush;
 
-    std::string runtime_file_path = "result/runtimes/runtimes_hpx_shared_loop.txt";
+    std::string runtime_file_path = "runtimes/runtimes_hpx_shared_loop.txt";
     hpxfft::util::create_parent_dir(runtime_file_path);
     std::ofstream runtime_file;
     runtime_file.open(runtime_file_path, std::ios_base::app);
@@ -122,7 +122,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     runtime_file.close();
 
     // store plan info
-    std::string plan_file_path = "result/plans/plan_hpx_shared_loop.txt";
+    std::string plan_file_path = "plans/plan_hpx_shared_loop.txt";
     hpxfft::util::create_parent_dir(plan_file_path);
     std::ofstream plan_info_file;
     plan_info_file.open(plan_file_path, std::ios_base::app);
