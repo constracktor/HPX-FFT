@@ -7,12 +7,17 @@ project(
   HOMEPAGE_URL "https://github.com/constracktor/HPX-FFT"
   LANGUAGES CXX)
 
+<<<<<<< HEAD
 option(HPXFFT_ENABLE_FORMAT_TARGETS
        "Enable clang-format / cmake-format targets" ${PROJECT_IS_TOP_LEVEL})
+=======
+>>>>>>> 4d6598c (configure lint.yml)
 
 option(HPXFFT_BUILD_CORE "Build the core library" ON)
 option(HPXFFT_ENABLE_FORMAT_TARGETS "Enable clang-format / cmake-format targets"
        ${PROJECT_IS_TOP_LEVEL})
+
+option(HPXFFT_BUILD_CORE "Build the core library" ON)
 
 if(HPXFFT_ENABLE_FORMAT_TARGETS)
   find_package(format QUIET)
@@ -31,9 +36,15 @@ if(HPXFFT_BUILD_CORE)
   find_package(PkgConfig REQUIRED)
   pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
   if(NOT CMAKE_SKIP_INSTALL_RULES)
+<<<<<<< HEAD
     # Our installs follow the standard GNU directory layout. This include needs
     # to come first since we need the CMAKE_INSTALL_* in the CMakeLists.txt of
     # each target.
+=======
+    # Our installs follow the standard GNU directory layout. This include needs to
+    # come first since we need the CMAKE_INSTALL_* in the CMakeLists.txt of each
+    # target.
+>>>>>>> 4d6598c (configure lint.yml)
     include(GNUInstallDirs)
   endif()
 
@@ -45,6 +56,7 @@ if(HPXFFT_BUILD_CORE)
     set(package HPXFFT)
 
     write_basic_package_version_file("${package}ConfigVersion.cmake"
+<<<<<<< HEAD
                                      COMPATIBILITY SameMajorVersion)
     # Allow package maintainers to freely override the path for the configs
     set(HPXFFT_INSTALL_CMAKEDIR
@@ -73,6 +85,36 @@ if(HPXFFT_BUILD_CORE)
 
     if(PROJECT_IS_TOP_LEVEL)
       include(CPack)
+=======
+                                   COMPATIBILITY SameMajorVersion)
+    # Allow package maintainers to freely override the path for the configs
+    set(HPXFFT_INSTALL_CMAKEDIR
+      "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"
+      CACHE STRING
+            "CMake package config location relative to the install prefix")
+    set_property(CACHE HPXFFT_INSTALL_CMAKEDIR PROPERTY TYPE PATH)
+    mark_as_advanced(HPXFFT_INSTALL_CMAKEDIR)
+
+    install(
+      FILES cmake/install-config.cmake
+      DESTINATION "${HPXFFT_INSTALL_CMAKEDIR}"
+      RENAME "${package}Config.cmake"
+      COMPONENT Development)
+
+    install(
+      FILES "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
+      DESTINATION "${HPXFFT_INSTALL_CMAKEDIR}"
+      COMPONENT Development)
+
+    install(
+      EXPORT HPXFFTTargets
+      NAMESPACE HPXFFT::
+      DESTINATION "${HPXFFT_INSTALL_CMAKEDIR}"
+      COMPONENT Development)
+
+    if(PROJECT_IS_TOP_LEVEL)
+        include(CPack)
+>>>>>>> 4d6598c (configure lint.yml)
     endif()
   endif()
 endif()
