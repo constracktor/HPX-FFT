@@ -1,0 +1,8 @@
+spack:
+  specs:
+  - hpx@1.11.0%gcc malloc=system networking=mpi max_cpu_count=256 instrumentation=none
+  - fftw@3.3.10%gcc +mpi +openmp
+  - cmake@3.30.5%gcc
+  view: true
+  concretizer:
+    unify: true
