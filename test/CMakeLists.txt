@@ -17,8 +17,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 # ---- Tests ----
-#[[
-add_executable(test_naive src/testnaive.cpp)
+add_executable(test_naive src/test_naive.cpp)
 target_link_libraries(test_naive
                       PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain PUBLIC HPX::hpx)
 target_compile_features(test_naive PRIVATE cxx_std_17)
@@ -27,7 +26,8 @@ add_test(
   NAME test_naive
   COMMAND test_naive
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
-#]]
+
+
 add_executable(test_vector_2d src/test_vector_2d.cpp)
 target_link_libraries(test_vector_2d
                       PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain PUBLIC HPX::hpx)
