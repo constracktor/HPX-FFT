@@ -11,6 +11,8 @@ option(HPXFFT_ENABLE_FORMAT_TARGETS
        "Enable clang-format / cmake-format targets" ${PROJECT_IS_TOP_LEVEL})
 
 option(HPXFFT_BUILD_CORE "Build the core library" ON)
+option(HPXFFT_ENABLE_FORMAT_TARGETS "Enable clang-format / cmake-format targets"
+       ${PROJECT_IS_TOP_LEVEL})
 
 if(HPXFFT_ENABLE_FORMAT_TARGETS)
   find_package(format QUIET)
