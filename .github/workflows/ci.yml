@@ -46,7 +46,8 @@ jobs:
         cat spack-repo/environments/ci_env_settings.yaml.tpl >> spack.yaml
   
     - name: Concretize
-      run: spack -e . concretize
+      run: |
+        spack -e . concretize
 
     - name: Install
       run: spack -e . install --no-check-signature
@@ -55,20 +56,40 @@ jobs:
       env:
         CC: gcc-14
         CXX: g++-14
-      shell: spack-bash {0}
       run: |
+        . /home/runner/work/HPX-FFT/HPX-FFT/spack/share/spack/setup-env.sh
         spack env activate .
-        cmake "--preset=ci-${{ matrix.os }}"
+        spack location -i hpx
 
-    - name: Build
-      run: cmake --build --config Release -j 2
+    - name: Build/install HPX-FFT
+      env:
+        CC: gcc-14
+        CXX: g++-14
+      run: |
+        . /home/runner/work/HPX-FFT/HPX-FFT/spack/share/spack/setup-env.sh
+        spack env activate .
+        rm -rf build
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PWD/../install -DHPX_DIR=$(spack location -i hpx)
+        make -j 2
+        make install
+        cd ..
 
-    - name: Install
-      run: cmake --install build --config Release --prefix prefix
+    - name: Build Tests
+      run: |
+        . /home/runner/work/HPX-FFT/HPX-FFT/spack/share/spack/setup-env.sh
+        spack env activate .
+        rm -rf test/build
+        mkdir test/build
+        cd test/build
+        cmake .. -DCMAKE_BUILD_TYPE=Release  -DHPXFFT_DIR=../install/lib/cmake/HPXFFT
+        make -j 2
+        cd ../..
 
     - name: Test
-      working-directory: build
-      run: ctest --output-on-failure --no-tests=ignore -C Release -j 2 
+      working-directory: test/build
+      run: ctest --output-on-failure --no-tests=ignore -j 2
       
     - name: Upload
       uses: actions/upload-artifact@v4
@@ -76,18 +97,6 @@ jobs:
         name: binaries-${{ matrix.os }}
         path: |
           prefix
-
-    - name: Configure example project
-      env:
-        CC: gcc-14
-        CXX: g++-14
-      shell: spack-bash {0}
-      run: |
-        spack env activate .
-        cmake -G "Unix Makefiles" -S examples/hpxfft -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/prefix
-
-    - name: Build example project
-      run: cmake --build build --config Release -j 2
 
     # See: https://github.com/spack/setup-spack?tab=readme-ov-file#example-caching-your-own-binaries-for-public-repositories
     - name: Push packages and update index
