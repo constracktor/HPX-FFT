@@ -39,13 +39,10 @@ jobs:
         ref: releases/v0.23
         color: true       # Force color output (SPACK_COLOR=always)
         path: spack
-    
-    - name: Register repository
-      run: spack repo add spack-repo
 
     - name: Choose environment
       run: |
-        cp spack-repo/environments/spack_cpu_gcc.yaml spack.yaml
+        cp spack-repo/environments/hpxfft_x86_simcl.yaml spack.yaml
         cat spack-repo/environments/ci_env_settings.yaml.tpl >> spack.yaml
   
     - name: Concretize
