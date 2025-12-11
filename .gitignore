@@ -4,6 +4,7 @@
 
 build*
 install*
+
 plans
 runtimes
 shared_benchmark*
@@ -13,3 +14,4 @@ message_benchmark*
 compile_fftw_examples_local.sh
 compile_hpxfft_examples_local.sh
 compile_local.sh
+
