@@ -2,15 +2,10 @@
 #include "omp.h"
 #include <chrono>
 #include <fstream>
-#include "fftw3.h"
-#include "omp.h"
-#include <chrono>
-#include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
 #include <thread>
-#include <vector>
 #include <vector>
 
 typedef double real;
@@ -59,8 +54,7 @@ typedef std::chrono::duration<real> duration;
 //     std::cout << std::endl;
 // }
 
-int main(int argc, char *argv[])
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) int main(int argc, char *argv[])
 {
     // threads N_X N_Y  plan     header
     // fftw_omp   1      8  14 estimate    0
@@ -80,19 +74,25 @@ int main(int argc, char *argv[])
     std::string plan_flag = argv[4];
     unsigned FFTW_PLAN_FLAG = FFTW_ESTIMATE;
     if (plan_flag == "measure")
-    if (plan_flag == "measure")
     {
-        FFTW_PLAN_FLAG = FFTW_MEASURE;
-    }
-    else if (plan_flag == "patient")
-    else if (plan_flag == "patient")
-    {
-        FFTW_PLAN_FLAG = FFTW_PATIENT;
-    }
-    else if (plan_flag == "exhaustive")
-    else if (plan_flag == "exhaustive")
-    {
-        FFTW_PLAN_FLAG = FFTW_EXHAUSTIVE;
+        if (plan_flag == "measure")
+        {
+            FFTW_PLAN_FLAG = FFTW_MEASURE;
+        }
+        else if (plan_flag == "patient")
+        {
+            else if (plan_flag == "patient")
+            {
+                FFTW_PLAN_FLAG = FFTW_PATIENT;
+            }
+        }
+        else if (plan_flag == "exhaustive")
+        {
+            else if (plan_flag == "exhaustive")
+            {
+                FFTW_PLAN_FLAG = FFTW_EXHAUSTIVE;
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -100,13 +100,11 @@ int main(int argc, char *argv[])
     auto t = std::chrono::steady_clock();
     std::map<std::string, real> runtimes;
 
-
     ////////////////////////////////////////////////////////////////
     // OpenMP thread setup
     fftw_init_threads();
     omp_set_num_threads(n_threads);
     fftw_plan_with_nthreads(n_threads);
-
 
     ////////////////////////////////////////////////////////////////
     // FFTW plan
@@ -123,17 +121,20 @@ int main(int argc, char *argv[])
     // Initialization
     // intialize row-wise from 0 with complex spacers at the end
     for (int i = 0; i < int(dim_c_x); ++i)
-    for (int i = 0; i < int(dim_c_x); ++i)
     {
-        for (int j = 0; j < dim_r_y; ++j)
-        for (int j = 0; j < dim_r_y; ++j)
+        for (int i = 0; i < int(dim_c_x); ++i)
         {
-            input[(dim_r_y + 2) * i + j] = j;
-            input[(dim_r_y + 2) * i + j] = j;
+            for (int j = 0; j < dim_r_y; ++j)
+            {
+                for (int j = 0; j < dim_r_y; ++j)
+                {
+                    input[(dim_r_y + 2) * i + j] = j;
+                    input[(dim_r_y + 2) * i + j] = j;
+                }
+            }
         }
     }
     // print_real(input, dim_c_x, dim_r_y, 0);
-
 
     ////////////////////////////////////////////////////////////////
     // Computation

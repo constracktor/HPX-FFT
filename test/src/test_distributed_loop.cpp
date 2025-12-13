@@ -1,24 +1,25 @@
-#include "../../core/include/hpxfft/shared/naive.hpp"
+#include "../../core/include/hpxfft/distributed/loop.hpp"
 #include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::shared::naive;
+using hpxfft::distributed::loop;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
 {
     // Parameters and Data structures
+    const std::size_t this_locality = hpx::get_locality_id();
     const std::size_t num_localities = hpx::get_num_localities(hpx::launch::sync);
     // choose dimensions consistent with the implementation:
     const std::size_t n_row = 4;
     const std::size_t n_col = 10;
     const std::size_t n_x_local = n_row / num_localities;
-    hpxfft::shared::vector_2d values_vec(n_x_local, n_col, 0.0);
+    hpxfft::distributed::vector_2d values_vec(n_x_local, n_col, 0.0);
 
-    for (std::size_t i = 0; i < n_row; ++i)
+    for (std::size_t i = 0; i < n_x_local; ++i)
     {
         values_vec(i, 0) = 1.0;
         values_vec(i, 2) = 2.0;
@@ -28,20 +29,23 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // expected output
-    hpxfft::shared::vector_2d expected_output(n_x_local, n_col, 0.0);
+    hpxfft::distributed::vector_2d expected_output(n_x_local, n_col, 0.0);
 
-    expected_output(0, 0) = 40.0;
-    expected_output(0, 2) = -8.0;
-    expected_output(0, 3) = 8.0;
-    expected_output(0, 4) = -8.0;
-    expected_output(0, 6) = -8.0;
-    expected_output(0, 7) = -8.0;
-    expected_output(0, 8) = 40.0;
+    if (this_locality == 0)
+    {
+        expected_output(0, 0) = 40.0;
+        expected_output(0, 2) = -8.0;
+        expected_output(0, 3) = 8.0;
+        expected_output(0, 4) = -8.0;
+        expected_output(0, 6) = -8.0;
+        expected_output(0, 7) = -8.0;
+        expected_output(0, 8) = 40.0;
+    }
 
     // Computation
-    hpxfft::shared::naive fft;
+    hpxfft::distributed::loop fft;
     unsigned plan_flag = FFTW_ESTIMATE;
-    fft.initialize(std::move(values_vec), plan_flag);
+    fft.initialize(std::move(values_vec), "scatter", plan_flag);
     values_vec = fft.fft_2d_r2c();
     auto total = fft.get_measurement(std::string("total"));
     REQUIRE(total >= 0.0);
@@ -50,7 +54,7 @@ int entrypoint_test1(int argc, char *argv[])
     return hpx::finalize();
 }
 
-TEST_CASE("shared naive fft 2d r2c runs and produces correct output", "[shared naive][fft]")
+TEST_CASE("distributed loop fft 2d r2c runs and produces correct output", "[distributed][fft]")
 {
     hpx::init(&entrypoint_test1, 0, nullptr);
 }

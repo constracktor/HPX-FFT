@@ -80,4 +80,3 @@ if(HPXFFT_BUILD_CORE)
   endif()
 
 endif()
-

@@ -2,15 +2,10 @@
 #include "omp.h"
 #include <chrono>
 #include <fstream>
-#include "fftw3-mpi.h"
-#include "omp.h"
-#include <chrono>
-#include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
 #include <thread>
-#include <vector>
 #include <vector>
 
 typedef double real;
@@ -59,8 +54,7 @@ typedef std::chrono::duration<real> duration;
 //     std::cout << std::endl;
 // }
 
-int main(int argc, char *argv[])
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) int main(int argc, char *argv[])
 {
     // nodes ranks     prog   threads N_X N_Y    plan  header
     // nodes ranks     prog   threads N_X N_Y    plan  header
@@ -81,26 +75,31 @@ int main(int argc, char *argv[])
     std::string plan_flag = argv[4];
     unsigned FFTW_PLAN_FLAG = FFTW_ESTIMATE;
     if (plan_flag == "measure")
-    if (plan_flag == "measure")
     {
-        FFTW_PLAN_FLAG = FFTW_MEASURE;
-    }
-    else if (plan_flag == "patient")
-    else if (plan_flag == "patient")
-    {
-        FFTW_PLAN_FLAG = FFTW_PATIENT;
-    }
-    else if (plan_flag == "exhaustive")
-    else if (plan_flag == "exhaustive")
-    {
-        FFTW_PLAN_FLAG = FFTW_EXHAUSTIVE;
+        if (plan_flag == "measure")
+        {
+            FFTW_PLAN_FLAG = FFTW_MEASURE;
+        }
+        else if (plan_flag == "patient")
+        {
+            else if (plan_flag == "patient")
+            {
+                FFTW_PLAN_FLAG = FFTW_PATIENT;
+            }
+        }
+        else if (plan_flag == "exhaustive")
+        {
+            else if (plan_flag == "exhaustive")
+            {
+                FFTW_PLAN_FLAG = FFTW_EXHAUSTIVE;
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////////
     // Time measurement
     auto t = std::chrono::steady_clock();
     std::map<std::string, real> runtimes;
-
 
     ////////////////////////////////////////////////////////////////
     // MPI setup
@@ -159,13 +158,17 @@ int main(int argc, char *argv[])
     // Initialization
     // intialize row-wise from 0 with complex spacers at the end
     for (int i = 0; i < int(local_n0); ++i)
-    for (int i = 0; i < int(local_n0); ++i)
     {
-        for (int j = 0; j < dim_r_y; ++j)
-        for (int j = 0; j < dim_r_y; ++j)
+        for (int i = 0; i < int(local_n0); ++i)
         {
-            input[(dim_r_y + 2) * i + j] = j;
-            input[(dim_r_y + 2) * i + j] = j;
+            for (int j = 0; j < dim_r_y; ++j)
+            {
+                for (int j = 0; j < dim_r_y; ++j)
+                {
+                    input[(dim_r_y + 2) * i + j] = j;
+                    input[(dim_r_y + 2) * i + j] = j;
+                }
+            }
         }
     }
     // std::cout << "Node: " << rank + 1 << " / " << n_ranks << std::endl;
@@ -185,55 +188,60 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////
     // Postprocessing
     if (rank == 0)
-    if (rank == 0)
     {
-        // get plan info
-        double plan_flops;
-        if (n_ranks == 1)
+        if (rank == 0)
         {
-            double add, mul, fma;
-            fftw_flops(plan_r2c_2d, &add, &mul, &fma);
-            plan_flops = add + mul + fma;
-        }
-        else
-        {
-            plan_flops = 0;
-        }
-        // print runtimes
-        std::cout << "FFTW 2D with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
-                  << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
-                  << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = " << plan_flops
-        std::cout << "FFTW 2D with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
-                  << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
-                  << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = " << plan_flops
-                  << std::endl;
-        // store runtime and plan info
-        std::ofstream runtime_file;
-        runtime_file.open("result/runtimes/runtimes_mpi_omp.txt", std::ios_base::app);
-        if (print_header)
-        {
-            runtime_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
-            runtime_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
-        }
-        runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
-                     << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
-        runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
-                     << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
-        runtime_file.close();
+            // get plan info
+            double plan_flops;
+            if (n_ranks == 1)
+            {
+                double add, mul, fma;
+                fftw_flops(plan_r2c_2d, &add, &mul, &fma);
+                plan_flops = add + mul + fma;
+            }
+            else
+            {
+                plan_flops = 0;
+            }
+            // print runtimes
+            std::cout << "FFTW 2D with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
+                      << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
+                      << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = "
+                      << plan_flops std::cout << "FFTW 2D with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
+                      << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
+                      << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = " << plan_flops
+                      << std::endl;
+            // store runtime and plan info
+            std::ofstream runtime_file;
+            runtime_file.open("result/runtimes/runtimes_mpi_omp.txt", std::ios_base::app);
+            if (print_header)
+            {
+                runtime_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
+                runtime_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
+            }
+            runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
+                         << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops
+                         << ";\n";
+            runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
+                         << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops
+                         << ";\n";
+            runtime_file.close();
 
-        // store plan info
-        std::ofstream plan_info_file;
-        plan_info_file.open("result/plans/plan_mpi_omp.txt", std::ios_base::app);
-        plan_info_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n"
-                       << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
-                       << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
-        plan_info_file.close();
-        // store plan
-        FILE *plan_file = fopen("result/plans/plan_mpi_omp.txt", "a");
-        fprintf(plan_file, "FFTW r2c 2D plan:\n");
-        fftw_fprint_plan(plan_r2c_2d, plan_file);
-        fprintf(plan_file, "\n\n");
-        fclose(plan_file);
+            // store plan info
+            std::ofstream plan_info_file;
+            plan_info_file.open("result/plans/plan_mpi_omp.txt", std::ios_base::app);
+            plan_info_file << "n_ranks;n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n"
+                           << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
+                           << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops
+                           << ";\n";
+            plan_info_file.close();
+            // store plan
+            FILE *plan_file = fopen("result/plans/plan_mpi_omp.txt", "a");
+            fprintf(plan_file, "FFTW r2c 2D plan:\n");
+            fftw_fprint_plan(plan_r2c_2d, plan_file);
+            fprintf(plan_file, "\n\n");
+            fclose(plan_file);
+        }
     }
 
     ////////////////////////////////////////////////////////////////

@@ -6,15 +6,15 @@
 
 namespace utils
 {
-    void start_hpx_runtime(int argc, char **argv) { hpx::start(nullptr, argc, argv); }
+void start_hpx_runtime(int argc, char **argv) { hpx::start(nullptr, argc, argv); }
 
-    void resume_hpx_runtime() { hpx::resume(); }
+void resume_hpx_runtime() { hpx::resume(); }
 
-    void suspend_hpx_runtime() { hpx::suspend(); }
+void suspend_hpx_runtime() { hpx::suspend(); }
 
-    void stop_hpx_runtime()
-    {
-        hpx::post([]() { hpx::finalize(); });
-        hpx::stop();
-    }
+void stop_hpx_runtime()
+{
+    hpx::post([]() { hpx::finalize(); });
+    hpx::stop();
 }
+}  // namespace utils
