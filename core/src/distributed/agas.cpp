@@ -130,9 +130,9 @@ void hpxfft::distributed::agas_server::transpose_x_to_y(const std::size_t j, con
     std::size_t index_in;
     std::size_t index_out;
     const std::size_t offset_out = 2 * i;
-    const std::size_t factor_in = dim_c_y_part_;
+    const std::size_t factor_in = dim_c_x_part_;
     const std::size_t factor_out = 2 * num_localities_;
-    const std::size_t dim_input = communication_vec_[i].size() / factor_in;
+    const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
 
     for (std::size_t k = 0; k < dim_input; ++k)
     {
@@ -330,7 +330,7 @@ void hpxfft::distributed::agas_server::initialize(
     PLAN_FLAG_ = PLAN_FLAG;
     // forward step one: r2c in y-direction
     plan_1d_r2c_ = fftw_plan_dft_r2c_1d(
-        dim_r_y_, values_vec_.row(0), reinterpret_cast<fftw_complex *>(values_vec_.row(0)), PLAN_FLAG_);
+        dim_r_y_, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)), PLAN_FLAG_);
     // forward step two: c2c in x-direction
     plan_1d_c2c_ = fftw_plan_dft_1d(
         dim_c_x_,

@@ -44,7 +44,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::distributed::vector_2d values_vec(n_x_local, 2 * dim_c_y);
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
-        std::iota(values_vec.row(i), values_vec.row(i + 1) - 2, 0.0);
+        for (std::size_t j = 0; j < dim_r_y; ++j)
+        {
+            values_vec(i, j) = j;
+        }
     }
 
     ////////////////////////////////////////////////////////////////
