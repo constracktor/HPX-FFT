@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/distributed/loop.hpp"
+#include "../../core/include/hpxfft/distributed/agas.hpp"
 #include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::distributed::loop;
+using hpxfft::distributed::agas;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -39,18 +39,18 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // Computation
-    hpxfft::distributed::loop fft;
+    hpxfft::distributed::agas fft;
     unsigned plan_flag = FFTW_ESTIMATE;
-    fft.initialize(std::move(values_vec), "scatter", plan_flag);
-    values_vec = fft.fft_2d_r2c();
-    auto total = fft.get_measurement(std::string("total"));
-    REQUIRE(total >= 0.0);
+    hpx::future<void> init_future = fft.initialize(std::move(values_vec), "scatter", plan_flag);
+    init_future.get();
+    hpx::future<hpxfft::distributed::vector_2d> result_future = fft.fft_2d_r2c();
+    values_vec = result_future.get();
     REQUIRE(values_vec == expected_output);
 
     return hpx::finalize();
 }
 
-TEST_CASE("distributed loop fft 2d r2c runs and produces correct output", "[distributed loop][fft]")
+TEST_CASE("distributed agas fft 2d r2c runs and produces correct output", "[distributed agas][fft]")
 {
     hpx::init(&entrypoint_test1, 0, nullptr);
 }

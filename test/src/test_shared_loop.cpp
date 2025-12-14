@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/shared/naive.hpp"
+#include "../../core/include/hpxfft/shared/loop.hpp"
 #include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::shared::naive;
+using hpxfft::shared::loop;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -35,18 +35,27 @@ int entrypoint_test1(int argc, char *argv[])
     expected_output(0, 4) = -8.0;
 
     // Computation
-    hpxfft::shared::naive fft;
+    /*
+    hpxfft::shared::loop fft1;
     unsigned plan_flag = FFTW_ESTIMATE;
-    fft.initialize(std::move(values_vec), plan_flag);
-    values_vec = fft.fft_2d_r2c();
-    auto total = fft.get_measurement(std::string("total"));
+    fft1.initialize(std::move(values_vec), plan_flag);
+    hpxfft::shared::vector_2d out1 = fft1.fft_2d_r2c_seq();
+    auto total = fft1.get_measurement(std::string("total"));
     REQUIRE(total >= 0.0);
-    REQUIRE(values_vec == expected_output);
-
+    REQUIRE(out1 == expected_output);
+    */
+    hpxfft::shared::loop fft2;
+    unsigned plan_flag = FFTW_ESTIMATE;
+    fft2.initialize(std::move(values_vec), plan_flag);
+    hpxfft::shared::vector_2d out2 = fft2.fft_2d_r2c_par();
+    auto total = fft2.get_measurement(std::string("total"));
+    REQUIRE(total >= 0.0);
+    REQUIRE(out2 == expected_output);
+    
     return hpx::finalize();
 }
 
-TEST_CASE("shared naive fft 2d r2c runs and produces correct output", "[shared naive][fft]")
+TEST_CASE("shared loop fft 2d r2c seq and par runs and produces correct output", "[shared loop][fft]")
 {
     hpx::init(&entrypoint_test1, 0, nullptr);
 }

@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/shared/naive.hpp"
+#include "../../core/include/hpxfft/shared/agas.hpp"
 #include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::shared::naive;
+using hpxfft::shared::agas;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -27,7 +27,7 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // expected output
-    hpxfft::shared::vector_2d expected_output(n_x_local, n_col, 0.0);
+    hpxfft::shared::vector_2d expected_output(n_row, n_col, 0.0);
 
     expected_output(0, 0) = 40.0;
     expected_output(0, 2) = -8.0;
@@ -35,18 +35,18 @@ int entrypoint_test1(int argc, char *argv[])
     expected_output(0, 4) = -8.0;
 
     // Computation
-    hpxfft::shared::naive fft;
-    unsigned plan_flag = FFTW_ESTIMATE;
-    fft.initialize(std::move(values_vec), plan_flag);
-    values_vec = fft.fft_2d_r2c();
-    auto total = fft.get_measurement(std::string("total"));
-    REQUIRE(total >= 0.0);
-    REQUIRE(values_vec == expected_output);
+    hpxfft::shared::agas fft;
+    unsigned plan_flag = FFTW_MEASURE;
+    hpx::future<void> init_future = fft.initialize(std::move(values_vec), plan_flag);
+    init_future.get();
+    hpx::future<hpxfft::shared::vector_2d> result_future = fft.fft_2d_r2c();
+    hpxfft::shared::vector_2d out1 = result_future.get();
+    REQUIRE(out1 == expected_output);
 
     return hpx::finalize();
 }
 
-TEST_CASE("shared naive fft 2d r2c runs and produces correct output", "[shared naive][fft]")
+TEST_CASE("shared agas fft 2d r2c runs and produces correct output", "[shared agas][fft]")
 {
     hpx::init(&entrypoint_test1, 0, nullptr);
 }

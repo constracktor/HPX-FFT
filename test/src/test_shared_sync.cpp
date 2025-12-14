@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/shared/naive.hpp"
+#include "../../core/include/hpxfft/shared/sync.hpp"
 #include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::shared::naive;
+using hpxfft::shared::sync;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -35,7 +35,7 @@ int entrypoint_test1(int argc, char *argv[])
     expected_output(0, 4) = -8.0;
 
     // Computation
-    hpxfft::shared::naive fft;
+    hpxfft::shared::sync fft;
     unsigned plan_flag = FFTW_ESTIMATE;
     fft.initialize(std::move(values_vec), plan_flag);
     values_vec = fft.fft_2d_r2c();
@@ -46,7 +46,7 @@ int entrypoint_test1(int argc, char *argv[])
     return hpx::finalize();
 }
 
-TEST_CASE("shared naive fft 2d r2c runs and produces correct output", "[shared naive][fft]")
+TEST_CASE("shared sync fft 2d r2c runs and produces correct output", "[shared sync][fft]")
 {
     hpx::init(&entrypoint_test1, 0, nullptr);
 }
