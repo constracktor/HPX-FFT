@@ -70,7 +70,7 @@ hpxfft::shared::vector_2d hpxfft::shared::agas_server::fft_2d_r2c()
             [=, this](hpx::future<void> r)
             {
                 r.get();
-                hpx::async(fft_1d_c2c_inplace_action(), get_id(), i);
+                return hpx::async(fft_1d_c2c_inplace_action(), get_id(), i);
             });
         // transpose from x-direction to y-direction
         trans_x_to_y_futures_[i] = c2c_futures_[i].then(
@@ -80,9 +80,8 @@ hpxfft::shared::vector_2d hpxfft::shared::agas_server::fft_2d_r2c()
                 return hpx::async(transpose_shared_x_to_y_action(), get_id(), i);
             });
     }
-    hpx::shared_future<vector_future> all_trans_x_to_y_futures = hpx::when_all(trans_x_to_y_futures_);
-    // global synchronization step
-    all_trans_x_to_y_futures.get();
+    // global synchronization
+    hpx::wait_all(trans_x_to_y_futures_);
 
     return std::move(values_vec_);
 }
@@ -102,7 +101,7 @@ void hpxfft::shared::agas_server::initialize(hpxfft::shared::vector_2d values_ve
     PLAN_FLAG_ = PLAN_FLAG;
     // r2c in y-direction
     plan_1d_r2c_ = fftw_plan_dft_r2c_1d(
-        dim_r_y_, values_vec_.row(0), reinterpret_cast<fftw_complex *>(values_vec_.row(0)), PLAN_FLAG);
+        dim_r_y_, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)), PLAN_FLAG);
     // c2c in x-direction
     plan_1d_c2c_ = fftw_plan_dft_1d(
         dim_c_x_,

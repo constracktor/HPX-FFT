@@ -172,7 +172,7 @@ void hpxfft::shared::loop::initialize(vector_2d values_vec, const unsigned PLAN_
     auto start_plan = t_.now();
     // r2c in y-direction
     plan_1d_r2c_ = fftw_plan_dft_r2c_1d(
-        dim_r_y_, values_vec_.row(0), reinterpret_cast<fftw_complex *>(values_vec_.row(0)), PLAN_FLAG);
+        dim_r_y_, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)), PLAN_FLAG);
     // c2c in x-direction
     plan_1d_c2c_ = fftw_plan_dft_1d(
         dim_c_x_,
