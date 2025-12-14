@@ -86,7 +86,7 @@ target_compile_features(test_distributed_loop PRIVATE cxx_std_17)
 
 add_test(
   NAME test_distributed_loop
-  COMMAND test_distributed_loop 
+  COMMAND test_distributed_loop
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
 add_executable(test_distributed_agas src/test_distributed_agas.cpp)
@@ -98,7 +98,7 @@ target_compile_features(test_distributed_agas PRIVATE cxx_std_17)
 
 add_test(
   NAME test_distributed_agas
-  COMMAND test_distributed_agas 
+  COMMAND test_distributed_agas
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
 add_executable(test_vector_2d src/test_vector_2d.cpp)

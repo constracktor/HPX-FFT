@@ -87,9 +87,17 @@ jobs:
         make -j 2
         cd ../..
 
-    - name: Test
+    - name: Test sequential
       working-directory: test/build
-      run: ctest --output-on-failure --no-tests=ignore -j 2
+      run: |
+        export HPX_LOCALITIES=1
+        ctest --output-on-failure --no-tests=ignore -j 2
+
+    - name: Test parallel
+      working-directory: test/build
+      run: |
+        export HPX_LOCALITIES=2
+        ctest --output-on-failure --no-tests=ignore -j 2
       
     - name: Upload
       uses: actions/upload-artifact@v4

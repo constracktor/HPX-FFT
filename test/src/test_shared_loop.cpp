@@ -51,7 +51,7 @@ int entrypoint_test1(int argc, char *argv[])
     auto total = fft2.get_measurement(std::string("total"));
     REQUIRE(total >= 0.0);
     REQUIRE(out2 == expected_output);
-    
+
     return hpx::finalize();
 }
 
