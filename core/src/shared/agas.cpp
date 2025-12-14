@@ -70,7 +70,7 @@ hpxfft::shared::vector_2d hpxfft::shared::agas_server::fft_2d_r2c()
             [=, this](hpx::future<void> r)
             {
                 r.get();
-                hpx::async(fft_1d_c2c_inplace_action(), get_id(), i);
+                return hpx::async(fft_1d_c2c_inplace_action(), get_id(), i);
             });
         // transpose from x-direction to y-direction
         trans_x_to_y_futures_[i] = c2c_futures_[i].then(
@@ -80,9 +80,8 @@ hpxfft::shared::vector_2d hpxfft::shared::agas_server::fft_2d_r2c()
                 return hpx::async(transpose_shared_x_to_y_action(), get_id(), i);
             });
     }
-    hpx::shared_future<vector_future> all_trans_x_to_y_futures = hpx::when_all(trans_x_to_y_futures_);
-    // global synchronization step
-    all_trans_x_to_y_futures.get();
+    // global synchronization
+    hpx::wait_all(trans_x_to_y_futures_);
 
     return std::move(values_vec_);
 }

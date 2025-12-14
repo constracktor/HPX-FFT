@@ -22,15 +22,8 @@ struct agas_server : hpx::components::component_base<agas_server>
     agas_server() = default;
 
     void initialize(vector_2d values_vec, const unsigned PLAN_FLAG);
-    // HPX_DEFINE_COMPONENT_ACTION(hpxfft::shared::agas_server,
-    //                            initialize,
-    //                          initialize_action)
 
     vector_2d fft_2d_r2c();
-
-    // HPX_DEFINE_COMPONENT_ACTION(hpxfft::shared::agas_server,
-    //                            fft_2d_r2c,
-    //                             fft_2d_r2c_action)
 
     virtual ~agas_server()
     {
