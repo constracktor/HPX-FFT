@@ -1,5 +1,5 @@
 #ifndef print_vector_2d_H_INCLUDED
-#define ptint_vector_2d_H_INCLUDED
+#define print_vector_2d_H_INCLUDED
 
 #include "vector_2d.hpp"
 #include <iostream>
