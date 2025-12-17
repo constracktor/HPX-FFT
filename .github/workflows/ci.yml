@@ -36,7 +36,7 @@ jobs:
     - name: Set up Spack
       uses: spack/setup-spack@v2
       with:
-        ref: releases/v0.23
+        ref: releases/v1.1
         color: true       # Force color output (SPACK_COLOR=always)
         path: spack
 
