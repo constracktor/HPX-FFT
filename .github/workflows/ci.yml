@@ -113,4 +113,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: spack -e . buildcache push --base-image ubuntu:24.04 --update-index local-buildcache
       # The owner must match the namespace in /spack-repo/environments/ci_env_settings.yaml.tpl
-      if: ${{ !cancelled() && github.repository_owner == 'Iridium-t' && github.event_name != 'pull_request' }}
+      if: ${{ !cancelled() && github.repository_owner == 'constracktor' && github.event_name != 'pull_request' }}

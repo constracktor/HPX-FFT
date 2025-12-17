@@ -5,7 +5,7 @@
 
   mirrors:
     local-buildcache:
-      url: oci://ghcr.io/Iridium-t/spack-buildcache
+      url: oci://ghcr.io/constracktor/spack-buildcache
       signed: false
 
       access_pair:
