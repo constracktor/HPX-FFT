@@ -18,7 +18,7 @@ struct agas : ::hpx::components::client_base<agas, agas_server>
 
     hpx::future<vector_2d> fft_2d_r2c() { return ::hpx::async(fft_2d_r2c_action(), get_id()); }
 
-    hpx::future<void> initialize(vector_2d values_vec, const unsigned PLAN_FLAG)
+    hpx::future<void> initialize(vector_2d values_vec, const std::string PLAN_FLAG)
     {
         return ::hpx::async(initialize_action(), get_id(), std::move(values_vec), PLAN_FLAG);
     }
