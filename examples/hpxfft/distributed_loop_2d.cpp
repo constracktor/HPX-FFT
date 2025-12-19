@@ -23,21 +23,6 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_c_y = dim_r_y / 2 + 1;
     // division parameter
     const std::size_t n_x_local = dim_c_x / num_localities;
-    ;
-    // FFTW plans
-    unsigned FFT_BACKEND_PLAN_FLAG = FFTW_ESTIMATE;
-    if (plan_flag == "measure")
-    {
-        FFT_BACKEND_PLAN_FLAG = FFTW_MEASURE;
-    }
-    else if (plan_flag == "patient")
-    {
-        FFT_BACKEND_PLAN_FLAG = FFTW_PATIENT;
-    }
-    else if (plan_flag == "exhaustive")
-    {
-        FFT_BACKEND_PLAN_FLAG = FFTW_EXHAUSTIVE;
-    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
@@ -54,7 +39,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::distributed::loop fft_computer;
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), run_flag, FFT_BACKEND_PLAN_FLAG);
+    fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
     auto stop_init = t.now();
     values_vec = fft_computer.fft_2d_r2c();
     auto stop_total = t.now();
