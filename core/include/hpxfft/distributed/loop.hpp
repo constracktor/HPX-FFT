@@ -2,8 +2,8 @@
 #ifndef hpxfft_distributed_loop_H_INCLUDED
 #define hpxfft_distributed_loop_H_INCLUDED
 
+#include "../util/adapter_fftw.hpp"
 #include "../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
-#include <fftw3.h>                // for fftw_plan, fftw_destroy_plan, fftw_cleanup, FFTW_FLAGS
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
@@ -16,25 +16,19 @@ using vector_2d = hpxfft::util::vector_2d<real>;
 
 struct loop
 {
-    typedef fftw_plan fft_backend_plan;
     typedef std::vector<hpx::future<void>> vector_future;
     typedef std::vector<std::vector<real>> vector_comm;
 
   public:
     loop() = default;
 
-    void initialize(vector_2d values_vec, const std::string COMM_FLAG, const unsigned PLAN_FLAG);
+    void initialize(vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG);
 
     vector_2d fft_2d_r2c();
 
     real get_measurement(std::string name);
 
-    ~loop()
-    {
-        fftw_destroy_plan(plan_1d_r2c_);
-        fftw_destroy_plan(plan_1d_c2c_);
-        fftw_cleanup();
-    }
+    ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
 
   private:
     // FFT backend
@@ -62,10 +56,9 @@ struct loop
     std::size_t n_x_local_, n_y_local_;
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     std::size_t dim_c_y_part_, dim_c_x_part_;
-    // FFTW plans
-    unsigned PLAN_FLAG_;
-    fft_backend_plan plan_1d_r2c_;
-    fft_backend_plan plan_1d_c2c_;
+    // 1D adapters
+    hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
+    hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
     vector_2d values_vec_;
     vector_2d trans_values_vec_;

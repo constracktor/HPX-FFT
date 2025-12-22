@@ -14,14 +14,13 @@ HPX_REGISTER_ACTION(initialize_action);
 // FFT backend
 void hpxfft::shared::agas_server::fft_1d_r2c_inplace(const std::size_t i)
 {
-    fftw_execute_dft_r2c(plan_1d_r2c_, values_vec_.row(i), reinterpret_cast<fftw_complex *>(values_vec_.row(i)));
+    fft_r2c_adapter_.execute(values_vec_.row(i), reinterpret_cast<fftw_complex *>(values_vec_.row(i)));
 }
 
 void hpxfft::shared::agas_server::fft_1d_c2c_inplace(const std::size_t i)
 {
-    fftw_execute_dft(plan_1d_c2c_,
-                     reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)),
-                     reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)));
+    fft_c2c_adapter_.execute(reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)),
+                             reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)));
 }
 
 // transpose with write running index
@@ -87,7 +86,7 @@ hpxfft::shared::vector_2d hpxfft::shared::agas_server::fft_2d_r2c()
 }
 
 // initialization
-void hpxfft::shared::agas_server::initialize(hpxfft::shared::vector_2d values_vec, const unsigned PLAN_FLAG)
+void hpxfft::shared::agas_server::initialize(hpxfft::shared::vector_2d values_vec, const std::string PLAN_FLAG)
 {
     // move data into own data structure
     values_vec_ = std::move(values_vec);
@@ -97,18 +96,18 @@ void hpxfft::shared::agas_server::initialize(hpxfft::shared::vector_2d values_ve
     dim_r_y_ = 2 * dim_c_y_ - 2;
     // resize transposed data structure
     trans_values_vec_ = std::move(hpxfft::shared::vector_2d(dim_c_y_, 2 * dim_c_x_));
-    // create fftw plans
-    PLAN_FLAG_ = PLAN_FLAG;
+    // create FFTW plans
     // r2c in y-direction
-    plan_1d_r2c_ = fftw_plan_dft_r2c_1d(
-        dim_r_y_, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)), PLAN_FLAG);
+    fft_r2c_adapter_ = hpxfft::util::fftw_adapter::r2c_1d();
+    fft_r2c_adapter_.plan(
+        dim_r_y_, PLAN_FLAG, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)));
     // c2c in x-direction
-    plan_1d_c2c_ = fftw_plan_dft_1d(
-        dim_c_x_,
-        reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
-        reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
-        FFTW_FORWARD,
-        PLAN_FLAG);
+    fft_c2c_adapter_ = hpxfft::util::fftw_adapter::c2c_1d();
+    fft_c2c_adapter_.plan(dim_c_x_,
+                          PLAN_FLAG,
+                          reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
+                          reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
+                          hpxfft::util::fftw_adapter::direction::forward);
     // resize futures
     r2c_futures_.resize(dim_c_x_);
     trans_y_to_x_futures_.resize(dim_c_x_);

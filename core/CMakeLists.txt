@@ -5,7 +5,9 @@ set(SOURCE_FILES
     src/shared/naive.cpp
     src/shared/agas.cpp
     src/distributed/loop.cpp
-    src/distributed/agas.cpp)
+    src/distributed/agas.cpp
+    src/util/adapter_fftw.cpp
+    src/util/create_dir.cpp)
 
 add_library(hpxfft STATIC ${SOURCE_FILES})
 

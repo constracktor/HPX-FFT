@@ -6,8 +6,8 @@
 
 namespace hpxfft::util
 {
-
-void print_vector_2d(const vector_2d<real> &input)
+template <typename T>
+void print_vector_2d(const vector_2d<T> &input)
 {
     const std::string msg = "\n";
 

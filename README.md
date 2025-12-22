@@ -99,7 +99,7 @@ We specifically thank the follow contributors:
 ## How To Cite
 
 ```
-@InProceedings{GPRat2025,
+@InProceedings{Strack2024_hpxfft,
   author={Strack, Alexander and Taylor, Christopher and Diehl, Patrick and Pfl{\"u}ger, Dirk},
   title={{Experiences Porting Distributed Applications to Asynchronous Tasks: A Multidimensional FFT Case-study}},
   booktitle={Asynchronous Many-Task Systems and Applications},

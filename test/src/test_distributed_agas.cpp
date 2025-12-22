@@ -1,5 +1,5 @@
 #include "../../core/include/hpxfft/distributed/agas.hpp"
-#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
+#include "../../core/include/hpxfft/util/print_vector.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
@@ -40,7 +40,7 @@ int entrypoint_test1(int argc, char *argv[])
 
     // Computation
     hpxfft::distributed::agas fft;
-    unsigned plan_flag = FFTW_ESTIMATE;
+    std::string plan_flag = "estimate";
     hpx::future<void> init_future = fft.initialize(std::move(values_vec), "scatter", plan_flag);
     init_future.get();
     hpx::future<hpxfft::distributed::vector_2d> result_future = fft.fft_2d_r2c();

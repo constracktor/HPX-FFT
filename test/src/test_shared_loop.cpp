@@ -1,8 +1,7 @@
 #include "../../core/include/hpxfft/shared/loop.hpp"
-#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
+#include "../../core/include/hpxfft/util/print_vector.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
-#include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
 using hpxfft::shared::loop;
@@ -45,10 +44,11 @@ int entrypoint_test1(int argc, char *argv[])
     REQUIRE(out1 == expected_output);
     */
     hpxfft::shared::loop fft2;
-    unsigned plan_flag = FFTW_ESTIMATE;
+    std::string plan_flag = "estimate";
     fft2.initialize(std::move(values_vec), plan_flag);
     hpxfft::shared::vector_2d out2 = fft2.fft_2d_r2c_par();
     auto total = fft2.get_measurement(std::string("total"));
+    auto flops = fft2.get_measurement(std::string("plan_flops"));
     REQUIRE(total >= 0.0);
     REQUIRE(out2 == expected_output);
 
