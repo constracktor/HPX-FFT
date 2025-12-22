@@ -1,5 +1,5 @@
 #include "../../core/include/hpxfft/shared/sync.hpp"
-#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
+#include "../../core/include/hpxfft/util/print_vector.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <hpx/hpx_init.hpp>

@@ -19,13 +19,13 @@ HPX_REGISTER_ACTION(initialize_action)
 // FFT backend
 void hpxfft::distributed::agas_server::fft_1d_r2c_inplace(const std::size_t i)
 {
-    fftw_r2c_adapter_.execute_r2c(values_vec_.row(i), reinterpret_cast<fftw_complex *>(values_vec_.row(i)));
+    fft_r2c_adapter_.execute(values_vec_.row(i), reinterpret_cast<fftw_complex *>(values_vec_.row(i)));
 }
 
 void hpxfft::distributed::agas_server::fft_1d_c2c_inplace(const std::size_t i)
 {
-    fftw_c2c_adapter_.execute_c2c(reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)),
-                                  reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)));
+    fft_c2c_adapter_.execute(reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)),
+                             reinterpret_cast<fftw_complex *>(trans_values_vec_.row(i)));
 }
 
 // split data for communication
@@ -325,20 +325,18 @@ void hpxfft::distributed::agas_server::initialize(
         values_prep_[i].resize(n_x_local_ * dim_c_y_part_);
         trans_values_prep_[i].resize(n_y_local_ * dim_c_x_part_);
     }
-    // create fftw plans
-    PLAN_FLAG_ = hpxfft::util::string_to_fftw_plan_flag(PLAN_FLAG);
-    // forward step one: r2c in y-direction
-    fftw_r2c_adapter_ = hpxfft::util::fftw_adapter_r2c();
-    fftw_r2c_adapter_.initialize(
-        dim_r_y_, PLAN_FLAG_, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)));
-    // forward step two: c2c in x-direction
-    fftw_c2c_adapter_ = hpxfft::util::fftw_adapter_c2c();
-    fftw_c2c_adapter_.initialize(
-        dim_c_x_,
-        PLAN_FLAG_,
-        reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
-        reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
-        hpxfft::util::fftw_direction::forward);
+    // create FFTW plans
+    // r2c in y-direction
+    fft_r2c_adapter_ = hpxfft::util::fftw_adapter::r2c_1d();
+    fft_r2c_adapter_.plan(
+        dim_r_y_, PLAN_FLAG, trans_values_vec_.row(0), reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)));
+    // c2c in x-direction
+    fft_c2c_adapter_ = hpxfft::util::fftw_adapter::c2c_1d();
+    fft_c2c_adapter_.plan(dim_c_x_,
+                          PLAN_FLAG,
+                          reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
+                          reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
+                          hpxfft::util::fftw_adapter::direction::forward);
     // communication specific initialization
     COMM_FLAG_ = COMM_FLAG;
     if (COMM_FLAG_ == "scatter")

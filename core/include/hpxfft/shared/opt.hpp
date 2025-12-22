@@ -26,6 +26,8 @@ struct opt
 
     real get_measurement(std::string name);
 
+    ~opt() { hpxfft::util::fftw_adapter::cleanup(); }
+
   private:
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i);
@@ -44,11 +46,9 @@ struct opt
   private:
     // parameters
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
-    // FFTW plans
-    hpxfft::util::fftw_plan_flag PLAN_FLAG_;
-    // IMPORTANT: declare r2c adapter before c2c so r2c destructor is called after c2c
-    hpxfft::util::fftw_adapter_r2c fftw_r2c_adapter_;
-    hpxfft::util::fftw_adapter_c2c fftw_c2c_adapter_;
+    // 1D adapters
+    hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
+    hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
     vector_2d values_vec_;
     vector_2d trans_values_vec_;
