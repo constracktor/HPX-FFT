@@ -11,7 +11,7 @@ EXAMPLES_DIR=$TOP_DIR/examples
 # HPX-FFT implementations
 HPXFFT_EXECUTABLES=(
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+    #"$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
 )
 # FFTW implementations
 FFTW_EXECUTABLES=(
@@ -23,8 +23,12 @@ FFTW_EXECUTABLES=(
 HOSTNAME=$(hostname -s)
 if [[ "$HOSTNAME" == "ipvsmisc" ]]; then
     echo "tbd."
-elif [[ "$HOSTNAME" == "rostam" ]]; then
-    echo "tbd."
+elif [[ "$HOSTNAME" == "rostam1" ]]; then
+    PARTITION=buran
+    NODES_POW=3
+    THREADS=48
+    module load gcc/14.2.0
+    spack env activate hpxfft_x86_buran
 elif [[ "$HOSTNAME" == "login1" ]]; then
     PARTITION=short
     NODES_POW=1
