@@ -9,17 +9,16 @@ HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.ht
 ### Install dependencies
 
 All dependencies can be installed using [Spack](https://github.com/spack/spack).
-For HPX we recommend: `spack install hpx@1.10.0 networking={tcp/mpi/lci} max_cpu_count=256`
+For HPX we recommend: `spack install hpx@1.11.0 networking={tcp/mpi/lci/all} max_cpu_count=256`
 For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
-
-Note that the LCI variant of HPX currently requires to add the [Octo-Tiger repo](https://github.com/G-071/octotiger-spack) to spack.
-Alternatively, both librarires can be built from source.
+The requirements can be also installed using the provided spack environments. 
+The spack-repo directory add support for installing HPX with the LCI or all parcelports at once.
 
 ## How to Compile HPX-FFT
 
 We provide a simple compilation script for HPX-FFT. The script assumes an gcc compiler version 14.2.0. However, it can be easily tailored towards specific needs.
 
-## How to Compile Examples
+## How to Compile Examples:
 
 HPX-FFT comes with several examples for HPX-FFT itself as well as for a FFTW reference. The examples can be compiled with the respective compilation scripts.
 
@@ -27,6 +26,7 @@ HPX-FFT comes with several examples for HPX-FFT itself as well as for a FFTW ref
 
 ### HPX-FFT
 
+Shared examples:
 ```
 1=Base size of the problem
 2=FFTW Planning flag (estimate/measure)
@@ -34,25 +34,33 @@ HPX-FFT comes with several examples for HPX-FFT itself as well as for a FFTW ref
 4=Number of HPX threads
 ./hpxfft_shared_loop --nx=$1 --ny=$1 --plan=$2 --header=$3 --hpx:threads=$4
 ```
+
+Distributed examples with slurm:
 ```
 1=Base size of the problem
 2=FFTW Planning flag (estimate/measure)
 3=Print info into runtime file (true/false)
 4=Collective operation (scatter/all_to_all)
 5=Number of HPX threads
-./hpxfft_distributed_loop --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:threads=$5
+6=Number of HPX localities
+7=Partition
+
+srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
 ```
 
 ### FFTW
 
+Shared examples:
 ```
 //        threads N_X N_Y  plan     header
 ./fftw_omp   1      8  14 estimate    0
 ```
+
+Distributed examples with srun or mpirun:
 ```
-//   nodes ranks    prog    threads N_X N_Y    plan  header
-srun -N 2  -n 4 fftw_mpi_omp   4     8   14  estimate  0
-    mpirun -n 4 fftw_mpi_omp   4     8   14  estimate  0
+//              nodes ranks    prog    threads N_X N_Y    plan  header
+srun --mpi=pmix -N 2  -n 4 fftw_mpi_omp   4     8   14  estimate  0
+               mpirun -n 4 fftw_mpi_omp   4     8   14  estimate  0
 ```
 
 ## How to Run Benchmarks (wip)
@@ -73,17 +81,8 @@ Executables only:
 `sbatch -p $PARTITION -N 1 -n 1 -c $THREADS run_fftw_shared.sh executable_name estimate/measure $THREAD_POW`
 
 ### Distributed
-All:
 
-- `./distributed_benchmark.sh estimate/measure partition_name`
-
-Executables only: 
-
-- fftw_hpx_loop/fftw_hpx_tasg_agas:
-`sbatch -p $PARTITION -N $NODES -n $NODES -c $THREADS run_hpx_dist.sh executable_name estimate/measure $NODES`
-
-- fftw_mpi_threads/fftw_mpi_omp:
-`sbatch -p $PARTITION -N $NODES -n $NODES -c $THREADS run_fftw_dist.sh executable_name estimate/measure $NODES $THREADS`
+- `./distributed_benchmark.sh estimate/measure scatter/all_to_all tcp/mpi/lci`
 
 ## The Team
 
