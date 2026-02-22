@@ -16,7 +16,7 @@ HPXFFT_EXECUTABLES=(
 )
 # FFTW implementations
 FFTW_EXECUTABLES=(
-    #"$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
     "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads"
 )
 

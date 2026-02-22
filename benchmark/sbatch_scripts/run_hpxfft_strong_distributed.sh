@@ -28,10 +28,9 @@ COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((2**POW_START
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2 --run=$6"
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
-
 # Strong scaling loop from 2^pow_start to 2^pow_stop nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS
-HPX_COMMANDLINE_OPTIONS=$OPTIONS $COMMAND $EXECUTABLE $ARGUMENTS --header=true
+HPX_COMMANDLINE_OPTIONS=$OPTIONS $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS --header=true
 for (( j=1; j<$LOOP; j=j+1 ))
 do
     echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS
