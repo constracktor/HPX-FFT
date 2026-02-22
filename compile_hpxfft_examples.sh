@@ -37,7 +37,7 @@ if command -v spack &> /dev/null; then
             echo "Found ${SPACK_ENV} environment, activating it."
             spack env activate ${SPACK_ENV}
         fi
-    elif [[ "$HOSTNAME" == "buran00" || "$HOSTNAME" == "buran01" ]]; then
+    elif [[ "$HOSTNAME" == buran0[0-9] || "$HOSTNAME" == buran1[0-5] ]]; then
 	module load gcc/14.2.0
 	LIB_DIR=lib64
 	# Check if the spack environment exists
