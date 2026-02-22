@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 # Benchmark script for message size scaling between two nodes
 # $1: Collective (scatter/all_to_all)
+# $2: HPX Parcelport (tcp/mpi/lci)
 ################################################################################
 # Config
 ################################################################################
@@ -12,21 +13,13 @@ HPXFFT_EXECUTABLES=(
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
 )
-# FFTW implementations
-FFTW_EXECUTABLES=(
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads"
-)
 
 # Get current hostname
 HOSTNAME=$(hostname -s)
-if [[ "$HOSTNAME" == "ipvsmisc" ]]; then
-    echo "tbd."
-elif [[ "$HOSTNAME" == "rostam" ]]; then
-    echo "tbd."
-elif [[ "$HOSTNAME" == "login1" ]]; then
-    PARTITION=short
+if [[ "$HOSTNAME" == "rostam1" ]]; then
+    PARTITION=buran
     THREADS=48
+    module load gcc/14.2.0
 elif [[ "$HOSTNAME" == "simcl1" ]]; then
     echo "tbd."
 else
@@ -42,7 +35,14 @@ if [ -z "$COLLECTIVE" ]; then
     echo "Usage: message_benchmark.sh scatter/all_to_all"
     exit 1
 fi
-
+# Set HPX Parcelport
+PARCELPORT=$2
+# Check if COLLECITVE was provided
+if [ -z "$PARCELPORT" ]; then
+    echo "Error: Parcelport parameter not set."
+    echo "Usage: message_benchmark.sh scatter/all_to_all tcp/mpi/lci"
+    exit 1
+fi
 ################################################################################
 # Run benchmarks
 ################################################################################
@@ -65,18 +65,6 @@ RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_message_size.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
 
-  sbatch -p $PARTITION -N 2 -n 2 -c $THREADS \
     $RUN_SCRIPT \
-    $EXE $BASE_SIZE $STOP_POW $COLLECTIVE $THREADS $LOOP
-done
-
-# Loop over FFTW executables
-RUN_SCRIPT="$SCRIPT_DIR/run_fftw_message_size.sh"
-# Loop over executables
-for EXE in "${FFTW_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
-
-  sbatch -p $PARTITION -N 2 -n 2 -c $THREADS \
-    $RUN_SCRIPT \
-    $EXE $BASE_SIZE $STOP_POW $THREADS $LOOP
+    $EXE $BASE_SIZE $STOP_POW $COLLECTIVE $THREADS $LOOP $PARTITION $PARCELPORT
 done
