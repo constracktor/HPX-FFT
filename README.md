@@ -94,6 +94,7 @@ We specifically thank the follow contributors:
 
 - [Alexander Strack](https://www.ipvs.uni-stuttgart.de/de/institut/team/Strack-00001/):
   Maintainer and [initial framework](https://doi.org/10.1007/978-3-031-32316-4_5).
+- Heiko Häfner: Testing and CI.
 
 ## How To Cite
 
