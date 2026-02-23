@@ -20,8 +20,6 @@ if [[ "$HOSTNAME" == "rostam1" ]]; then
     PARTITION=buran
     THREADS=48
     module load gcc/14.2.0
-elif [[ "$HOSTNAME" == "simcl1" ]]; then
-    echo "tbd."
 else
     echo "Hostname is $HOSTNAME — no action taken."
     exit 1
@@ -46,7 +44,7 @@ fi
 ################################################################################
 # Run benchmarks
 ################################################################################
-RESULT_DIR=$TOP_DIR/message_benchmark_on_$HOSTNAME
+RESULT_DIR=$TOP_DIR/message_benchmark_on_$PARTITION
 SCRIPT_DIR=$TOP_DIR/benchmark/sbatch_scripts
 
 ################################################################################

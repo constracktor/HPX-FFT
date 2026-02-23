@@ -27,9 +27,7 @@ FFTW_EXECUTABLES=(
 
 # Get current hostname
 HOSTNAME=$(hostname -s)
-if [[ "$HOSTNAME" == "ipvsmisc" ]]; then
-    echo "tbd."
-elif [[ "$HOSTNAME" == "rostam1" ]]; then
+if [[ "$HOSTNAME" == "rostam1" ]]; then
     PARTITION=buran
     THREAD_POW=5
     NODE=buran01
@@ -38,8 +36,10 @@ elif [[ "$HOSTNAME" == "login1" ]]; then
     PARTITION=short
     THREAD_POW=5
     NODE=fj001
-elif [[ "$HOSTNAME" == "simcl1" ]]; then
-    echo "tbd."
+elif [[ "$HOSTNAME" == "ipvsmisc" ]]; then
+    PARTITION=epyc
+    THREAD_POW=7
+    NODE=ipvs-epyc1
 else
     echo "Hostname is $HOSTNAME — no action taken."
     exit 1
@@ -57,7 +57,7 @@ fi
 ################################################################################
 # Run benchmarks
 ################################################################################
-RESULT_DIR=$TOP_DIR/shared_benchmark_on_$HOSTNAME
+RESULT_DIR=$TOP_DIR/shared_benchmark_on_$PARTITION
 SCRIPT_DIR=$TOP_DIR/benchmark/sbatch_scripts
 
 ################################################################################
