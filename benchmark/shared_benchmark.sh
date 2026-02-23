@@ -29,11 +29,15 @@ FFTW_EXECUTABLES=(
 HOSTNAME=$(hostname -s)
 if [[ "$HOSTNAME" == "ipvsmisc" ]]; then
     echo "tbd."
-elif [[ "$HOSTNAME" == "rostam" ]]; then
-    echo "tbd."
+elif [[ "$HOSTNAME" == "rostam1" ]]; then
+    PARTITION=buran
+    THREAD_POW=5
+    NODE=buran01
+    module load gcc/14.2.0
 elif [[ "$HOSTNAME" == "login1" ]]; then
     PARTITION=short
     THREAD_POW=5
+    NODE=fj001
 elif [[ "$HOSTNAME" == "simcl1" ]]; then
     echo "tbd."
 else
@@ -64,16 +68,16 @@ mkdir -p $RESULT_DIR/strong_scaling/plans
 cd $RESULT_DIR/strong_scaling
 
 # Config
-LOOP=2
+LOOP=10
 BASE_SIZE=16384
-START_THREAD_POW=3
+START_THREAD_POW=0
 
 # Loop over HPX-FFT executables
 RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_strong_shared.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
 
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_THREAD_POW $THREAD_POW $BASE_SIZE $LOOP
 done
@@ -84,7 +88,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_fftw_strong_shared.sh"
 for EXE in "${FFTW_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
 
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_THREAD_POW $THREAD_POW $BASE_SIZE $LOOP
 done
@@ -97,7 +101,7 @@ mkdir -p $RESULT_DIR/weak_scaling/plans
 cd $RESULT_DIR/weak_scaling
 
 # Config
-LOOP=2
+LOOP=10
 BASE_SIZE=512
 START_THREAD_POW=0
 
@@ -106,7 +110,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_weak_shared.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
 
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_THREAD_POW $THREAD_POW $BASE_SIZE $LOOP
 done
@@ -117,7 +121,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_fftw_weak_shared.sh"
 for EXE in "${FFTW_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
 
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_THREAD_POW $THREAD_POW $BASE_SIZE $LOOP
 done
@@ -130,15 +134,15 @@ mkdir -p $RESULT_DIR/size_scaling/plans
 cd $RESULT_DIR/size_scaling
 
 # Config
-LOOP=2
-START_SIZE_POW=5
-STOP_SIZE_POW=12
+LOOP=10
+START_SIZE_POW=3
+STOP_SIZE_POW=16
 # Loop over HPX-FFT executables
 RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_size_shared.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
  
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $THREADS $START_SIZE_POW $STOP_SIZE_POW $LOOP
 done
@@ -149,7 +153,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_fftw_size_shared.sh"
 for EXE in "${FFTW_EXECUTABLES[@]}"; do
   echo "Submitting job for executable: $EXE"
  
-  sbatch -p $PARTITION -N 1 -n 1 -c $THREADS \
+  sbatch -p $PARTITION -w $NODE -N 1 -n 1 -c $THREADS \
     $RUN_SCRIPT \
     $EXE $FFTW_PLAN $THREADS $START_SIZE_POW $STOP_SIZE_POW $LOOP
 done

@@ -2,7 +2,6 @@
 #SBATCH --job-name=fftw_job          # Job name
 #SBATCH --output=fftw_job.log        # Standard output and error log
 #SBATCH --mail-type=NONE                # Mail events (NONE, BEGIN, END, FAIL, ALL)
-#SBATCH --mail-user=alexander.strack@ipvs.uni-stuttgart.de       # Where to send mail	
 #SBATCH --time=2:00:00                 # Time limit hrs:min:sec
 #SBATCH --exclusive                     # Exclusive ressource access
 
