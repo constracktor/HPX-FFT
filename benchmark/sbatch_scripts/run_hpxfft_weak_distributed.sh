@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --error=hpxfft_error_%A.log    # Error Log
 
 # Benchmark script for distributed memory strong scaling
 # $1: Executable name
@@ -25,7 +24,7 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - 2**POW_START)))-15] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((2**POW_START - 1))] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2 --run=$6"
 if [[ "$EXECUTABLE" == *"3d"* ]]; then
@@ -43,7 +42,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - i)))-15] -N $i -n $i -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$(($i - 1))] -N $i -n $i -c $THREADS"
     ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE*i)) --plan=$2 --run=$6"
     if [[ "$EXECUTABLE" == *"3d"* ]]; then
         ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE)) --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"

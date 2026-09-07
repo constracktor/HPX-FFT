@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --error=hpxfft_error_%A.log    # Error Log
 # Benchmark script for message size scaling between two nodes
 # $1: Executable name
 # $2: Base size
