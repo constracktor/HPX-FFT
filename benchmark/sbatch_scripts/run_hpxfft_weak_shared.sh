@@ -39,7 +39,7 @@ do
     COMMAND="srun -N 1 -n 1 -c $i"
     ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE*i)) --plan=$2"
     if [[ "$EXECUTABLE" == *"3d"* ]]; then
-        ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE*i-2)) --plan=$2"
+        ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE)) --nz=$((BASE_SIZE-2)) --plan=$2"
     fi
     for (( j=0; j<$LOOP; j=j+1 ))
     do

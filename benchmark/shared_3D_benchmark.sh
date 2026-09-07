@@ -12,7 +12,7 @@ HPXFFT_EXECUTABLES=(
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_naive_3d"
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_sync_3d"
     "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_loop_3d"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_3d_slap"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_3d_slab"
 )
 # FFTW implementations
 FFTW_EXECUTABLES=(

@@ -25,7 +25,7 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((NODES_START**2 - 1))] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - 2**POW_START)))-15] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
@@ -40,7 +40,7 @@ done
 for (( i=NODES_START+1; i<=NODES_STOP; i=i+1 ))
 do
     SIZE=$((i**2))
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-$(printf '%02d' $((SIZE - 1)))] -N $SIZE -n $SIZE -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - SIZE)))-15] -N $SIZE -n $SIZE -c $THREADS"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS

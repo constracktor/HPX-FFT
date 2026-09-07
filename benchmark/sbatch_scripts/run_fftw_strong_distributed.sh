@@ -21,7 +21,7 @@ THREADS=$6
 LOOP=$7
 PARTITION=$8
 # Get run command
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((17 - 2**POW_START)))-16] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - 2**POW_START)))-15] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="$BASE_SIZE $BASE_SIZE $2"
 if [[ "$EXECUTABLE" == *"3d"* ]]; then
@@ -37,7 +37,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((17 - i)))-16] -N $i -n $i -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - i)))-15] -N $i -n $i -c $THREADS"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $THREADS $ARGUMENTS
