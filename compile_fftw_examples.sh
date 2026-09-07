@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+#SBATCH --output=output/output_compile_fftw_examples_%j.log      # Standard output log
+#SBATCH --error=output/error_compile_fftw_examples_%j.log        # Error log file
 ################################################################################
 # Config
 ################################################################################

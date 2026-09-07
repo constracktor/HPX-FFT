@@ -1,7 +1,7 @@
-#include "hpxfft/distributed/loop.hpp"   // for hpxfft::distributed::loop, hpxfft::distributed::vector_2d
-#include "hpxfft/util/create_dir.hpp"    // for hpxfft::util::create_parent_dir
-#include "hpxfft/util/print_vector.hpp"  // for hpxfft::util::print_vector_2d
-#include <fstream>                       // for std::ofstream
+#include "hpxfft/2D/distributed/loop.hpp"  // for hpxfft::fft2D::distributed::loop, hpxfft::fft2D::distributed::vector_2d
+#include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/print_vector_2d.hpp"  // for hpxfft::util::print_vector_2d
+#include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
 #include <numeric>  // for std::iota
 
@@ -26,7 +26,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::distributed::vector_2d values_vec(n_x_local, 2 * dim_c_y);
+    hpxfft::fft2D::distributed::vector_2d values_vec(n_x_local, 2 * dim_c_y);
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
         for (std::size_t j = 0; j < dim_r_y; ++j)
@@ -37,7 +37,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Computation
-    hpxfft::distributed::loop fft_computer;
+    hpxfft::fft2D::distributed::loop fft_computer;
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
     auto stop_init = t.now();

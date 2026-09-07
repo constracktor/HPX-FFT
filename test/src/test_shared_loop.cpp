@@ -1,10 +1,10 @@
-#include "../../core/include/hpxfft/shared/loop.hpp"
-#include "../../core/include/hpxfft/util/print_vector.hpp"
+#include "../../core/include/hpxfft/2D/shared/loop.hpp"
+#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::shared::loop;
+using hpxfft::fft2D::shared::loop;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -15,7 +15,7 @@ int entrypoint_test1(int argc, char *argv[])
     const std::size_t n_row = 4;
     const std::size_t n_col = 6;
     const std::size_t n_x_local = n_row / num_localities;
-    hpxfft::shared::vector_2d values_vec(n_row, n_col, 0.0);
+    hpxfft::fft2D::shared::vector_2d values_vec(n_row, n_col, 0.0);
 
     for (std::size_t i = 0; i < n_row; ++i)
     {
@@ -26,7 +26,7 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // expected output
-    hpxfft::shared::vector_2d expected_output(n_x_local, n_col, 0.0);
+    hpxfft::fft2D::shared::vector_2d expected_output(n_x_local, n_col, 0.0);
 
     expected_output(0, 0) = 40.0;
     expected_output(0, 2) = -8.0;
@@ -35,18 +35,18 @@ int entrypoint_test1(int argc, char *argv[])
 
     // Computation
     /*
-    hpxfft::shared::loop fft1;
+    hpxfft::fft2D::shared::loop fft1;
     unsigned plan_flag = FFTW_ESTIMATE;
     fft1.initialize(std::move(values_vec), plan_flag);
-    hpxfft::shared::vector_2d out1 = fft1.fft_2d_r2c_seq();
+    hpxfft::fft2D::shared::vector_2d out1 = fft1.fft_2d_r2c_seq();
     auto total = fft1.get_measurement(std::string("total"));
     REQUIRE(total >= 0.0);
     REQUIRE(out1 == expected_output);
     */
-    hpxfft::shared::loop fft2;
+    hpxfft::fft2D::shared::loop fft2;
     std::string plan_flag = "estimate";
     fft2.initialize(std::move(values_vec), plan_flag);
-    hpxfft::shared::vector_2d out2 = fft2.fft_2d_r2c_par();
+    hpxfft::fft2D::shared::vector_2d out2 = fft2.fft_2d_r2c_par();
     auto total = fft2.get_measurement(std::string("total"));
     auto flops = fft2.get_measurement(std::string("plan_flops"));
     REQUIRE(total >= 0.0);
