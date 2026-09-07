@@ -50,7 +50,7 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char *argv[])
 {
-    //             threads  N_X N_Y N_Z  plan     header
+    // threads  N_X N_Y N_Z  plan     header
     // fftw_threads   1      8  14  20  estimate    0
     ////////////////////////////////////////////////////////////////
     // Parameters and Data Structures

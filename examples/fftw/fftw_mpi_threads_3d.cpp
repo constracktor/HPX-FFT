@@ -50,7 +50,7 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char *argv[])
 {
-    //       nodes ranks     prog       threads N_X N_Y N_Z  plan  header
+    // nodes ranks     prog       threads N_X N_Y N_Z  plan  header
     // srun -N 2  -n 4 fftw_mpi_threads   4     8   14  20  estimate  0
     // mpirun     -n 4 fftw_mpi_threads   4     8   14  20  estimate  0
     ////////////////////////////////////////////////////////////////
@@ -176,16 +176,18 @@ int main(int argc, char *argv[])
         {
             runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
         }
-        runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";" << plan_flag << ";"
-                     << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
+        runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";"
+                     << plan_flag << ";" << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";"
+                     << plan_flops << ";\n";
         runtime_file.close();
 
         // store plan info
         std::ofstream plan_info_file;
         plan_info_file.open("plans/plan_mpi_threads_3d.txt", std::ios_base::app);
         plan_info_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;" << "planning;fftw_3d_r2c;plan_flops;\n"
-                       << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";" << plan_flag << ";"
-                       << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
+                       << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";"
+                       << plan_flag << ";" << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";"
+                       << plan_flops << ";\n";
         plan_info_file.close();
         // store plan
         FILE *plan_file = fopen("plans/plan_mpi_threads_3d.txt", "a");

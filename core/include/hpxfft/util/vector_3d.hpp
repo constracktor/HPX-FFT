@@ -74,23 +74,29 @@ struct vector_3d
     friend class hpx::serialization::access;
 
     template <typename Archive>
-    void save(Archive& ar, const unsigned int) const
+    void save(Archive &ar, const unsigned int) const
     {
         ar << n_x_ << n_y_ << n_z_ << size_;
         for (std::size_t i = 0; i < size_; ++i)
+        {
             ar << values_[i];
+        }
     }
 
     template <typename Archive>
-    void load(Archive& ar, const unsigned int)
+    void load(Archive &ar, const unsigned int)
     {
         ar >> n_x_ >> n_y_ >> n_z_ >> size_;
-        delete[] values_;          // free any prior buffer (nullptr-safe)
+        delete[] values_;  // free any prior buffer (nullptr-safe)
         values_ = nullptr;
         if (size_ > 0)
+        {
             values_ = new T[size_];
+        }
         for (std::size_t i = 0; i < size_; ++i)
+        {
             ar >> values_[i];
+        }
     }
 
     HPX_SERIALIZATION_SPLIT_MEMBER()
@@ -145,12 +151,12 @@ inline vector_3d<T>::vector_3d(const vector_3d<T> &src) :
 }
 
 template <typename T>
-inline vector_3d<T>::vector_3d(vector_3d<T> &&mv) noexcept
-  : values_(mv.values_)
-  , size_(mv.size_)
-  , n_x_(mv.n_x_)
-  , n_y_(mv.n_y_)
-  , n_z_(mv.n_z_)
+inline vector_3d<T>::vector_3d(vector_3d<T> &&mv) noexcept :
+    values_(mv.values_),
+    size_(mv.size_),
+    n_x_(mv.n_x_),
+    n_y_(mv.n_y_),
+    n_z_(mv.n_z_)
 {
     mv.values_ = nullptr;
     mv.size_ = 0;

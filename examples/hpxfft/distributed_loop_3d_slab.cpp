@@ -1,4 +1,4 @@
-#include "hpxfft/3D/distributed/loop.hpp" // for hpxfft::fft3D::distributed::loop, hpxfft::fft3D::distributed::vector_3d
+#include "hpxfft/3D/distributed/loop.hpp"  // for hpxfft::fft3D::distributed::loop, hpxfft::fft3D::distributed::vector_3d
 #include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include <fstream>                          // for std::ofstream
@@ -23,18 +23,22 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_r_z = vm["nz"].as<std::size_t>();
     const std::size_t dim_c_z = dim_r_z / 2 + 1;
     // division parameter
-    std::size_t n_x_local = dim_c_x / num_localities;;
-    std::size_t n_y_local = dim_c_y / num_localities;;
+    std::size_t n_x_local = dim_c_x / num_localities;
+    ;
+    std::size_t n_y_local = dim_c_y / num_localities;
+    ;
     if (n_y_local * num_localities != dim_c_y || n_x_local * num_localities != dim_c_x)
     {
         std::cout << "Matrix dimensions are not divisible by number of localities, ending program" << std::endl;
-        std::cout << "dim_c_x: " << dim_c_x << " n_x_local*num_localities: " << n_x_local * num_localities << "dim_c_y: " << dim_c_y << " n_y_local*num_localities: " << n_y_local * num_localities << std::endl;
+        std::cout << "dim_c_x: " << dim_c_x << " n_x_local*num_localities: " << n_x_local * num_localities
+                  << "dim_c_y: " << dim_c_y << " n_y_local*num_localities: " << n_y_local * num_localities << std::endl;
         return hpx::finalize();
     }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::fft3D::distributed::vector_3d values_vec = hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
+    hpxfft::fft3D::distributed::vector_3d values_vec =
+        hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::slab fft_computer;
 
     for (std::size_t i = 0; i < n_x_local; ++i)
@@ -43,7 +47,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
         {
             for (std::size_t k = 0; k < dim_r_z; k++)
             {
-                values_vec(i, j, k) = (this_locality * n_x_local + i) * 10000 + j * 100 + k;
+                values_vec(i, j, k) = (this_locality * n_x_local + i) * 10'000 + j * 100 + k;
             }
         }
     }
@@ -52,26 +56,22 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     if (print_result)
     {
-        sleep(this_locality+1);
+        sleep(this_locality + 1);
         print_vector_3d(values_vec);
     }
 
     hpx::distributed::barrier("Starting Barrier").wait();
-    std::cout << "starting initalization " << this_locality << std::endl;
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
-    std::cout << "initialization ended " << this_locality << std::endl;
     hpx::distributed::barrier("initialize Barrier").wait();
     auto stop_init = t.now();
-    std::cout << "starting computation " << this_locality << std::endl;
     values_vec = fft_computer.fft_3d_r2c();
-    std::cout << "computation ended" << this_locality << std::endl;
     auto stop_total = t.now();
 
     // optional: print results
     if (print_result)
     {
-        sleep(this_locality+1);
+        sleep(this_locality + 1);
         print_vector_3d(values_vec);
     }
 
@@ -79,9 +79,9 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Postprocessing
     // print and store runtimes if on locality 0
     auto total = stop_total - start_total;
-    auto init = stop_init - start_total; 
+    auto init = stop_init - start_total;
     if (this_locality == 0)
-    {       
+    {
         std::string msg =
             "\nLocality {15} -  {1} slab decomposition:\n"
             "Total runtime : {2}\n"
@@ -116,7 +116,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
             fft_computer.get_measurement("third_permute"),
             this_locality)
             << std::flush;
-        
+
         std::string runtime_file_path = "runtimes/runtimes_hpx_distributed_loop_3d_slab.txt";
         hpxfft::util::create_parent_dir(runtime_file_path);
         std::ofstream runtime_file;
@@ -124,23 +124,22 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
         if (print_header)
         {
-            runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;comm_flag;decomposition;total;initialization;" << "fft_3d_total;" << "first_fftw;"
-                        << "first_permute;" << "second_fftw;" << "first_split;" << "first_comm;" << "second_permute;"
-                        << "third_fftw;" << "second_split;" <<"second_comm;" <<"third_permute\n";
+            runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;comm_flag;decomposition;total;initialization;"
+                         << "fft_3d_total;" << "first_fftw;" << "first_permute;" << "second_fftw;" << "first_split;"
+                         << "first_comm;" << "second_permute;" << "third_fftw;" << "second_split;" << "second_comm;"
+                         << "third_permute\n";
         }
-        runtime_file << num_localities << ";" << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z 
-                << ";" << plan_flag << ";" << run_flag << ";" << total << ";" << init 
-                << ";" << fft_computer.get_measurement("total") << ";"
-                << fft_computer.get_measurement("first_fftw") << ";" 
-                << fft_computer.get_measurement("first_permute") << ";"
-                << fft_computer.get_measurement("second_fftw") << ";"
-                << fft_computer.get_measurement("first_split") << ";"
-                << fft_computer.get_measurement("first_comm") << ";"
-                << fft_computer.get_measurement("second_permute") << ";"
-                << fft_computer.get_measurement("third_fftw") << ";"
-                << fft_computer.get_measurement("second_split") << ";"
-                << fft_computer.get_measurement("second_comm") << ";"
-                << fft_computer.get_measurement("third_permute") << ";\n";
+        runtime_file << num_localities << ";" << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";"
+                     << dim_r_z << ";" << plan_flag << ";" << run_flag << ";" << total << ";" << init << ";"
+                     << fft_computer.get_measurement("total") << ";" << fft_computer.get_measurement("first_fftw")
+                     << ";" << fft_computer.get_measurement("first_permute") << ";"
+                     << fft_computer.get_measurement("second_fftw") << ";"
+                     << fft_computer.get_measurement("first_split") << ";" << fft_computer.get_measurement("first_comm")
+                     << ";" << fft_computer.get_measurement("second_permute") << ";"
+                     << fft_computer.get_measurement("third_fftw") << ";"
+                     << fft_computer.get_measurement("second_split") << ";"
+                     << fft_computer.get_measurement("second_comm") << ";"
+                     << fft_computer.get_measurement("third_permute") << ";\n";
         runtime_file.close();
     }
 
@@ -160,7 +159,8 @@ int main(int argc, char *argv[])
         "ny", value<std::size_t>()->default_value(8), "Total y dimension")(
         "nz", value<std::size_t>()->default_value(8), "Total z dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
-        "run", value<std::string>()->default_value("scatter"),
+        "run",
+        value<std::string>()->default_value("scatter"),
         "Choose 2d FFT algorithm communication: scatter or all_to_all")(
         "header", value<bool>()->default_value(0), "Write runtime file header");
 

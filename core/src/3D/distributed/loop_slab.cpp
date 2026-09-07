@@ -4,7 +4,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
 {
     this_locality_ = hpx::get_locality_id();
-    //move data into own structure
+    // move data into own structure
     values_vec_ = std::move(values_vec);
     // locality information
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
@@ -20,12 +20,12 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
 
-    if(values_vec_.n_y() % num_localities_ != 0 || values_vec_.n_z() % num_localities_ != 0)
+    if (values_vec_.n_y() % num_localities_ != 0 || values_vec_.n_z() % num_localities_ != 0)
     {
         throw std::invalid_argument("Dimensions of the 3D Matrix are not divisable by number of localities");
     }
 
-    //resize other data structures
+    // resize other data structures
     permuted_vec_ = std::move(vector_3d(n_x_local_, dim_c_z_, 2 * dim_c_y_));
     values_prep_.resize(num_localities_);
     permuted_values_prep_.resize(num_localities_);
@@ -56,18 +56,14 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         reinterpret_cast<fftw_complex *>(permuted_vec_.slice_yz(0)),
         hpxfft::util::fftw_adapter::direction::forward);
     // communication specific initialization
-    if(COMM_FLAG == "scatter_async")
+    if (COMM_FLAG == "scatter_async")
     {
-        if(this_locality_ == 0)
-        {
-            std::cout << "Running asynchronus scatter" << std::endl;
-        }
         scatter_sync_ = false;
         COMM_FLAG_ = "scatter";
     }
     else
     {
-        COMM_FLAG_ = COMM_FLAG; 
+        COMM_FLAG_ = COMM_FLAG;
     }
     if (COMM_FLAG_ == "scatter")
     {
@@ -102,7 +98,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
             hpx::collectives::this_site_arg(this_locality_)));
     }
     else
-    { 
+    {
         std::cout << "Communication scheme not specified during initialization\n";
         hpx::finalize();
     }
@@ -130,26 +126,30 @@ void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_permuted_vec(co
     if (this_locality_ != i)
     {
         // receive from other locality
-        communication_futures_[i] = hpx::collectives::scatter_from<vector_3d>(communicators_[i], hpx::collectives::generation_arg(1));
+        communication_futures_[i] =
+            hpx::collectives::scatter_from<vector_3d>(communicators_[i], hpx::collectives::generation_arg(1));
     }
     else
     {
         // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(communicators_[i], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1));
+        communication_futures_[i] = hpx::collectives::scatter_to(
+            communicators_[i], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1));
     }
 }
 
 // all to all communication
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_vec()
 {
-    communication_vec_ = hpx::collectives::all_to_all(
-                            communicators_[0], std::move(values_prep_), hpx::collectives::generation_arg(2)).get();
+    communication_vec_ =
+        hpx::collectives::all_to_all(communicators_[0], std::move(values_prep_), hpx::collectives::generation_arg(2))
+            .get();
 }
 
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_permuted_vec()
 {
     communication_vec_ = hpx::collectives::all_to_all(
-                            communicators_[0], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1)).get();
+                             communicators_[0], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1))
+                             .get();
 }
 
 // permute data for FFT in y-direction (only local data)
@@ -170,58 +170,64 @@ void hpxfft::fft3D::distributed::loop::slab::permute_distributed_x_z_y(const std
     }
 }
 
-//permute data after communication 
+// permute data after communication
 void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_y_x(const std::size_t slice_y, const std::size_t i)
 {
-    const std::size_t part = values_vec_.n_z()/num_localities_;
+    const std::size_t part = values_vec_.n_z() / num_localities_;
     const std::size_t offset = part * i;
-    for(std::size_t index_z = 0; index_z < values_vec_.n_x(); index_z++)
+    for (std::size_t index_z = 0; index_z < values_vec_.n_x(); index_z++)
     {
-        for(std::size_t index_x = 0; index_x < part/2; index_x++)
+        for (std::size_t index_x = 0; index_x < part / 2; index_x++)
         {
-            values_vec_(index_z, slice_y, offset + 2 * index_x) =  communication_vec_[i](index_x, slice_y, 2 * index_z);
-            values_vec_(index_z, slice_y, offset + 2 * index_x  + 1) =  communication_vec_[i](index_x, slice_y, 2 * index_z + 1); 
+            values_vec_(index_z, slice_y, offset + 2 * index_x) = communication_vec_[i](index_x, slice_y, 2 * index_z);
+            values_vec_(index_z, slice_y, offset + 2 * index_x + 1) =
+                communication_vec_[i](index_x, slice_y, 2 * index_z + 1);
         }
     }
 }
 
 void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i)
 {
-    const std::size_t part = permuted_vec_.n_y()/num_localities_;
+    const std::size_t part = permuted_vec_.n_y() / num_localities_;
     const std::size_t offset = part * i;
-    for(std::size_t index_z = 0; index_z < permuted_vec_.n_x(); index_z++)
+    for (std::size_t index_z = 0; index_z < permuted_vec_.n_x(); index_z++)
     {
-        for(std::size_t index_y = 0; index_y < permuted_vec_.n_z()/2; index_y++)
+        for (std::size_t index_y = 0; index_y < permuted_vec_.n_z() / 2; index_y++)
         {
-            permuted_vec_(index_z,offset + slice_x, 2 * index_y) = communication_vec_[i](slice_x, index_y, 2 * index_z);
-            permuted_vec_(index_z,offset + slice_x, 2 * index_y + 1) = communication_vec_[i](slice_x, index_y, 2 * index_z + 1);
+            permuted_vec_(index_z, offset + slice_x, 2 * index_y) =
+                communication_vec_[i](slice_x, index_y, 2 * index_z);
+            permuted_vec_(index_z, offset + slice_x, 2 * index_y + 1) =
+                communication_vec_[i](slice_x, index_y, 2 * index_z + 1);
         }
     }
-    
 }
 
 void hpxfft::fft3D::distributed::loop::slab::split_vec(const std::size_t x, const std::size_t dummy)
 {
-    std::size_t part = values_vec_.n_z()/num_localities_;
-    for(std::size_t j = 0; j < num_localities_; j++){
-        for(std::size_t y = 0; y < values_prep_[j].n_y(); ++y){
+    std::size_t part = values_vec_.n_z() / num_localities_;
+    for (std::size_t j = 0; j < num_localities_; j++)
+    {
+        for (std::size_t y = 0; y < values_prep_[j].n_y(); ++y)
+        {
             for (std::size_t z = 0; z < part; z++)
-                {
-                    values_prep_[j](x,y,z) = values_vec_(x,y,z+part*j);
-                }
+            {
+                values_prep_[j](x, y, z) = values_vec_(x, y, z + part * j);
+            }
         }
     }
 }
 
 void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_t x, const std::size_t dummy)
 {
-    std::size_t part = permuted_vec_.n_z()/num_localities_;
-    for(std::size_t j = 0; j < num_localities_; j++){
-        for(std::size_t y = 0; y < permuted_vec_.n_y(); ++y){
+    std::size_t part = permuted_vec_.n_z() / num_localities_;
+    for (std::size_t j = 0; j < num_localities_; j++)
+    {
+        for (std::size_t y = 0; y < permuted_vec_.n_y(); ++y)
+        {
             for (std::size_t z = 0; z < part; z++)
-                {
-                    permuted_values_prep_[j](x,y,z) = permuted_vec_(x,y,z+part*j);
-                }
+            {
+                permuted_values_prep_[j](x, y, z) = permuted_vec_(x, y, z + part * j);
+            }
         }
     }
 }
@@ -240,10 +246,10 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // second loop over y
-            for(std::size_t j = 0; j<dim_c_y_; j++)
+            for (std::size_t j = 0; j < dim_c_y_; j++)
             {
                 // fft for z direction
-                fft_1d_r2c_inplace(i,j);
+                fft_1d_r2c_inplace(i, j);
             }
         });
     // first permute and second fft can all happen locally
@@ -255,9 +261,8 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // permute second and third dimension x-y-z -> x-z-y
-            permute_distributed_x_z_y(i,0);
-        }
-    );
+            permute_distributed_x_z_y(i, 0);
+        });
     // dimesions are now x z y
     auto start_second_fft = t_.now();
     // first loop over x
@@ -268,10 +273,10 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // second loop over z
-            for(std::size_t j = 0; j<dim_c_z_; j++)
+            for (std::size_t j = 0; j < dim_c_z_; j++)
             {
                 // fft for y direction
-                fft_1d_c2c_y_inplace(i,j);
+                fft_1d_c2c_y_inplace(i, j);
             }
         });
     auto start_first_split = t_.now();
@@ -283,7 +288,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // rearrange for communication step
-            split_permuted_vec(i,0);
+            split_permuted_vec(i, 0);
         });
     // communication for FFT in third dimension
     auto start_first_comm = t_.now();
@@ -295,7 +300,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             communicate_scatter_permuted_vec(i);
         }
         // global sychronization
-        if(scatter_sync_)
+        if (scatter_sync_)
         {
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
@@ -323,7 +328,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         num_localities_,
         [&](auto i)
         {
-            if(!scatter_sync_)
+            if (!scatter_sync_)
             {
                 communication_vec_[i] = communication_futures_[i].get();
             }
@@ -348,10 +353,10 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // for every z
-            for(std::size_t j = 0; j<dim_c_z_; ++j)
+            for (std::size_t j = 0; j < dim_c_z_; ++j)
             {
                 // 1D FFT c2c in x-direction
-                fft_1d_c2c_x_inplace(i,j);
+                fft_1d_c2c_x_inplace(i, j);
             }
         });
     auto start_second_split = t_.now();
@@ -363,7 +368,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         [&](auto i)
         {
             // rearrange for communication step
-            split_vec(i,0);
+            split_vec(i, 0);
         });
     // communication to get original data layout
     auto start_second_comm = t_.now();
@@ -375,7 +380,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             communicate_scatter_vec(i);
         }
         // global synchronization
-        if(scatter_sync_)
+        if (scatter_sync_)
         {
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
@@ -397,7 +402,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         num_localities_,
         [&](auto i)
         {
-            if(!scatter_sync_)
+            if (!scatter_sync_)
             {
                 communication_vec_[i] = communication_futures_[i].get();
             }

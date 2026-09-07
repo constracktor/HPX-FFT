@@ -3,10 +3,10 @@
 #define hpxfft_distributed_base_3D_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
-#include "../../util/vector_3d.hpp"              // for hpxfft::util::vector_3d
-#include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
+#include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
+#include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
 
 typedef double real;
 
@@ -28,19 +28,19 @@ struct base
     real get_measurement(std::string name);
 
     ~base() { hpxfft::util::fftw_adapter::cleanup(); }
-  
+
   protected:
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i, const std::size_t j);
     void fft_1d_c2c_y_inplace(const std::size_t i, const std::size_t j);
     void fft_1d_c2c_x_inplace(const std::size_t i, const std::size_t j);
 
-    //premute (only local data)
+    // premute (only local data)
     virtual void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) = 0;
     virtual void permute_distributed_z_y_x(const std::size_t slice_y, const std::size_t i) = 0;
     virtual void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) = 0;
 
-    protected:
+  protected:
     // prarameters
     std::size_t n_x_local_, n_y_local_, n_z_local_;
     std::size_t dim_r_z_, dim_c_z_, dim_c_y_, dim_c_x_;

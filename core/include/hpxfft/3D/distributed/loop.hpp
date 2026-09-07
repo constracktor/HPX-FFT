@@ -2,12 +2,12 @@
 #ifndef hpxfft_distributed_loop_3D_H_INCLUDED
 #define hpxfft_distributed_loop_3D_H_INCLUDED
 
-#include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include "../../util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
+#include "../../util/vector_3d.hpp"        // for hpxfft::util::vector_3d
 #include "distributed_base.hpp"
 #include <cmath>
-#include <hpx/parallel/algorithms/for_loop.hpp>
 #include <hpx/hpx_init.hpp>
+#include <hpx/parallel/algorithms/for_loop.hpp>
 
 typedef double real;
 
@@ -25,7 +25,7 @@ struct slab : public base
     vector_3d fft_3d_r2c() override;
 
   private:
-    //permute
+    // permute
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
     void permute_distributed_z_y_x(const std::size_t slice_y, const std::size_t i) override;
     void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) override;
@@ -55,7 +55,7 @@ struct pencil : public base
     vector_3d fft_3d_r2c() override;
 
   private:
-    //permute (only local data)
+    // permute (only local data)
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
     void permute_distributed_z_y_x(const std::size_t slice_y, const std::size_t i) override;
     void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) override;
@@ -76,7 +76,7 @@ struct pencil : public base
     void communicate_all_to_all_permuted_vec_x();
     void communicate_all_to_all_permuted_vec_y();
 
-    //locality information
+    // locality information
     std::size_t localities_per_dir_;
     std::size_t pos_dir_x_;
     std::size_t pos_dir_y_;
@@ -85,7 +85,7 @@ struct pencil : public base
 
     vector_comm values_prep2_;
     vector_comm permuted_values_prep2_;
-    
+
     bool scatter_sync_ = true;
 };
 

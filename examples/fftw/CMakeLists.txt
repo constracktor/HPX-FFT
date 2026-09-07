@@ -57,10 +57,11 @@ add_executable(fftw_omp_3d fftw_omp_3d.cpp)
 target_link_libraries(fftw_omp_3d PkgConfig::FFTW ${FFTW_OMP_LIB}
                       OpenMP::OpenMP_CXX)
 
-#P3DFFT
+# P3DFFT
 find_library(P3DFFT_LIB NAMES p3dfft.3 p3dfft)
 find_path(P3DFFT_INCLUDE_DIR p3dfft.h)
-# P3DFFT calls single-precision FFTW (fftwf_*), so link libfftw3f and libfftw3f_omp.
+# P3DFFT calls single-precision FFTW (fftwf_*), so link libfftw3f and
+# libfftw3f_omp.
 find_library(
   FFTW_SINGLE_OMP_LIB
   NAMES "fftw3f_omp"
@@ -71,6 +72,14 @@ find_library(
   PATHS $ENV{FFTW_DIR})
 add_executable(p3dfft_mpi_omp p3dfft_mpi_omp.cpp)
 target_include_directories(p3dfft_mpi_omp PRIVATE ${P3DFFT_INCLUDE_DIR})
-target_link_libraries(p3dfft_mpi_omp ${P3DFFT_LIB} PkgConfig::FFTW ${FFTW_OMP_LIB}
-                      ${FFTW_SINGLE_LIB} ${FFTW_SINGLE_OMP_LIB}
-                      OpenMP::OpenMP_CXX MPI::MPI_CXX gfortran m)
+target_link_libraries(
+  p3dfft_mpi_omp
+  ${P3DFFT_LIB}
+  PkgConfig::FFTW
+  ${FFTW_OMP_LIB}
+  ${FFTW_SINGLE_LIB}
+  ${FFTW_SINGLE_OMP_LIB}
+  OpenMP::OpenMP_CXX
+  MPI::MPI_CXX
+  gfortran
+  m)
