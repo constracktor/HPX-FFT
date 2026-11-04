@@ -77,10 +77,8 @@ struct vector_3d
     void save(Archive &ar, const unsigned int) const
     {
         ar << n_x_ << n_y_ << n_z_ << size_;
-        for (std::size_t i = 0; i < size_; ++i)
-        {
-            ar << values_[i];
-        }
+        // bitwise array: one memcpy / zero-copy chunk instead of one archive call per element
+        ar << hpx::serialization::make_array(values_, size_);
     }
 
     template <typename Archive>
@@ -93,10 +91,7 @@ struct vector_3d
         {
             values_ = new T[size_];
         }
-        for (std::size_t i = 0; i < size_; ++i)
-        {
-            ar >> values_[i];
-        }
+        ar >> hpx::serialization::make_array(values_, size_);
     }
 
     HPX_SERIALIZATION_SPLIT_MEMBER()
