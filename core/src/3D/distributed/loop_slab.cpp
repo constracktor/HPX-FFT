@@ -77,10 +77,21 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         {
             basename_storage_[i] = std::to_string(i);
             basenames_[i] = basename_storage_[i].c_str();
+            // Host the communicator on the locality that scatters through it
+            // (root_site = i); with the default root site (0) every scatter
+            // is staged on locality 0 first.
             communicators_[i] = std::move(hpx::collectives::create_communicator(
                 basenames_[i],
                 hpx::collectives::num_sites_arg(num_localities_),
-                hpx::collectives::this_site_arg(this_locality_)));
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(i)));
+        }
+        // The communicators are futures: scatter_to/scatter_from read num_sites from the communicator's info, which
+        // is only attached once it has been created/found. Wait for all of them before use.
+        for (auto &communicator : communicators_)
+        {
+            communicator.wait();
         }
     }
     else if (COMM_FLAG_ == "all_to_all")

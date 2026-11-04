@@ -85,14 +85,27 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         {
             basename_storage_[2 * i] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
             basename_storage_[2 * i + 1] = "hpxfft/pencil/y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
+            // Host communicator i on the site that scatters through it
+            // (root_site = i); with the default root site (0) every scatter
+            // is staged on site 0 of the group first.
             communicators_[2 * i] = std::move(hpx::collectives::create_communicator(
                 basename_storage_[2 * i].c_str(),
                 hpx::collectives::num_sites_arg(localities_per_dir_),
-                hpx::collectives::this_site_arg(pos_dir_x_)));
+                hpx::collectives::this_site_arg(pos_dir_x_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(i)));
             communicators_[2 * i + 1] = std::move(hpx::collectives::create_communicator(
                 basename_storage_[2 * i + 1].c_str(),
                 hpx::collectives::num_sites_arg(localities_per_dir_),
-                hpx::collectives::this_site_arg(pos_dir_y_)));
+                hpx::collectives::this_site_arg(pos_dir_y_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(i)));
+        }
+        // The communicators are futures: scatter_to/scatter_from read num_sites from the communicator's info, which
+        // is only attached once it has been created/found. Wait for all of them before use.
+        for (auto &communicator : communicators_)
+        {
+            communicator.wait();
         }
     }
     else if (COMM_FLAG_ == "all_to_all")
