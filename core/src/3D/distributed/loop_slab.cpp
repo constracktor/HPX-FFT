@@ -62,6 +62,12 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         scatter_sync_ = false;
         COMM_FLAG_ = "scatter";
     }
+    else if (COMM_FLAG == "all_to_all_hierarchical")
+    {
+        // all_to_all through a hierarchical (tree) communicator
+        hierarchical_ = true;
+        COMM_FLAG_ = "all_to_all";
+    }
     else
     {
         COMM_FLAG_ = COMM_FLAG;
@@ -104,10 +110,24 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         communicators_.resize(1);
         basename_storage_[0] = std::to_string(0);
         basenames_[0] = basename_storage_[0].c_str();
-        communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basenames_[0],
-            hpx::collectives::num_sites_arg(num_localities_),
-            hpx::collectives::this_site_arg(this_locality_)));
+        if (hierarchical_)
+        {
+            // below the flat fallback threshold this is a single flat communicator
+            hierarchical_communicator_.emplace(hpx::collectives::create_hierarchical_communicator(basenames_[0],
+                hpx::collectives::num_sites_arg(num_localities_),
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::arity_arg(hierarchical_arity_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(0),
+                hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+        }
+        else
+        {
+            communicators_[0] = std::move(hpx::collectives::create_communicator(
+                basenames_[0],
+                hpx::collectives::num_sites_arg(num_localities_),
+                hpx::collectives::this_site_arg(this_locality_)));
+        }
     }
     else
     {
@@ -149,19 +169,28 @@ void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_permuted_vec(co
     }
 }
 
-// all to all communication
+// all to all communication (flat or hierarchical communicator)
+hpx::future<std::vector<hpxfft::fft3D::distributed::vector_3d>>
+hpxfft::fft3D::distributed::loop::slab::all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation)
+{
+    if (hierarchical_)
+    {
+        return hpx::collectives::all_to_all(*hierarchical_communicator_,
+                                            std::move(prep),
+                                            hpx::collectives::this_site_arg(this_locality_),
+                                            hpx::collectives::generation_arg(generation));
+    }
+    return hpx::collectives::all_to_all(communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+}
+
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_vec()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[0], std::move(values_prep_), hpx::collectives::generation_arg(2))
-            .get();
+    communication_vec_ = all_to_all_exchange(std::move(values_prep_), 2).get();
 }
 
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_permuted_vec()
 {
-    communication_vec_ = hpx::collectives::all_to_all(
-                             communicators_[0], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1))
-                             .get();
+    communication_vec_ = all_to_all_exchange(std::move(permuted_values_prep_), 1).get();
 }
 
 namespace
@@ -574,8 +603,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         }
         else
         {
-            p.a2a = hpx::collectives::all_to_all(
-                communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+            p.a2a = all_to_all_exchange(std::move(prep), generation);
         }
         return p;
     };

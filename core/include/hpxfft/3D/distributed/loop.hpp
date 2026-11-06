@@ -8,6 +8,7 @@
 #include <cmath>
 #include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
+#include <optional>
 
 typedef double real;
 
@@ -37,6 +38,15 @@ struct slab : public base
     // (overlap only pays off for the all_to_all collective).
     void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks; }
 
+    // Parameters of the hierarchical communicator used by the run flag
+    // "all_to_all_hierarchical": number of children per tree node, and the
+    // number of localities below which it collapses to a flat communicator.
+    void set_hierarchical_parameters(std::size_t arity, std::size_t flat_fallback_threshold)
+    {
+        hierarchical_arity_ = arity;
+        hierarchical_flat_threshold_ = flat_fallback_threshold;
+    }
+
   private:
     vector_3d fft_3d_r2c_pipelined(std::size_t num_chunks);
     std::size_t effective_num_chunks() const;
@@ -61,6 +71,12 @@ struct slab : public base
     bool scatter_sync_ = true;
     bool transposed_out_ = false;
     std::size_t num_chunks_ = 0;
+    // hierarchical communicator for all_to_all
+    bool hierarchical_ = false;
+    std::size_t hierarchical_arity_ = 2;
+    std::size_t hierarchical_flat_threshold_ = 16;
+    std::optional<hpx::collectives::hierarchical_communicator> hierarchical_communicator_;
+    hpx::future<std::vector<vector_3d>> all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation);
 };
 
 struct pencil : public base
