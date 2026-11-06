@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
 
 void hpxfft::fft3D::distributed::loop::pencil::initialize(
@@ -262,40 +263,87 @@ void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_permuted_v
             .get();
 }
 
+namespace
+{
+// Tile edge (in complex numbers) of the blocked transposes below: a tile of 16 x 16 complex numbers stays in L1 cache,
+// so neither the strided reads nor the strided writes of a transpose thrash the cache.
+constexpr std::size_t TILE = 16;
+
+using vector_3d = hpxfft::fft3D::distributed::vector_3d;
+
+// dst(slice, z, offset + 2 y) = src(slice, y, 2 z) for y < n_1, z < dst.n_y() (complex numbers)
+void transpose_slice_yz(vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset,
+                        const std::size_t n_1)
+{
+    const std::size_t n_0 = dst.n_y();
+    const double *s = src.data();
+    const std::size_t src_x = src.n_y() * src.n_z();
+    const std::size_t src_y = src.n_z();
+    double *d = dst.data();
+    const std::size_t dst_x = dst.n_y() * dst.n_z();
+    const std::size_t dst_y = dst.n_z();
+
+    for (std::size_t zb = 0; zb < n_0; zb += TILE)
+    {
+        const std::size_t ze = std::min(zb + TILE, n_0);
+        for (std::size_t yb = 0; yb < n_1; yb += TILE)
+        {
+            const std::size_t ye = std::min(yb + TILE, n_1);
+            for (std::size_t z = zb; z < ze; ++z)
+            {
+                for (std::size_t y = yb; y < ye; ++y)
+                {
+                    d[slice * dst_x + z * dst_y + offset + 2 * y] = s[slice * src_x + y * src_y + 2 * z];
+                    d[slice * dst_x + z * dst_y + offset + 2 * y + 1] = s[slice * src_x + y * src_y + 2 * z + 1];
+                }
+            }
+        }
+    }
+}
+
+// dst(z, slice, offset + 2 x) = src(x, slice, 2 z) for x < n_1, z < dst.n_x() (complex numbers)
+void transpose_slice_xz(vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset,
+                        const std::size_t n_1)
+{
+    const std::size_t n_0 = dst.n_x();
+    const double *s = src.data();
+    const std::size_t src_x = src.n_y() * src.n_z();
+    const std::size_t src_y = src.n_z();
+    double *d = dst.data();
+    const std::size_t dst_x = dst.n_y() * dst.n_z();
+    const std::size_t dst_y = dst.n_z();
+
+    for (std::size_t zb = 0; zb < n_0; zb += TILE)
+    {
+        const std::size_t ze = std::min(zb + TILE, n_0);
+        for (std::size_t xb = 0; xb < n_1; xb += TILE)
+        {
+            const std::size_t xe = std::min(xb + TILE, n_1);
+            for (std::size_t z = zb; z < ze; ++z)
+            {
+                for (std::size_t x = xb; x < xe; ++x)
+                {
+                    d[z * dst_x + slice * dst_y + offset + 2 * x] = s[x * src_x + slice * src_y + 2 * z];
+                    d[z * dst_x + slice * dst_y + offset + 2 * x + 1] = s[x * src_x + slice * src_y + 2 * z + 1];
+                }
+            }
+        }
+    }
+}
+}  // namespace
+
 // permute data for FFT in y-direction
 void hpxfft::fft3D::distributed::loop::pencil::permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i)
 {
     if (generation_countery_ == 2)
     {
         const std::size_t part = permuted_vec_.n_z() / localities_per_dir_;
-        const std::size_t offset = part * i;
-
-        for (std::size_t index_y = 0; index_y < part / 2; ++index_y)
-        {
-            for (std::size_t index_z = 0; index_z < permuted_vec_.n_y(); ++index_z)
-            {
-                permuted_vec_.at(slice_x, index_z, offset + 2 * index_y) =
-                    communication_vec_[i].at(slice_x, index_y, 2 * index_z);
-                permuted_vec_.at(slice_x, index_z, offset + 2 * index_y + 1) =
-                    communication_vec_[i].at(slice_x, index_y, 2 * index_z + 1);
-            }
-        }
+        transpose_slice_yz(permuted_vec_, communication_vec_[i], slice_x, part * i, part / 2);
     }
     else
     {
         const std::size_t part = values_vec_.n_z() / localities_per_dir_;
-        const std::size_t offset = part * i;
-
-        for (std::size_t index_y = 0; index_y < part / 2; ++index_y)
-        {
-            for (std::size_t index_z = 0; index_z < values_vec_.n_y(); ++index_z)
-            {
-                values_vec_.at(slice_x, index_z, offset + 2 * index_y) =
-                    communication_vec_[i].at(slice_x, index_y, 2 * index_z);
-                values_vec_.at(slice_x, index_z, offset + 2 * index_y + 1) =
-                    communication_vec_[i].at(slice_x, index_y, 2 * index_z + 1);
-            }
-        }
+        transpose_slice_yz(values_vec_, communication_vec_[i], slice_x, part * i, part / 2);
     }
 }
 
@@ -305,32 +353,12 @@ void hpxfft::fft3D::distributed::loop::pencil::permute_distributed_z_y_x(const s
     if (generation_counterx_ == 2)
     {
         const std::size_t part = values_vec_.n_z() / localities_per_dir_;
-        const std::size_t offset = part * i;
-        for (std::size_t index_z = 0; index_z < values_vec_.n_x(); index_z++)
-        {
-            for (std::size_t index_x = 0; index_x < part / 2; index_x++)
-            {
-                values_vec_.at(index_z, slice_y, offset + 2 * index_x) =
-                    communication_vec_[i].at(index_x, slice_y, 2 * index_z);
-                values_vec_.at(index_z, slice_y, offset + 2 * index_x + 1) =
-                    communication_vec_[i].at(index_x, slice_y, 2 * index_z + 1);
-            }
-        }
+        transpose_slice_xz(values_vec_, communication_vec_[i], slice_y, part * i, part / 2);
     }
     else
     {
         const std::size_t part = permuted_vec_.n_z() / localities_per_dir_;
-        const std::size_t offset = part * i;
-        for (std::size_t index_z = 0; index_z < permuted_vec_.n_x(); index_z++)
-        {
-            for (std::size_t index_x = 0; index_x < part / 2; index_x++)
-            {
-                permuted_vec_.at(index_z, slice_y, offset + 2 * index_x) =
-                    communication_vec_[i].at(index_x, slice_y, 2 * index_z);
-                permuted_vec_.at(index_z, slice_y, offset + 2 * index_x + 1) =
-                    communication_vec_[i].at(index_x, slice_y, 2 * index_z + 1);
-            }
-        }
+        transpose_slice_xz(permuted_vec_, communication_vec_[i], slice_y, part * i, part / 2);
     }
 }
 
@@ -361,10 +389,8 @@ void hpxfft::fft3D::distributed::loop::pencil::split_vec(const std::size_t x, co
         {
             for (std::size_t y = 0; y < values_prep_[j].n_y(); ++y)
             {
-                for (std::size_t z = 0; z < part; z++)
-                {
-                    values_prep_[j](x, y, z) = values_vec_(x, y, z + part * j);
-                }
+                // contiguous run in z: plain copy
+                std::copy_n(&values_vec_(x, y, part * j), part, &values_prep_[j](x, y, 0));
             }
         }
     }
@@ -375,10 +401,8 @@ void hpxfft::fft3D::distributed::loop::pencil::split_vec(const std::size_t x, co
         {
             for (std::size_t y = 0; y < values_prep2_[j].n_y(); ++y)
             {
-                for (std::size_t z = 0; z < part; z++)
-                {
-                    values_prep2_[j](x, y, z) = values_vec_(x, y, z + part * j);
-                }
+                // contiguous run in z: plain copy
+                std::copy_n(&values_vec_(x, y, part * j), part, &values_prep2_[j](x, y, 0));
             }
         }
     }
@@ -393,10 +417,8 @@ void hpxfft::fft3D::distributed::loop::pencil::split_permuted_vec(const std::siz
         {
             for (std::size_t y = 0; y < permuted_vec_.n_y(); ++y)
             {
-                for (std::size_t z = 0; z < part; z++)
-                {
-                    permuted_values_prep_[j](x, y, z) = permuted_vec_(x, y, z + part * j);
-                }
+                // contiguous run in z: plain copy
+                std::copy_n(&permuted_vec_(x, y, part * j), part, &permuted_values_prep_[j](x, y, 0));
             }
         }
     }
@@ -407,10 +429,8 @@ void hpxfft::fft3D::distributed::loop::pencil::split_permuted_vec(const std::siz
         {
             for (std::size_t y = 0; y < permuted_vec_.n_y(); ++y)
             {
-                for (std::size_t z = 0; z < part; z++)
-                {
-                    permuted_values_prep2_[j](x, y, z) = permuted_vec_(x, y, z + part * j);
-                }
+                // contiguous run in z: plain copy
+                std::copy_n(&permuted_vec_(x, y, part * j), part, &permuted_values_prep2_[j](x, y, 0));
             }
         }
     }
