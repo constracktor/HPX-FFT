@@ -77,6 +77,11 @@ struct slab : public base
     std::size_t hierarchical_flat_threshold_ = 16;
     std::optional<hpx::collectives::hierarchical_communicator> hierarchical_communicator_;
     hpx::future<std::vector<vector_3d>> all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation);
+    // scatter through one hierarchical communicator per root (communicator i is rooted at locality i); needs an HPX
+    // whose hierarchical communicators support a root site other than 0
+    bool hierarchical_scatter_ = false;
+    std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
+    hpx::future<vector_3d> scatter_exchange(std::size_t root, std::vector<vector_3d> &&prep, std::size_t generation);
 };
 
 struct pencil : public base
