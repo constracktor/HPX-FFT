@@ -76,29 +76,24 @@ void hpxfft::fft2D::distributed::loop::communicate_scatter_trans_vec(const std::
     communication_futures_[i] = scatter_exchange(i, std::move(trans_values_prep_), 2);
 }
 
-// all to all communication (routed flat communicator, hierarchical communicator, or direct pairwise exchange)
+// all to all communication: direct exchange between the localities, or (reference) routed through a root site
 hpx::future<std::vector<std::vector<real>>> hpxfft::fft2D::distributed::loop::all_to_all_exchange(
     std::vector<std::vector<real>> &&prep, const std::size_t generation)
 {
-    if (pairwise_)
+    if (routed_)
     {
-        // a threshold of 0 selects the direct exchange also for rows of dynamic size; needs an explicit generation
-        return hpx::collectives::all_to_all(basenames_[0],
-                                            std::move(prep),
-                                            hpx::collectives::num_sites_arg(num_localities_),
-                                            hpx::collectives::this_site_arg(this_locality_),
-                                            hpx::collectives::generation_arg(generation),
-                                            hpx::collectives::root_site_arg(0),
-                                            hpx::collectives::pairwise_threshold_arg(0));
+        return hpx::collectives::all_to_all(
+            communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
     }
-    if (hierarchical_)
-    {
-        return hpx::collectives::all_to_all(*hierarchical_communicator_,
-                                            std::move(prep),
-                                            hpx::collectives::this_site_arg(this_locality_),
-                                            hpx::collectives::generation_arg(generation));
-    }
-    return hpx::collectives::all_to_all(communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+    // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
+    // explicit generation and at least three sites (otherwise HPX routes the data)
+    return hpx::collectives::all_to_all(basenames_[0],
+                                        std::move(prep),
+                                        hpx::collectives::num_sites_arg(num_localities_),
+                                        hpx::collectives::this_site_arg(this_locality_),
+                                        hpx::collectives::generation_arg(generation),
+                                        hpx::collectives::root_site_arg(0),
+                                        hpx::collectives::pairwise_threshold_arg(0));
 }
 
 void hpxfft::fft2D::distributed::loop::communicate_all_to_all_vec()
@@ -339,8 +334,8 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
 
 // 2D FFT algorithm with communication overlapped with computation: both exchanges are split into chunks of rows that
 // are sent as soon as they are computed.
-// number of chunks used by the exchanges: automatic (0) enables overlap for all_to_all with large local data only, where
-// it pays off (measured crossover on 8 nodes: 45% slower at 17 MiB, 35% faster at 64 MiB and 17% at 256 MiB per locality)
+// number of chunks used by the exchanges: automatic (0) enables overlap for the routed all_to_all with large local data
+// only, where it pays off (measured crossover on 8 nodes: 45% slower at 17 MiB, 35% faster at 64 MiB and 17% at 256 MiB per locality)
 std::size_t hpxfft::fft2D::distributed::loop::effective_num_chunks() const
 {
     constexpr std::size_t auto_chunks = 8;
@@ -349,7 +344,7 @@ std::size_t hpxfft::fft2D::distributed::loop::effective_num_chunks() const
     {
         return num_chunks_;
     }
-    if (COMM_FLAG_ == "all_to_all" && values_vec_.n_row() * values_vec_.n_col() * sizeof(real) >= auto_min_bytes)
+    if (routed_ && values_vec_.n_row() * values_vec_.n_col() * sizeof(real) >= auto_min_bytes)
     {
         return auto_chunks;
     }
@@ -597,17 +592,16 @@ void hpxfft::fft2D::distributed::loop::initialize(
         hierarchical_scatter_ = true;
         COMM_FLAG_ = "scatter";
     }
-    else if (COMM_FLAG == "all_to_all_hierarchical")
+    else if (COMM_FLAG == "all_to_all_routed")
     {
-        // all_to_all through a hierarchical (tree) communicator
-        hierarchical_ = true;
+        // reference all_to_all: the data is routed through a root site (single flat communicator)
+        routed_ = true;
         COMM_FLAG_ = "all_to_all";
     }
-    else if (COMM_FLAG == "all_to_all_pairwise")
+    // the pairwise exchange needs at least three sites; with fewer the routed all_to_all is used
+    if (COMM_FLAG_ == "all_to_all" && num_localities_ < 3)
     {
-        // all_to_all by name: direct exchange between the localities instead of routing through a root site
-        pairwise_ = true;
-        COMM_FLAG_ = "all_to_all";
+        routed_ = true;
     }
     if (COMM_FLAG_ == "scatter")
     {
@@ -670,18 +664,7 @@ void hpxfft::fft2D::distributed::loop::initialize(
         communicators_.resize(1);
         basename_storage_[0] = std::to_string(0);
         basenames_[0] = basename_storage_[0].c_str();
-        if (hierarchical_)
-        {
-            // below the flat fallback threshold this is a single flat communicator
-            hierarchical_communicator_.emplace(hpx::collectives::create_hierarchical_communicator(basenames_[0],
-                hpx::collectives::num_sites_arg(num_localities_),
-                hpx::collectives::this_site_arg(this_locality_),
-                hpx::collectives::arity_arg(hierarchical_arity_),
-                hpx::collectives::generation_arg(),
-                hpx::collectives::root_site_arg(0),
-                hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
-        }
-        else
+        if (routed_)
         {
             communicators_[0] = std::move(hpx::collectives::create_communicator(
                 basenames_[0],

@@ -71,6 +71,18 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         scatter_sync_ = false;
         COMM_FLAG_ = "scatter";
     }
+    else if (COMM_FLAG == "scatter_hierarchical")
+    {
+        // scatter through hierarchical (tree) communicators, one per root
+        hierarchical_scatter_ = true;
+        COMM_FLAG_ = "scatter";
+    }
+    else if (COMM_FLAG == "all_to_all_routed")
+    {
+        // reference all_to_all: the data is routed through a root site (flat communicators)
+        routed_ = true;
+        COMM_FLAG_ = "all_to_all";
+    }
     else
     {
         COMM_FLAG_ = COMM_FLAG;
@@ -82,6 +94,36 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         // setup communicators
         basename_storage_.resize(2 * localities_per_dir_);
         communicators_.resize(2 * localities_per_dir_);
+        if (hierarchical_scatter_)
+        {
+            // communicator i of a group is rooted at its site i; below the flat fallback threshold each of them is a
+            // single flat communicator
+            hierarchical_scatter_communicators_.resize(2 * localities_per_dir_);
+            for (std::size_t i = 0; i < localities_per_dir_; ++i)
+            {
+                basename_storage_[2 * i] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
+                basename_storage_[2 * i + 1] =
+                    "hpxfft/pencil/y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
+                hierarchical_scatter_communicators_[2 * i].emplace(hpx::collectives::create_hierarchical_communicator(
+                    basename_storage_[2 * i].c_str(),
+                    hpx::collectives::num_sites_arg(localities_per_dir_),
+                    hpx::collectives::this_site_arg(pos_dir_x_),
+                    hpx::collectives::arity_arg(hierarchical_arity_),
+                    hpx::collectives::generation_arg(),
+                    hpx::collectives::root_site_arg(i),
+                    hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+                hierarchical_scatter_communicators_[2 * i + 1].emplace(
+                    hpx::collectives::create_hierarchical_communicator(
+                        basename_storage_[2 * i + 1].c_str(),
+                        hpx::collectives::num_sites_arg(localities_per_dir_),
+                        hpx::collectives::this_site_arg(pos_dir_y_),
+                        hpx::collectives::arity_arg(hierarchical_arity_),
+                        hpx::collectives::generation_arg(),
+                        hpx::collectives::root_site_arg(i),
+                        hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+            }
+            return;
+        }
         for (std::size_t i = 0; i < localities_per_dir_; ++i)
         {
             basename_storage_[2 * i] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
@@ -117,14 +159,17 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         communicators_.resize(2);
         basename_storage_[0] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_);
         basename_storage_[1] = "hpxfft/pencil/y/" + std::to_string(pos_dir_x_);
-        communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basename_storage_[0].c_str(),
-            hpx::collectives::num_sites_arg(localities_per_dir_),
-            hpx::collectives::this_site_arg(pos_dir_x_)));
-        communicators_[1] = std::move(hpx::collectives::create_communicator(
-            basename_storage_[1].c_str(),
-            hpx::collectives::num_sites_arg(localities_per_dir_),
-            hpx::collectives::this_site_arg(pos_dir_y_)));
+        if (routed_)
+        {
+            communicators_[0] = std::move(hpx::collectives::create_communicator(
+                basename_storage_[0].c_str(),
+                hpx::collectives::num_sites_arg(localities_per_dir_),
+                hpx::collectives::this_site_arg(pos_dir_x_)));
+            communicators_[1] = std::move(hpx::collectives::create_communicator(
+                basename_storage_[1].c_str(),
+                hpx::collectives::num_sites_arg(localities_per_dir_),
+                hpx::collectives::this_site_arg(pos_dir_y_)));
+        }
     }
     else
     {
@@ -140,127 +185,101 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
 // scatter communitcation
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_vec_x(const std::size_t i)
 {
-    if (pos_dir_x_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] = hpx::collectives::scatter_from<vector_3d>(
-            communicators_[2 * i],
-            hpx::collectives::this_site_arg(pos_dir_x_),
-            hpx::collectives::generation_arg(generation_counterx_));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[2 * i],
-            std::move(values_prep2_),
-            hpx::collectives::this_site_arg(pos_dir_x_),
-            hpx::collectives::generation_arg(generation_counterx_));
-    }
+    communication_futures_[i] = scatter_exchange(2 * i, i, pos_dir_x_, std::move(values_prep2_), generation_counterx_);
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_vec_y(const std::size_t i)
 {
-    if (pos_dir_y_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] = hpx::collectives::scatter_from<vector_3d>(
-            communicators_[2 * i + 1],
-            hpx::collectives::this_site_arg(pos_dir_y_),
-            hpx::collectives::generation_arg(generation_countery_));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[2 * i + 1],
-            std::move(values_prep_),
-            hpx::collectives::this_site_arg(pos_dir_y_),
-            hpx::collectives::generation_arg(generation_countery_));
-    }
+    communication_futures_[i] = scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(values_prep_), generation_countery_);
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_permuted_vec_x(const std::size_t i)
 {
-    if (pos_dir_x_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] = hpx::collectives::scatter_from<vector_3d>(
-            communicators_[2 * i],
-            hpx::collectives::this_site_arg(pos_dir_x_),
-            hpx::collectives::generation_arg(generation_counterx_));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[2 * i],
-            std::move(permuted_values_prep_),
-            hpx::collectives::this_site_arg(pos_dir_x_),
-            hpx::collectives::generation_arg(generation_counterx_));
-    }
+    communication_futures_[i] = scatter_exchange(2 * i, i, pos_dir_x_, std::move(permuted_values_prep_), generation_counterx_);
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_permuted_vec_y(const std::size_t i)
 {
-    if (pos_dir_y_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] = hpx::collectives::scatter_from<vector_3d>(
-            communicators_[2 * i + 1],
-            hpx::collectives::this_site_arg(pos_dir_y_),
-            hpx::collectives::generation_arg(generation_countery_));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[2 * i + 1],
-            std::move(permuted_values_prep2_),
-            hpx::collectives::this_site_arg(pos_dir_y_),
-            hpx::collectives::generation_arg(generation_countery_));
-    }
+    communication_futures_[i] = scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(permuted_values_prep2_), generation_countery_);
 }
 
-// all to all communication
+// scatter communication (flat or hierarchical communicators): the locality `root` of a group sends one block to every
+// locality of the group; `slot` selects the communicator (2 root: x direction, 2 root + 1: y direction)
+hpx::future<hpxfft::fft3D::distributed::vector_3d> hpxfft::fft3D::distributed::loop::pencil::scatter_exchange(
+    const std::size_t slot, const std::size_t root, const std::size_t site, std::vector<vector_3d> &&prep,
+    const std::size_t generation)
+{
+    if (hierarchical_scatter_)
+    {
+        auto &communicator = *hierarchical_scatter_communicators_[slot];
+        if (site != root)
+        {
+            return hpx::collectives::scatter_from<vector_3d>(communicator,
+                                                             hpx::collectives::this_site_arg(site),
+                                                             hpx::collectives::generation_arg(generation));
+        }
+        return hpx::collectives::scatter_to(communicator,
+                                            std::move(prep),
+                                            hpx::collectives::this_site_arg(site),
+                                            hpx::collectives::generation_arg(generation));
+    }
+    if (site != root)
+    {
+        // receive from other locality
+        return hpx::collectives::scatter_from<vector_3d>(communicators_[slot],
+                                                         hpx::collectives::this_site_arg(site),
+                                                         hpx::collectives::generation_arg(generation));
+    }
+    // send from this locality
+    return hpx::collectives::scatter_to(communicators_[slot],
+                                        std::move(prep),
+                                        hpx::collectives::this_site_arg(site),
+                                        hpx::collectives::generation_arg(generation));
+}
+
+// all to all communication of a group (0: x direction, 1: y direction): direct exchange between the localities of the
+// group, or (reference) routed through a root site
+hpx::future<std::vector<hpxfft::fft3D::distributed::vector_3d>>
+hpxfft::fft3D::distributed::loop::pencil::all_to_all_exchange(
+    const std::size_t group, std::vector<vector_3d> &&prep, const std::size_t generation)
+{
+    const std::size_t site = (group == 0) ? pos_dir_x_ : pos_dir_y_;
+    if (routed_)
+    {
+        return hpx::collectives::all_to_all(communicators_[group],
+                                            std::move(prep),
+                                            hpx::collectives::this_site_arg(site),
+                                            hpx::collectives::generation_arg(generation));
+    }
+    // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
+    // explicit generation and at least three sites in the group (otherwise HPX routes the data)
+    return hpx::collectives::all_to_all(basename_storage_[group].c_str(),
+                                        std::move(prep),
+                                        hpx::collectives::num_sites_arg(localities_per_dir_),
+                                        hpx::collectives::this_site_arg(site),
+                                        hpx::collectives::generation_arg(generation),
+                                        hpx::collectives::root_site_arg(0),
+                                        hpx::collectives::pairwise_threshold_arg(0));
+}
+
 void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_vec_x()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[0],
-                                     std::move(values_prep2_),
-                                     hpx::collectives::this_site_arg(pos_dir_x_),
-                                     hpx::collectives::generation_arg(generation_counterx_))
-            .get();
+    communication_vec_ = all_to_all_exchange(0, std::move(values_prep2_), generation_counterx_).get();
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_vec_y()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[1],
-                                     std::move(values_prep_),
-                                     hpx::collectives::this_site_arg(pos_dir_y_),
-                                     hpx::collectives::generation_arg(generation_countery_))
-            .get();
+    communication_vec_ = all_to_all_exchange(1, std::move(values_prep_), generation_countery_).get();
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_permuted_vec_x()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[0],
-                                     std::move(permuted_values_prep_),
-                                     hpx::collectives::this_site_arg(pos_dir_x_),
-                                     hpx::collectives::generation_arg(generation_counterx_))
-            .get();
+    communication_vec_ = all_to_all_exchange(0, std::move(permuted_values_prep_), generation_counterx_).get();
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_permuted_vec_y()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[1],
-                                     std::move(permuted_values_prep2_),
-                                     hpx::collectives::this_site_arg(pos_dir_y_),
-                                     hpx::collectives::generation_arg(generation_countery_))
-            .get();
+    communication_vec_ = all_to_all_exchange(1, std::move(permuted_values_prep2_), generation_countery_).get();
 }
 
 namespace

@@ -41,6 +41,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
         hpxfft::fft3D::distributed::vector_3d(n_x_local, n_y_local, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::pencil fft_computer;
     fft_computer.set_transposed_output(transposed_out);
+    fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -173,11 +174,17 @@ int main(int argc, char *argv[])
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
         "run",
         value<std::string>()->default_value("scatter"),
-        "Choose 2d FFT algorithm communication: scatter or all_to_all")(
+        "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, scatter_hierarchical")(
         "header", value<bool>()->default_value(0), "Write runtime file header")(
         "transposed_out",
         value<bool>()->default_value(0),
-        "Skip the final exchanges and keep the result in y-z-x layout (default: false)");
+        "Skip the final exchanges and keep the result in y-z-x layout (default: false)")(
+        "hier_arity",
+        value<std::size_t>()->default_value(2),
+        "Children per node of the hierarchical communicators (run=scatter_hierarchical)")(
+        "hier_threshold",
+        value<std::size_t>()->default_value(16),
+        "Localities per group below which the hierarchical communicators are flat; 0 forces a tree");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities
