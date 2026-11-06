@@ -73,6 +73,8 @@ struct slab : public base
     std::size_t num_chunks_ = 0;
     // hierarchical communicator for all_to_all
     bool hierarchical_ = false;
+    // all_to_all by name with a direct (pairwise) exchange instead of routing through a root site
+    bool pairwise_ = false;
     std::size_t hierarchical_arity_ = 2;
     std::size_t hierarchical_flat_threshold_ = 16;
     std::optional<hpx::collectives::hierarchical_communicator> hierarchical_communicator_;
