@@ -32,8 +32,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     permuted_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
     {
-        permuted_values_prep_[i] = vector_3d(n_x_local_, dim_c_z_, 2 * n_y_local_);
-        values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_);
+        permuted_values_prep_[i] = vector_3d(n_x_local_, dim_c_z_, 2 * n_y_local_, vector_3d::uninitialized);
+        values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_, vector_3d::uninitialized);
     }
     // create FFTW plans
     // r2c in z-direction
@@ -606,7 +606,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         std::vector<vector_3d> prep(L);
         for (std::size_t j = 0; j < L; ++j)
         {
-            prep[j] = vector_3d(cx, dim_c_z_, 2 * n_y_local_);
+            prep[j] = vector_3d(cx, dim_c_z_, 2 * n_y_local_, vector_3d::uninitialized);
         }
         const std::size_t part = permuted_vec_.n_z() / L;
         for_loop(par, 0, cx, [&](auto xl) {
@@ -688,7 +688,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         std::vector<vector_3d> prep(L);
         for (std::size_t j = 0; j < L; ++j)
         {
-            prep[j] = vector_3d(cy, dim_c_z_, 2 * n_x_local_);
+            prep[j] = vector_3d(cy, dim_c_z_, 2 * n_x_local_, vector_3d::uninitialized);
         }
         const std::size_t part = values_vec_.n_z() / L;
         for_loop(par, 0, cy, [&](auto yl) {
