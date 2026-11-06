@@ -69,6 +69,11 @@ struct pencil : public base
 
     vector_3d fft_3d_r2c() override;
 
+    // Skip the two final exchanges: the result stays in the layout
+    // (y_local, z_local, x), y distributed over the x-direction of the locality
+    // grid and z over its y-direction. Saves half of the communication.
+    void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
+
   private:
     // permute (only local data)
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
@@ -102,6 +107,7 @@ struct pencil : public base
     vector_comm permuted_values_prep2_;
 
     bool scatter_sync_ = true;
+    bool transposed_out_ = false;
 };
 
 }  // namespace hpxfft::fft3D::distributed::loop
