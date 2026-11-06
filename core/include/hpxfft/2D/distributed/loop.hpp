@@ -59,9 +59,9 @@ struct loop
     void communicate_all_to_all_vec();
     void communicate_all_to_all_trans_vec();
 
-    // transpose after communication
-    void transpose_y_to_x(const std::size_t k, const std::size_t i);
-    void transpose_x_to_y(const std::size_t j, const std::size_t i);
+    // blocked transpose after communication of the tile-th block of rows of the output (see loop.cpp)
+    void transpose_y_to_x(const std::size_t tile, const std::size_t i);
+    void transpose_x_to_y(const std::size_t tile, const std::size_t i);
 
   private:
     // parameters
