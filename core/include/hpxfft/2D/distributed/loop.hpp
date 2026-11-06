@@ -35,15 +35,14 @@ struct loop
     // Split every exchange into this many chunks of rows. Each chunk is sent as
     // soon as it is computed, so communication overlaps with the remaining
     // computation. 1 keeps the phase-by-phase algorithm. 0 (default) chooses
-    // automatically: 8 chunks for all_to_all if the local data is large
-    // (chunking only pays off then), otherwise 1.
+    // automatically: 8 chunks for the routed all_to_all (run flag
+    // all_to_all_routed) if the local data is large (chunking only pays off
+    // then), otherwise 1.
     void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks; }
 
-    // Parameters of the hierarchical communicators used by the run flags
-    // "all_to_all_hierarchical" and "scatter_hierarchical": number of children
-    // per tree node, and the number of localities below which they collapse to
-    // flat communicators. The run flag "all_to_all_pairwise" uses a direct
-    // exchange between the localities instead of routing through a root site.
+    // Parameters of the hierarchical communicators used by the run flag
+    // "scatter_hierarchical" (reference): number of children per tree node, and
+    // the number of localities below which they collapse to flat communicators.
     void set_hierarchical_parameters(std::size_t arity, std::size_t flat_fallback_threshold)
     {
         hierarchical_arity_ = arity;
@@ -102,13 +101,12 @@ struct loop
     std::size_t this_locality_, num_localities_;
     bool transposed_out_ = false;
     std::size_t num_chunks_ = 0;
-    // alternative collectives (see set_hierarchical_parameters)
-    bool hierarchical_ = false;
-    bool pairwise_ = false;
+    // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
+    // selects the reference implementation that routes the data through a root site
+    bool routed_ = false;
     bool hierarchical_scatter_ = false;
     std::size_t hierarchical_arity_ = 2;
     std::size_t hierarchical_flat_threshold_ = 16;
-    std::optional<hpx::collectives::hierarchical_communicator> hierarchical_communicator_;
     std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
     hpx::future<std::vector<std::vector<real>>> all_to_all_exchange(
         std::vector<std::vector<real>> &&prep, std::size_t generation);

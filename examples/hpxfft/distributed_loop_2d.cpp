@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
         "run",
         value<std::string>()->default_value("scatter"),
-        "Choose 2d FFT algorithm communication: scatter or all_to_all")(
+        "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, scatter_hierarchical")(
         "header", value<bool>()->default_value(0), "Write runtime file header")(
         "transposed_out",
         value<bool>()->default_value(0),
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
         "1 = no overlap)")(
         "hier_arity",
         value<std::size_t>()->default_value(2),
-        "Children per node of the hierarchical communicators (run=*_hierarchical)")(
+        "Children per node of the hierarchical communicators (run=scatter_hierarchical)")(
         "hier_threshold",
         value<std::size_t>()->default_value(16),
         "Localities below which the hierarchical communicators are flat; 0 forces a tree");
