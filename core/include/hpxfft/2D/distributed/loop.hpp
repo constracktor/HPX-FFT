@@ -32,14 +32,6 @@ struct loop
     // Saves the second communication phase.
     void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
 
-    // Split every exchange into this many chunks of rows. Each chunk is sent as
-    // soon as it is computed, so communication overlaps with the remaining
-    // computation. 1 keeps the phase-by-phase algorithm. 0 (default) chooses
-    // automatically: 8 chunks for the routed all_to_all (run flag
-    // all_to_all_routed) if the local data is large (chunking only pays off
-    // then), otherwise 1.
-    void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks; }
-
     // Parameters of the hierarchical communicators used by the run flag
     // "scatter_hierarchical" (reference): number of children per tree node, and
     // the number of localities below which they collapse to flat communicators.
@@ -54,8 +46,6 @@ struct loop
     ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
 
   private:
-    vector_2d fft_2d_r2c_pipelined(std::size_t num_chunks);
-    std::size_t effective_num_chunks() const;
 
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i);
@@ -100,7 +90,6 @@ struct loop
     // locality information
     std::size_t this_locality_, num_localities_;
     bool transposed_out_ = false;
-    std::size_t num_chunks_ = 0;
     // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
     // selects the reference implementation that routes the data through a root site
     bool routed_ = false;
@@ -115,7 +104,6 @@ struct loop
     // communicators
     std::string COMM_FLAG_;
     std::vector<std::string> basename_storage_;
-    std::vector<const char *> basenames_;
     std::vector<hpx::collectives::communicator> communicators_;
 };
 }  // namespace hpxfft::fft2D::distributed

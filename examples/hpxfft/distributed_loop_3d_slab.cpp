@@ -42,7 +42,6 @@ int hpx_main(hpx::program_options::variables_map &vm)
         hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::slab fft_computer;
     fft_computer.set_transposed_output(transposed_out);
-    fft_computer.set_num_chunks(vm["chunks"].as<std::size_t>());
     fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
 
     for (std::size_t i = 0; i < n_x_local; ++i)
@@ -170,10 +169,6 @@ int main(int argc, char *argv[])
         "transposed_out",
         value<bool>()->default_value(0),
         "Skip the final transpose and keep the result in y-z-x layout (default: false)")(
-        "chunks",
-        value<std::size_t>()->default_value(0),
-        "Number of chunks per exchange to overlap communication with computation (default: 0 = automatic, "
-        "1 = no overlap)")(
         "hier_arity",
         value<std::size_t>()->default_value(2),
         "Children per node of the hierarchical communicator (run=scatter_hierarchical)")(
