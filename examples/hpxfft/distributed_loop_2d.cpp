@@ -40,6 +40,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::fft2D::distributed::loop fft_computer;
     fft_computer.set_transposed_output(transposed_out);
+    fft_computer.set_num_chunks(vm["chunks"].as<std::size_t>());
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
     auto stop_init = t.now();
@@ -135,7 +136,10 @@ int main(int argc, char *argv[])
         "header", value<bool>()->default_value(0), "Write runtime file header")(
         "transposed_out",
         value<bool>()->default_value(0),
-        "Skip the final transpose and keep the result in (y_local, x) layout (default: false)");
+        "Skip the final transpose and keep the result in (y_local, x) layout (default: false)")(
+        "chunks",
+        value<std::size_t>()->default_value(1),
+        "Number of chunks per exchange to overlap communication with computation (default: 1 = no overlap)");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities
