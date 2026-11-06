@@ -37,51 +37,78 @@ void hpxfft::fft2D::distributed::loop::split_trans_vec(const std::size_t i)
     }
 }
 
-void hpxfft::fft2D::distributed::loop::communicate_scatter_vec(const std::size_t i)
+// scatter communication (flat or hierarchical communicators): the locality `root` sends one block to every locality
+hpx::future<std::vector<real>> hpxfft::fft2D::distributed::loop::scatter_exchange(
+    const std::size_t root, std::vector<std::vector<real>> &&prep, const std::size_t generation)
 {
-    if (this_locality_ != i)
+    if (hierarchical_scatter_)
+    {
+        auto &communicator = *hierarchical_scatter_communicators_[root];
+        if (this_locality_ != root)
+        {
+            return hpx::collectives::scatter_from<std::vector<real>>(communicator,
+                                                                     hpx::collectives::this_site_arg(this_locality_),
+                                                                     hpx::collectives::generation_arg(generation));
+        }
+        return hpx::collectives::scatter_to(communicator,
+                                            std::move(prep),
+                                            hpx::collectives::this_site_arg(this_locality_),
+                                            hpx::collectives::generation_arg(generation));
+    }
+    if (this_locality_ != root)
     {
         // receive from other locality
-        communication_futures_[i] =
-            hpx::collectives::scatter_from<std::vector<real>>(communicators_[i], hpx::collectives::generation_arg(1));
+        return hpx::collectives::scatter_from<std::vector<real>>(
+            communicators_[root], hpx::collectives::generation_arg(generation));
     }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[i], std::move(values_prep_), hpx::collectives::generation_arg(1));
-    }
+    // send from this locality
+    return hpx::collectives::scatter_to(
+        communicators_[root], std::move(prep), hpx::collectives::generation_arg(generation));
+}
+
+void hpxfft::fft2D::distributed::loop::communicate_scatter_vec(const std::size_t i)
+{
+    communication_futures_[i] = scatter_exchange(i, std::move(values_prep_), 1);
 }
 
 void hpxfft::fft2D::distributed::loop::communicate_scatter_trans_vec(const std::size_t i)
 {
-    if (this_locality_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] =
-            hpx::collectives::scatter_from<std::vector<real>>(communicators_[i], hpx::collectives::generation_arg(2));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[i], std::move(trans_values_prep_), hpx::collectives::generation_arg(2));
-    }
+    communication_futures_[i] = scatter_exchange(i, std::move(trans_values_prep_), 2);
 }
 
-// all to all communication
+// all to all communication (routed flat communicator, hierarchical communicator, or direct pairwise exchange)
+hpx::future<std::vector<std::vector<real>>> hpxfft::fft2D::distributed::loop::all_to_all_exchange(
+    std::vector<std::vector<real>> &&prep, const std::size_t generation)
+{
+    if (pairwise_)
+    {
+        // a threshold of 0 selects the direct exchange also for rows of dynamic size; needs an explicit generation
+        return hpx::collectives::all_to_all(basenames_[0],
+                                            std::move(prep),
+                                            hpx::collectives::num_sites_arg(num_localities_),
+                                            hpx::collectives::this_site_arg(this_locality_),
+                                            hpx::collectives::generation_arg(generation),
+                                            hpx::collectives::root_site_arg(0),
+                                            hpx::collectives::pairwise_threshold_arg(0));
+    }
+    if (hierarchical_)
+    {
+        return hpx::collectives::all_to_all(*hierarchical_communicator_,
+                                            std::move(prep),
+                                            hpx::collectives::this_site_arg(this_locality_),
+                                            hpx::collectives::generation_arg(generation));
+    }
+    return hpx::collectives::all_to_all(communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+}
+
 void hpxfft::fft2D::distributed::loop::communicate_all_to_all_vec()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[0], std::move(values_prep_), hpx::collectives::generation_arg(1))
-            .get();
+    communication_vec_ = all_to_all_exchange(std::move(values_prep_), 1).get();
 }
 
 void hpxfft::fft2D::distributed::loop::communicate_all_to_all_trans_vec()
 {
-    communication_vec_ = hpx::collectives::all_to_all(
-                             communicators_[0], std::move(trans_values_prep_), hpx::collectives::generation_arg(2))
-                             .get();
+    communication_vec_ = all_to_all_exchange(std::move(trans_values_prep_), 2).get();
 }
 
 namespace
@@ -354,22 +381,12 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
             p.sc.resize(L);
             for (std::size_t i = 0; i < L; ++i)
             {
-                if (this_locality_ != i)
-                {
-                    p.sc[i] = hpx::collectives::scatter_from<std::vector<real>>(
-                        communicators_[i], hpx::collectives::generation_arg(generation));
-                }
-                else
-                {
-                    p.sc[i] = hpx::collectives::scatter_to(
-                        communicators_[i], std::move(prep), hpx::collectives::generation_arg(generation));
-                }
+                p.sc[i] = scatter_exchange(i, std::move(prep), generation);
             }
         }
         else
         {
-            p.a2a = hpx::collectives::all_to_all(
-                communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+            p.a2a = all_to_all_exchange(std::move(prep), generation);
         }
         return p;
     };
@@ -574,6 +591,24 @@ void hpxfft::fft2D::distributed::loop::initialize(
                           hpxfft::util::fftw_adapter::direction::forward);
     // communication specific initialization
     COMM_FLAG_ = COMM_FLAG;
+    if (COMM_FLAG == "scatter_hierarchical")
+    {
+        // scatter through hierarchical (tree) communicators, one per root
+        hierarchical_scatter_ = true;
+        COMM_FLAG_ = "scatter";
+    }
+    else if (COMM_FLAG == "all_to_all_hierarchical")
+    {
+        // all_to_all through a hierarchical (tree) communicator
+        hierarchical_ = true;
+        COMM_FLAG_ = "all_to_all";
+    }
+    else if (COMM_FLAG == "all_to_all_pairwise")
+    {
+        // all_to_all by name: direct exchange between the localities instead of routing through a root site
+        pairwise_ = true;
+        COMM_FLAG_ = "all_to_all";
+    }
     if (COMM_FLAG_ == "scatter")
     {
         communication_vec_.resize(num_localities_);
@@ -582,6 +617,26 @@ void hpxfft::fft2D::distributed::loop::initialize(
         basename_storage_.resize(num_localities_);
         basenames_.resize(num_localities_);
         communicators_.resize(num_localities_);
+        if (hierarchical_scatter_)
+        {
+            // communicator i is rooted at locality i; below the flat fallback threshold each of them is a single
+            // flat communicator
+            hierarchical_scatter_communicators_.resize(num_localities_);
+            for (std::size_t i = 0; i < num_localities_; ++i)
+            {
+                basename_storage_[i] = std::to_string(i);
+                basenames_[i] = basename_storage_[i].c_str();
+                hierarchical_scatter_communicators_[i].emplace(hpx::collectives::create_hierarchical_communicator(
+                    basenames_[i],
+                    hpx::collectives::num_sites_arg(num_localities_),
+                    hpx::collectives::this_site_arg(this_locality_),
+                    hpx::collectives::arity_arg(hierarchical_arity_),
+                    hpx::collectives::generation_arg(),
+                    hpx::collectives::root_site_arg(i),
+                    hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+            }
+            return;
+        }
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
             basename_storage_[i] = std::to_string(i);
@@ -615,10 +670,24 @@ void hpxfft::fft2D::distributed::loop::initialize(
         communicators_.resize(1);
         basename_storage_[0] = std::to_string(0);
         basenames_[0] = basename_storage_[0].c_str();
-        communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basenames_[0],
-            hpx::collectives::num_sites_arg(num_localities_),
-            hpx::collectives::this_site_arg(this_locality_)));
+        if (hierarchical_)
+        {
+            // below the flat fallback threshold this is a single flat communicator
+            hierarchical_communicator_.emplace(hpx::collectives::create_hierarchical_communicator(basenames_[0],
+                hpx::collectives::num_sites_arg(num_localities_),
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::arity_arg(hierarchical_arity_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(0),
+                hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+        }
+        else
+        {
+            communicators_[0] = std::move(hpx::collectives::create_communicator(
+                basenames_[0],
+                hpx::collectives::num_sites_arg(num_localities_),
+                hpx::collectives::this_site_arg(this_locality_)));
+        }
     }
     else
     {

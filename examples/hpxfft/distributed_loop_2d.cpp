@@ -41,6 +41,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::fft2D::distributed::loop fft_computer;
     fft_computer.set_transposed_output(transposed_out);
     fft_computer.set_num_chunks(vm["chunks"].as<std::size_t>());
+    fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
     auto stop_init = t.now();
@@ -140,7 +141,13 @@ int main(int argc, char *argv[])
         "chunks",
         value<std::size_t>()->default_value(0),
         "Number of chunks per exchange to overlap communication with computation (default: 0 = automatic, "
-        "1 = no overlap)");
+        "1 = no overlap)")(
+        "hier_arity",
+        value<std::size_t>()->default_value(2),
+        "Children per node of the hierarchical communicators (run=*_hierarchical)")(
+        "hier_threshold",
+        value<std::size_t>()->default_value(16),
+        "Localities below which the hierarchical communicators are flat; 0 forces a tree");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities
