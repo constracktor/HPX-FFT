@@ -29,7 +29,15 @@ struct slab : public base
     // FFTW_MPI_TRANSPOSED_OUT. Saves the second communication phase.
     void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
 
+    // Split every exchange into this many chunks along the local x (first
+    // exchange) and local y (second exchange) range. Each chunk is sent as soon
+    // as it is computed, so communication overlaps with the remaining
+    // computation. 1 (default) keeps the original phase-by-phase algorithm.
+    void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks < 1 ? 1 : num_chunks; }
+
   private:
+    vector_3d fft_3d_r2c_pipelined();
+
     // permute
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
     void permute_distributed_z_y_x(const std::size_t slice_y, const std::size_t i) override;
@@ -49,6 +57,7 @@ struct slab : public base
 
     bool scatter_sync_ = true;
     bool transposed_out_ = false;
+    std::size_t num_chunks_ = 1;
 };
 
 struct pencil : public base

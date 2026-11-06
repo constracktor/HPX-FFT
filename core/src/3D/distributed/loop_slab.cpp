@@ -246,6 +246,10 @@ void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_
 // 3D FFT algorithm
 hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::fft_3d_r2c()
 {
+    if (num_chunks_ > 1)
+    {
+        return fft_3d_r2c_pipelined();
+    }
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -461,5 +465,226 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
     measurements_["third_permute"] = stop_total - start_third_permute;
 
     ////////////////////////////////////////////////////////////////
+    return std::move(permuted_vec_);
+}
+
+// 3D FFT algorithm with communication overlapped with computation: both exchanges are split into chunks that are
+// sent as soon as they are computed.
+hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::fft_3d_r2c_pipelined()
+{
+    const std::size_t L = num_localities_;
+    const bool scatter = (COMM_FLAG_ == "scatter");
+    const std::size_t C1 = std::min(num_chunks_, n_x_local_);  // chunks of the first exchange (over local x)
+    const std::size_t C2 = std::min(num_chunks_, n_y_local_);  // chunks of the second exchange (over local y)
+    auto range = [](std::size_t n, std::size_t C, std::size_t c) { return std::pair<std::size_t, std::size_t>(n * c / C, n * (c + 1) / C); };
+    using hpx::execution::par;
+    using hpx::experimental::for_loop;
+
+    // one pending exchange (per chunk): scatter keeps one future per source, all_to_all a single future
+    struct pending
+    {
+        std::vector<hpx::future<vector_3d>> sc;
+        hpx::future<std::vector<vector_3d>> a2a;
+    };
+    auto start_exchange = [&](std::vector<vector_3d> &&prep, std::size_t generation) {
+        pending p;
+        if (scatter)
+        {
+            p.sc.resize(L);
+            for (std::size_t i = 0; i < L; ++i)
+            {
+                if (this_locality_ != i)
+                {
+                    p.sc[i] = hpx::collectives::scatter_from<vector_3d>(
+                        communicators_[i], hpx::collectives::generation_arg(generation));
+                }
+                else
+                {
+                    p.sc[i] = hpx::collectives::scatter_to(
+                        communicators_[i], std::move(prep), hpx::collectives::generation_arg(generation));
+                }
+            }
+        }
+        else
+        {
+            p.a2a = hpx::collectives::all_to_all(
+                communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+        }
+        return p;
+    };
+    // wait until the data of source i of this chunk has arrived
+    auto get_source = [&](pending &p, std::size_t i) -> vector_3d {
+        if (scatter)
+        {
+            return p.sc[i].get();
+        }
+        return vector_3d();
+    };
+
+    auto start_total = t_.now();
+    double t_compute1 = 0, t_wait1 = 0, t_perm1 = 0, t_compute2 = 0, t_wait2 = 0, t_perm2 = 0;
+
+    ////////////////////////////////////////////////////////////////
+    // first exchange: r2c in z, permute, c2c in y, split, send (per chunk of x)
+    std::vector<pending> pend1(C1);
+    std::vector<std::pair<std::size_t, std::size_t>> xr(C1);
+    for (std::size_t c = 0; c < C1; ++c)
+    {
+        auto t0 = t_.now();
+        xr[c] = range(n_x_local_, C1, c);
+        const std::size_t x0 = xr[c].first, cx = xr[c].second - xr[c].first;
+        for_loop(par, 0, cx * dim_c_y_, [&](auto idx) { fft_1d_r2c_inplace(x0 + idx / dim_c_y_, idx % dim_c_y_); });
+        for_loop(par, x0, x0 + cx, [&](auto x) { permute_distributed_x_z_y(x, 0); });
+        for_loop(par, 0, cx * dim_c_z_, [&](auto idx) { fft_1d_c2c_y_inplace(x0 + idx / dim_c_z_, idx % dim_c_z_); });
+        std::vector<vector_3d> prep(L);
+        for (std::size_t j = 0; j < L; ++j)
+        {
+            prep[j] = vector_3d(cx, dim_c_z_, 2 * n_y_local_);
+        }
+        const std::size_t part = permuted_vec_.n_z() / L;
+        for_loop(par, 0, cx, [&](auto xl) {
+            for (std::size_t j = 0; j < L; ++j)
+            {
+                for (std::size_t y = 0; y < dim_c_z_; ++y)
+                {
+                    for (std::size_t z = 0; z < part; ++z)
+                    {
+                        prep[j](xl, y, z) = permuted_vec_(x0 + xl, y, z + part * j);
+                    }
+                }
+            }
+        });
+        pend1[c] = start_exchange(std::move(prep), 1 + c);
+        t_compute1 += t_.now() - t0;
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // receive the first exchange and permute x-z-y -> y-z-x, chunk by chunk
+    values_vec_.rearrange(n_y_local_, dim_c_z_, 2 * dim_c_x_);
+    for (std::size_t c = 0; c < C1; ++c)
+    {
+        auto t0 = t_.now();
+        std::vector<vector_3d> recv;
+        if (scatter)
+        {
+            recv.resize(L);
+            for (std::size_t i = 0; i < L; ++i)
+            {
+                recv[i] = get_source(pend1[c], i);
+            }
+        }
+        else
+        {
+            recv = pend1[c].a2a.get();
+        }
+        auto t1 = t_.now();
+        t_wait1 += t1 - t0;
+        const std::size_t x0 = xr[c].first, cx = xr[c].second - xr[c].first;
+        for_loop(par, 0, L * dim_c_z_, [&](auto idx) {
+            const std::size_t i = idx / dim_c_z_, k = idx % dim_c_z_;
+            for (std::size_t y = 0; y < n_y_local_; ++y)
+            {
+                for (std::size_t xl = 0; xl < cx; ++xl)
+                {
+                    const std::size_t xg = i * n_x_local_ + x0 + xl;
+                    values_vec_(y, k, 2 * xg) = recv[i](xl, k, 2 * y);
+                    values_vec_(y, k, 2 * xg + 1) = recv[i](xl, k, 2 * y + 1);
+                }
+            }
+        });
+        t_perm1 += t_.now() - t1;
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // second exchange: c2c in x, split, send (per chunk of local y)
+    std::vector<pending> pend2(C2);
+    std::vector<std::pair<std::size_t, std::size_t>> yr(C2);
+    if (transposed_out_)
+    {
+        auto t0 = t_.now();
+        for_loop(par, 0, n_y_local_ * dim_c_z_, [&](auto idx) { fft_1d_c2c_x_inplace(idx / dim_c_z_, idx % dim_c_z_); });
+        t_compute2 += t_.now() - t0;
+        auto stop_total = t_.now();
+        measurements_["total"] = stop_total - start_total;
+        measurements_["first_fftw"] = t_compute1;
+        measurements_["first_comm"] = t_wait1;
+        measurements_["second_permute"] = t_perm1;
+        measurements_["third_fftw"] = t_compute2;
+        return std::move(values_vec_);
+    }
+    for (std::size_t c = 0; c < C2; ++c)
+    {
+        auto t0 = t_.now();
+        yr[c] = range(n_y_local_, C2, c);
+        const std::size_t y0 = yr[c].first, cy = yr[c].second - yr[c].first;
+        for_loop(par, 0, cy * dim_c_z_, [&](auto idx) { fft_1d_c2c_x_inplace(y0 + idx / dim_c_z_, idx % dim_c_z_); });
+        std::vector<vector_3d> prep(L);
+        for (std::size_t j = 0; j < L; ++j)
+        {
+            prep[j] = vector_3d(cy, dim_c_z_, 2 * n_x_local_);
+        }
+        const std::size_t part = values_vec_.n_z() / L;
+        for_loop(par, 0, cy, [&](auto yl) {
+            for (std::size_t j = 0; j < L; ++j)
+            {
+                for (std::size_t y = 0; y < dim_c_z_; ++y)
+                {
+                    for (std::size_t z = 0; z < part; ++z)
+                    {
+                        prep[j](yl, y, z) = values_vec_(y0 + yl, y, z + part * j);
+                    }
+                }
+            }
+        });
+        pend2[c] = start_exchange(std::move(prep), 1 + C1 + c);
+        t_compute2 += t_.now() - t0;
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // receive the second exchange and permute y-z-x -> x-y-z, chunk by chunk
+    permuted_vec_.rearrange(n_x_local_, dim_c_y_, 2 * dim_c_z_);
+    for (std::size_t c = 0; c < C2; ++c)
+    {
+        auto t0 = t_.now();
+        std::vector<vector_3d> recv;
+        if (scatter)
+        {
+            recv.resize(L);
+            for (std::size_t i = 0; i < L; ++i)
+            {
+                recv[i] = get_source(pend2[c], i);
+            }
+        }
+        else
+        {
+            recv = pend2[c].a2a.get();
+        }
+        auto t1 = t_.now();
+        t_wait2 += t1 - t0;
+        const std::size_t y0 = yr[c].first, cy = yr[c].second - yr[c].first;
+        for_loop(par, 0, L * cy, [&](auto idx) {
+            const std::size_t i = idx / cy, yl = idx % cy;
+            const std::size_t yg = i * n_y_local_ + y0 + yl;
+            for (std::size_t xz = 0; xz < n_x_local_; ++xz)
+            {
+                for (std::size_t k = 0; k < dim_c_z_; ++k)
+                {
+                    permuted_vec_(xz, yg, 2 * k) = recv[i](yl, k, 2 * xz);
+                    permuted_vec_(xz, yg, 2 * k + 1) = recv[i](yl, k, 2 * xz + 1);
+                }
+            }
+        });
+        t_perm2 += t_.now() - t1;
+    }
+    auto stop_total = t_.now();
+
+    // time measurements: compute stages, time waiting for data, and permutation after receiving
+    measurements_["total"] = stop_total - start_total;
+    measurements_["first_fftw"] = t_compute1;
+    measurements_["first_comm"] = t_wait1;
+    measurements_["second_permute"] = t_perm1;
+    measurements_["third_fftw"] = t_compute2;
+    measurements_["second_comm"] = t_wait2;
+    measurements_["third_permute"] = t_perm2;
     return std::move(permuted_vec_);
 }
