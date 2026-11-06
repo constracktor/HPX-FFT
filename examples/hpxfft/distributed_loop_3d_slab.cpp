@@ -15,6 +15,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::string plan_flag = vm["plan"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
+    bool transposed_out = vm["transposed_out"].as<bool>();
     // time measurement
     auto t = hpx::chrono::high_resolution_timer();
     // FFT dimension parameters
@@ -40,6 +41,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::fft3D::distributed::vector_3d values_vec =
         hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::slab fft_computer;
+    fft_computer.set_transposed_output(transposed_out);
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -162,7 +164,10 @@ int main(int argc, char *argv[])
         "run",
         value<std::string>()->default_value("scatter"),
         "Choose 2d FFT algorithm communication: scatter or all_to_all")(
-        "header", value<bool>()->default_value(0), "Write runtime file header");
+        "header", value<bool>()->default_value(0), "Write runtime file header")(
+        "transposed_out",
+        value<bool>()->default_value(0),
+        "Skip the final transpose and keep the result in y-z-x layout (default: false)");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities

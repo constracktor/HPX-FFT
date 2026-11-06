@@ -24,6 +24,11 @@ struct slab : public base
 
     vector_3d fft_3d_r2c() override;
 
+    // Skip the final global transpose: the result stays in the layout
+    // (y_local, z, x) with y distributed over the localities, like
+    // FFTW_MPI_TRANSPOSED_OUT. Saves the second communication phase.
+    void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
+
   private:
     // permute
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
@@ -43,6 +48,7 @@ struct slab : public base
     void communicate_all_to_all_permuted_vec();
 
     bool scatter_sync_ = true;
+    bool transposed_out_ = false;
 };
 
 struct pencil : public base

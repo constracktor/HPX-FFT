@@ -371,6 +371,23 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             }
         });
     auto start_second_split = t_.now();
+    if (transposed_out_)
+    {
+        // result stays in y-z-x layout (y distributed): no final transpose
+        auto stop_total = t_.now();
+        measurements_["total"] = stop_total - start_total;
+        measurements_["first_fftw"] = start_first_permute - start_total;
+        measurements_["first_permute"] = start_second_fft - start_first_permute;
+        measurements_["second_fftw"] = start_first_split - start_second_fft;
+        measurements_["first_split"] = start_first_comm - start_first_split;
+        measurements_["first_comm"] = start_second_permute - start_first_comm;
+        measurements_["second_permute"] = start_third_fft - start_second_permute;
+        measurements_["third_fftw"] = start_second_split - start_third_fft;
+        measurements_["second_split"] = 0.0;
+        measurements_["second_comm"] = 0.0;
+        measurements_["third_permute"] = 0.0;
+        return std::move(values_vec_);
+    }
     // splitting matrix for final communication
     hpx::experimental::for_loop(
         hpx::execution::par,
