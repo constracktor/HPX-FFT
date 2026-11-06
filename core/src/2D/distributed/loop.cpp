@@ -148,9 +148,10 @@ void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, 
 // 2D FFT algorithm
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c()
 {
-    if (num_chunks_ > 1)
+    const std::size_t num_chunks = effective_num_chunks();
+    if (num_chunks > 1)
     {
-        return fft_2d_r2c_pipelined();
+        return fft_2d_r2c_pipelined(num_chunks);
     }
     /////////////////////////////////////////////////////////////////
     // first dimension
@@ -311,12 +312,30 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
 
 // 2D FFT algorithm with communication overlapped with computation: both exchanges are split into chunks of rows that
 // are sent as soon as they are computed.
-hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c_pipelined()
+// number of chunks used by the exchanges: automatic (0) enables overlap for all_to_all with large local data only, where
+// it pays off (measured crossover on 8 nodes: 45% slower at 17 MiB, 35% faster at 64 MiB and 17% at 256 MiB per locality)
+std::size_t hpxfft::fft2D::distributed::loop::effective_num_chunks() const
+{
+    constexpr std::size_t auto_chunks = 8;
+    constexpr std::size_t auto_min_bytes = std::size_t(48) << 20;
+    if (num_chunks_ != 0)
+    {
+        return num_chunks_;
+    }
+    if (COMM_FLAG_ == "all_to_all" && values_vec_.n_row() * values_vec_.n_col() * sizeof(real) >= auto_min_bytes)
+    {
+        return auto_chunks;
+    }
+    return 1;
+}
+
+hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c_pipelined(
+    const std::size_t num_chunks)
 {
     const std::size_t L = num_localities_;
     const bool scatter = (COMM_FLAG_ == "scatter");
-    const std::size_t C1 = std::min(num_chunks_, n_x_local_);  // chunks of the first exchange (rows of x)
-    const std::size_t C2 = std::min(num_chunks_, n_y_local_);  // chunks of the second exchange (rows of y)
+    const std::size_t C1 = std::min(num_chunks, n_x_local_);  // chunks of the first exchange (rows of x)
+    const std::size_t C2 = std::min(num_chunks, n_y_local_);  // chunks of the second exchange (rows of y)
     auto range = [](std::size_t n, std::size_t C, std::size_t c)
     { return std::pair<std::size_t, std::size_t>(n * c / C, n * (c + 1) / C); };
     using hpx::execution::par;
