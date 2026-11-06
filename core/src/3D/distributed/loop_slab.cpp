@@ -68,6 +68,12 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         hierarchical_scatter_ = true;
         COMM_FLAG_ = "scatter";
     }
+    else if (COMM_FLAG == "all_to_all_pairwise")
+    {
+        // all_to_all by name: direct exchange between the sites instead of routing through a root site
+        pairwise_ = true;
+        COMM_FLAG_ = "all_to_all";
+    }
     else if (COMM_FLAG == "all_to_all_hierarchical")
     {
         // all_to_all through a hierarchical (tree) communicator
@@ -208,6 +214,17 @@ void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_permuted_vec(co
 hpx::future<std::vector<hpxfft::fft3D::distributed::vector_3d>>
 hpxfft::fft3D::distributed::loop::slab::all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation)
 {
+    if (pairwise_)
+    {
+        // a threshold of 0 selects the direct exchange also for rows of dynamic size; needs an explicit generation
+        return hpx::collectives::all_to_all(basenames_[0],
+                                            std::move(prep),
+                                            hpx::collectives::num_sites_arg(num_localities_),
+                                            hpx::collectives::this_site_arg(this_locality_),
+                                            hpx::collectives::generation_arg(generation),
+                                            hpx::collectives::root_site_arg(0),
+                                            hpx::collectives::pairwise_threshold_arg(0));
+    }
     if (hierarchical_)
     {
         return hpx::collectives::all_to_all(*hierarchical_communicator_,
