@@ -27,6 +27,18 @@ struct base
 
     real get_measurement(std::string name);
 
+    // Skip the final exchange(s) and keep the result in the transposed layout (like FFTW_MPI_TRANSPOSED_OUT).
+    void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
+
+    // Parameters of the hierarchical communicators used by the run flag "scatter_hierarchical" (reference): number of
+    // children per tree node, and the number of localities (in a group) below which they collapse to flat
+    // communicators.
+    void set_hierarchical_parameters(std::size_t arity, std::size_t flat_fallback_threshold)
+    {
+        hierarchical_arity_ = arity;
+        hierarchical_flat_threshold_ = flat_fallback_threshold;
+    }
+
     ~base() { hpxfft::util::fftw_adapter::cleanup(); }
 
   protected:
@@ -41,6 +53,33 @@ struct base
     virtual void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) = 0;
 
   protected:
+    // Map the run flag onto COMM_FLAG_ ("scatter" or "all_to_all") and the variant flags below. num_sites is the
+    // number of localities taking part in one exchange.
+    void parse_comm_flag(const std::string &flag, std::size_t num_sites)
+    {
+        COMM_FLAG_ = flag;
+        if (flag == "scatter_async")
+        {
+            scatter_sync_ = false;
+            COMM_FLAG_ = "scatter";
+        }
+        else if (flag == "scatter_hierarchical")
+        {
+            hierarchical_scatter_ = true;
+            COMM_FLAG_ = "scatter";
+        }
+        else if (flag == "all_to_all_routed")
+        {
+            routed_ = true;
+            COMM_FLAG_ = "all_to_all";
+        }
+        // the direct (pairwise) exchange needs at least three sites; with fewer the routed all_to_all is used
+        if (COMM_FLAG_ == "all_to_all" && num_sites < 3)
+        {
+            routed_ = true;
+        }
+    }
+
     // prarameters
     std::size_t n_x_local_, n_y_local_, n_z_local_;
     std::size_t dim_r_z_, dim_c_z_, dim_c_y_, dim_c_x_;
@@ -65,8 +104,18 @@ struct base
     // communicators
     std::string COMM_FLAG_;
     std::vector<std::string> basename_storage_;
-    std::vector<const char *> basenames_;
     std::vector<hpx::collectives::communicator> communicators_;
+    // run variants
+    bool scatter_sync_ = true;
+    bool transposed_out_ = false;
+    // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
+    // selects the reference implementation that routes the data through a root site
+    bool routed_ = false;
+    // scatter through one hierarchical communicator per root (run flag scatter_hierarchical); needs an HPX whose
+    // hierarchical communicators support a root site other than 0
+    bool hierarchical_scatter_ = false;
+    std::size_t hierarchical_arity_ = 2;
+    std::size_t hierarchical_flat_threshold_ = 16;
 };
 
 inline real hpxfft::fft3D::distributed::base::get_measurement(std::string name) { return measurements_[name]; }

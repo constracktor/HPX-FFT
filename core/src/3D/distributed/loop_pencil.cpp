@@ -66,27 +66,10 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         reinterpret_cast<fftw_complex *>(permuted_vec_.slice_yz(0)),
         hpxfft::util::fftw_adapter::direction::forward);
     // communication specific initialization
-    if (COMM_FLAG == "scatter_async")
-    {
-        scatter_sync_ = false;
-        COMM_FLAG_ = "scatter";
-    }
-    else if (COMM_FLAG == "scatter_hierarchical")
-    {
-        // scatter through hierarchical (tree) communicators, one per root
-        hierarchical_scatter_ = true;
-        COMM_FLAG_ = "scatter";
-    }
-    else if (COMM_FLAG == "all_to_all_routed")
-    {
-        // reference all_to_all: the data is routed through a root site (flat communicators)
-        routed_ = true;
-        COMM_FLAG_ = "all_to_all";
-    }
-    else
-    {
-        COMM_FLAG_ = COMM_FLAG;
-    }
+    parse_comm_flag(COMM_FLAG, localities_per_dir_);
+    // first generation of the exchanges (set before the communicator setup, which may return early)
+    generation_counterx_ = 1;
+    generation_countery_ = 1;
     if (COMM_FLAG_ == "scatter")
     {
         communication_vec_.resize(localities_per_dir_);
@@ -176,10 +159,6 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         std::cout << "Communication scheme not specified during initialization\n";
         hpx::finalize();
     }
-    // Global synchronization to ensure all communicators are fully initialized before use
-    // hpx::distributed::barrier("initialize Barrier").wait();
-    generation_counterx_ = 1;
-    generation_countery_ = 1;
 }
 
 // scatter communitcation

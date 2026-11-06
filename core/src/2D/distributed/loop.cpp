@@ -87,7 +87,7 @@ hpx::future<std::vector<std::vector<real>>> hpxfft::fft2D::distributed::loop::al
     }
     // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
     // explicit generation and at least three sites (otherwise HPX routes the data)
-    return hpx::collectives::all_to_all(basenames_[0],
+    return hpx::collectives::all_to_all(basename_storage_[0].c_str(),
                                         std::move(prep),
                                         hpx::collectives::num_sites_arg(num_localities_),
                                         hpx::collectives::this_site_arg(this_locality_),
@@ -170,11 +170,6 @@ void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, 
 // 2D FFT algorithm
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c()
 {
-    const std::size_t num_chunks = effective_num_chunks();
-    if (num_chunks > 1)
-    {
-        return fft_2d_r2c_pipelined(num_chunks);
-    }
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -332,220 +327,6 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
     return std::move(values_vec_);
 }
 
-// 2D FFT algorithm with communication overlapped with computation: both exchanges are split into chunks of rows that
-// are sent as soon as they are computed.
-// number of chunks used by the exchanges: automatic (0) enables overlap for the routed all_to_all with large local data
-// only, where it pays off (measured crossover on 8 nodes: 45% slower at 17 MiB, 35% faster at 64 MiB and 17% at 256 MiB per locality)
-std::size_t hpxfft::fft2D::distributed::loop::effective_num_chunks() const
-{
-    constexpr std::size_t auto_chunks = 8;
-    constexpr std::size_t auto_min_bytes = std::size_t(48) << 20;
-    if (num_chunks_ != 0)
-    {
-        return num_chunks_;
-    }
-    if (routed_ && values_vec_.n_row() * values_vec_.n_col() * sizeof(real) >= auto_min_bytes)
-    {
-        return auto_chunks;
-    }
-    return 1;
-}
-
-hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c_pipelined(
-    const std::size_t num_chunks)
-{
-    const std::size_t L = num_localities_;
-    const bool scatter = (COMM_FLAG_ == "scatter");
-    const std::size_t C1 = std::min(num_chunks, n_x_local_);  // chunks of the first exchange (rows of x)
-    const std::size_t C2 = std::min(num_chunks, n_y_local_);  // chunks of the second exchange (rows of y)
-    auto range = [](std::size_t n, std::size_t C, std::size_t c)
-    { return std::pair<std::size_t, std::size_t>(n * c / C, n * (c + 1) / C); };
-    using hpx::execution::par;
-    using hpx::experimental::for_loop;
-
-    struct pending
-    {
-        std::vector<hpx::future<std::vector<real>>> sc;
-        hpx::future<std::vector<std::vector<real>>> a2a;
-    };
-    auto start_exchange = [&](std::vector<std::vector<real>> &&prep, std::size_t generation)
-    {
-        pending p;
-        if (scatter)
-        {
-            p.sc.resize(L);
-            for (std::size_t i = 0; i < L; ++i)
-            {
-                p.sc[i] = scatter_exchange(i, std::move(prep), generation);
-            }
-        }
-        else
-        {
-            p.a2a = all_to_all_exchange(std::move(prep), generation);
-        }
-        return p;
-    };
-    auto receive = [&](pending &p)
-    {
-        std::vector<std::vector<real>> recv;
-        if (scatter)
-        {
-            recv.resize(L);
-            for (std::size_t i = 0; i < L; ++i)
-            {
-                recv[i] = p.sc[i].get();
-            }
-        }
-        else
-        {
-            recv = p.a2a.get();
-        }
-        return recv;
-    };
-
-    auto start_total = t_.now();
-    double t_compute1 = 0, t_wait1 = 0, t_trans1 = 0, t_compute2 = 0, t_wait2 = 0, t_trans2 = 0;
-
-    ////////////////////////////////////////////////////////////////
-    // first exchange: r2c in y, split, send (per chunk of rows)
-    std::vector<pending> pend1(C1);
-    std::vector<std::pair<std::size_t, std::size_t>> xr(C1);
-    for (std::size_t c = 0; c < C1; ++c)
-    {
-        auto t0 = t_.now();
-        xr[c] = range(n_x_local_, C1, c);
-        const std::size_t x0 = xr[c].first, cx = xr[c].second - xr[c].first;
-        for_loop(par, x0, x0 + cx, [&](auto i) { fft_1d_r2c_inplace(i); });
-        std::vector<std::vector<real>> prep(L);
-        for (std::size_t j = 0; j < L; ++j)
-        {
-            prep[j].resize(cx * dim_c_y_part_);
-        }
-        for_loop(par,
-                 0,
-                 cx,
-                 [&](auto xl)
-                 {
-                     for (std::size_t j = 0; j < L; ++j)
-                     {
-                         std::copy(values_vec_.row(x0 + xl) + j * dim_c_y_part_,
-                                   values_vec_.row(x0 + xl) + (j + 1) * dim_c_y_part_,
-                                   prep[j].begin() + xl * dim_c_y_part_);
-                     }
-                 });
-        pend1[c] = start_exchange(std::move(prep), 1 + c);
-        t_compute1 += t_.now() - t0;
-    }
-
-    ////////////////////////////////////////////////////////////////
-    // receive the first exchange and transpose y -> x, chunk by chunk
-    for (std::size_t c = 0; c < C1; ++c)
-    {
-        auto t0 = t_.now();
-        auto recv = receive(pend1[c]);
-        auto t1 = t_.now();
-        t_wait1 += t1 - t0;
-        const std::size_t x0 = xr[c].first, cx = xr[c].second - xr[c].first;
-        for_loop(par,
-                 0,
-                 L * n_y_local_,
-                 [&](auto idx)
-                 {
-                     const std::size_t i = idx / n_y_local_, k = idx % n_y_local_;
-                     for (std::size_t jj = 0; jj < cx; ++jj)
-                     {
-                         const std::size_t index_in = dim_c_y_part_ * jj + 2 * k;
-                         const std::size_t index_out = 2 * L * (x0 + jj) + 2 * i;
-                         trans_values_vec_(k, index_out) = recv[i][index_in];
-                         trans_values_vec_(k, index_out + 1) = recv[i][index_in + 1];
-                     }
-                 });
-        t_trans1 += t_.now() - t1;
-    }
-
-    ////////////////////////////////////////////////////////////////
-    // second exchange: c2c in x, split, send (per chunk of rows)
-    std::vector<pending> pend2(C2);
-    std::vector<std::pair<std::size_t, std::size_t>> yr(C2);
-    if (transposed_out_)
-    {
-        auto t0 = t_.now();
-        for_loop(par, 0, n_y_local_, [&](auto i) { fft_1d_c2c_inplace(i); });
-        t_compute2 += t_.now() - t0;
-        auto stop_total = t_.now();
-        measurements_["total"] = stop_total - start_total;
-        measurements_["first_fftw"] = t_compute1;
-        measurements_["first_comm"] = t_wait1;
-        measurements_["first_trans"] = t_trans1;
-        measurements_["second_fftw"] = t_compute2;
-        return std::move(trans_values_vec_);
-    }
-    for (std::size_t c = 0; c < C2; ++c)
-    {
-        auto t0 = t_.now();
-        yr[c] = range(n_y_local_, C2, c);
-        const std::size_t y0 = yr[c].first, cy = yr[c].second - yr[c].first;
-        for_loop(par, y0, y0 + cy, [&](auto i) { fft_1d_c2c_inplace(i); });
-        std::vector<std::vector<real>> prep(L);
-        for (std::size_t j = 0; j < L; ++j)
-        {
-            prep[j].resize(cy * dim_c_x_part_);
-        }
-        for_loop(par,
-                 0,
-                 cy,
-                 [&](auto yl)
-                 {
-                     for (std::size_t j = 0; j < L; ++j)
-                     {
-                         std::copy(trans_values_vec_.row(y0 + yl) + j * dim_c_x_part_,
-                                   trans_values_vec_.row(y0 + yl) + (j + 1) * dim_c_x_part_,
-                                   prep[j].begin() + yl * dim_c_x_part_);
-                     }
-                 });
-        pend2[c] = start_exchange(std::move(prep), 1 + C1 + c);
-        t_compute2 += t_.now() - t0;
-    }
-
-    ////////////////////////////////////////////////////////////////
-    // receive the second exchange and transpose x -> y, chunk by chunk
-    const std::size_t dim_input = dim_c_x_part_ / 2;
-    for (std::size_t c = 0; c < C2; ++c)
-    {
-        auto t0 = t_.now();
-        auto recv = receive(pend2[c]);
-        auto t1 = t_.now();
-        t_wait2 += t1 - t0;
-        const std::size_t y0 = yr[c].first, cy = yr[c].second - yr[c].first;
-        for_loop(par,
-                 0,
-                 L * cy,
-                 [&](auto idx)
-                 {
-                     const std::size_t i = idx / cy, jj = idx % cy;
-                     const std::size_t index_out = 2 * L * (y0 + jj) + 2 * i;
-                     for (std::size_t k = 0; k < dim_input; ++k)
-                     {
-                         const std::size_t index_in = dim_c_x_part_ * jj + 2 * k;
-                         values_vec_(k, index_out) = recv[i][index_in];
-                         values_vec_(k, index_out + 1) = recv[i][index_in + 1];
-                     }
-                 });
-        t_trans2 += t_.now() - t1;
-    }
-    auto stop_total = t_.now();
-
-    // time measurements: compute stages, time waiting for data, and transposition after receiving
-    measurements_["total"] = stop_total - start_total;
-    measurements_["first_fftw"] = t_compute1;
-    measurements_["first_comm"] = t_wait1;
-    measurements_["first_trans"] = t_trans1;
-    measurements_["second_fftw"] = t_compute2;
-    measurements_["second_comm"] = t_wait2;
-    measurements_["second_trans"] = t_trans2;
-    return std::move(values_vec_);
-}
-
 // initialization
 void hpxfft::fft2D::distributed::loop::initialize(
     hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
@@ -609,8 +390,6 @@ void hpxfft::fft2D::distributed::loop::initialize(
         communication_futures_.resize(num_localities_);
         // setup communicators
         basename_storage_.resize(num_localities_);
-        basenames_.resize(num_localities_);
-        communicators_.resize(num_localities_);
         if (hierarchical_scatter_)
         {
             // communicator i is rooted at locality i; below the flat fallback threshold each of them is a single
@@ -619,9 +398,8 @@ void hpxfft::fft2D::distributed::loop::initialize(
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
                 basename_storage_[i] = std::to_string(i);
-                basenames_[i] = basename_storage_[i].c_str();
                 hierarchical_scatter_communicators_[i].emplace(hpx::collectives::create_hierarchical_communicator(
-                    basenames_[i],
+                    basename_storage_[i].c_str(),
                     hpx::collectives::num_sites_arg(num_localities_),
                     hpx::collectives::this_site_arg(this_locality_),
                     hpx::collectives::arity_arg(hierarchical_arity_),
@@ -631,16 +409,16 @@ void hpxfft::fft2D::distributed::loop::initialize(
             }
             return;
         }
+        communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
             basename_storage_[i] = std::to_string(i);
-            basenames_[i] = basename_storage_[i].c_str();
             // Host the communicator on the locality that scatters through it
             // (root_site = i). With the default root site (0) every scatter is
             // staged on locality 0 first: the data crosses the network twice
             // and locality 0 becomes a hub for all of them.
             communicators_[i] = std::move(hpx::collectives::create_communicator(
-                basenames_[i],
+                basename_storage_[i].c_str(),
                 hpx::collectives::num_sites_arg(num_localities_),
                 hpx::collectives::this_site_arg(this_locality_),
                 hpx::collectives::generation_arg(),
@@ -660,21 +438,19 @@ void hpxfft::fft2D::distributed::loop::initialize(
         communication_vec_.resize(1);
         // setup communicators
         basename_storage_.resize(1);
-        basenames_.resize(1);
         communicators_.resize(1);
         basename_storage_[0] = std::to_string(0);
-        basenames_[0] = basename_storage_[0].c_str();
         if (routed_)
         {
             communicators_[0] = std::move(hpx::collectives::create_communicator(
-                basenames_[0],
+                basename_storage_[0].c_str(),
                 hpx::collectives::num_sites_arg(num_localities_),
                 hpx::collectives::this_site_arg(this_locality_)));
         }
     }
     else
     {
-        std::cout << "Specify communication scheme: scatter or all_to_all\n";
+        std::cout << "Specify communication scheme: scatter, all_to_all, all_to_all_routed or scatter_hierarchical\n";
         hpx::finalize();
     }
 }
