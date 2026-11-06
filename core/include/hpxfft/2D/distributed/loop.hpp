@@ -26,6 +26,11 @@ struct loop
 
     vector_2d fft_2d_r2c();
 
+    // Skip the final transpose: the result stays in the layout (y_local, x)
+    // with y distributed over the localities, like FFTW_MPI_TRANSPOSED_OUT.
+    // Saves the second communication phase.
+    void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
+
     real get_measurement(std::string name);
 
     ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
@@ -73,8 +78,10 @@ struct loop
     vector_comm communication_vec_;
     // locality information
     std::size_t this_locality_, num_localities_;
+    bool transposed_out_ = false;
     // communicators
     std::string COMM_FLAG_;
+    std::vector<std::string> basename_storage_;
     std::vector<const char *> basenames_;
     std::vector<hpx::collectives::communicator> communicators_;
 };
