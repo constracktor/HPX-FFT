@@ -84,46 +84,64 @@ void hpxfft::fft2D::distributed::loop::communicate_all_to_all_trans_vec()
                              .get();
 }
 
-// transpose after communication
-void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t k, const std::size_t i)
+namespace
 {
-    std::size_t index_in;
-    std::size_t index_out;
-    const std::size_t offset_in = 2 * k;
-    const std::size_t offset_out = 2 * i;
+// Tile edge (in complex numbers) of the blocked transposes below: a tile of 16 x 16 complex numbers stays in L1 cache,
+// so neither the strided reads nor the strided writes of a transpose thrash the cache.
+constexpr std::size_t TILE = 16;
+}  // namespace
+
+// transpose after communication: processes the TILE rows k = tile * TILE ... of the output
+void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t tile, const std::size_t i)
+{
     const std::size_t factor_in = dim_c_y_part_;
     const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / factor_in;
+    const real *src = communication_vec_[i].data();
+    const std::size_t k_begin = tile * TILE;
+    const std::size_t k_end = std::min(k_begin + TILE, n_y_local_);
 
-    for (std::size_t j = 0; j < dim_input; ++j)
+    for (std::size_t j_begin = 0; j_begin < dim_input; j_begin += TILE)
     {
-        // compute indices once use twice
-        index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
-        // transpose
-        trans_values_vec_(k, index_out) = communication_vec_[i][index_in];
-        trans_values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
+        const std::size_t j_end = std::min(j_begin + TILE, dim_input);
+        for (std::size_t k = k_begin; k < k_end; ++k)
+        {
+            real *dst = trans_values_vec_.row(k);
+            for (std::size_t j = j_begin; j < j_end; ++j)
+            {
+                const std::size_t index_in = factor_in * j + 2 * k;
+                const std::size_t index_out = factor_out * j + 2 * i;
+                dst[index_out] = src[index_in];
+                dst[index_out + 1] = src[index_in + 1];
+            }
+        }
     }
 }
 
-void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t j, const std::size_t i)
+// processes the TILE rows j = tile * TILE ... of the input blocks
+void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, const std::size_t i)
 {
-    std::size_t index_in;
-    std::size_t index_out;
-    const std::size_t offset_out = 2 * i;
     const std::size_t factor_in = dim_c_x_part_;
     const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
+    const real *src = communication_vec_[i].data();
+    const std::size_t j_begin = tile * TILE;
+    const std::size_t j_end = std::min(j_begin + TILE, n_y_local_);
 
-    for (std::size_t k = 0; k < dim_input; ++k)
+    for (std::size_t k_begin = 0; k_begin < dim_input; k_begin += TILE)
     {
-        // compute indices once use twice
-        std::size_t offset_in = 2 * k;
-        index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
-        // transpose
-        values_vec_(k, index_out) = communication_vec_[i][index_in];
-        values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
+        const std::size_t k_end = std::min(k_begin + TILE, dim_input);
+        for (std::size_t k = k_begin; k < k_end; ++k)
+        {
+            real *dst = values_vec_.row(k);
+            for (std::size_t j = j_begin; j < j_end; ++j)
+            {
+                const std::size_t index_in = factor_in * j + 2 * k;
+                const std::size_t index_out = factor_out * j + 2 * i;
+                dst[index_out] = src[index_in];
+                dst[index_out + 1] = src[index_in + 1];
+            }
+        }
     }
 }
 
@@ -192,10 +210,10 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
             hpx::experimental::for_loop(
                 hpx::execution::par,
                 0,
-                n_y_local_,
+                (n_y_local_ + TILE - 1) / TILE,
                 [&](auto k)
                 {
-                    // transpose from y-direction to x-direction
+                    // blocked transpose from y-direction to x-direction
                     transpose_y_to_x(k, i);
                 });
         });
@@ -266,10 +284,10 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
             hpx::experimental::for_loop(
                 hpx::execution::par,
                 0,
-                n_y_local_,
+                (n_y_local_ + TILE - 1) / TILE,
                 [&](auto j)
                 {
-                    // transpose from x-direction to y-direction
+                    // blocked transpose from x-direction to y-direction
                     transpose_x_to_y(j, i);
                 });
         });
