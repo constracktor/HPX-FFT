@@ -5,6 +5,7 @@
 #include "../../util/adapter_fftw.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
+#include <optional>
 #include <hpx/modules/collectives.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
 
@@ -37,6 +38,17 @@ struct loop
     // automatically: 8 chunks for all_to_all if the local data is large
     // (chunking only pays off then), otherwise 1.
     void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks; }
+
+    // Parameters of the hierarchical communicators used by the run flags
+    // "all_to_all_hierarchical" and "scatter_hierarchical": number of children
+    // per tree node, and the number of localities below which they collapse to
+    // flat communicators. The run flag "all_to_all_pairwise" uses a direct
+    // exchange between the localities instead of routing through a root site.
+    void set_hierarchical_parameters(std::size_t arity, std::size_t flat_fallback_threshold)
+    {
+        hierarchical_arity_ = arity;
+        hierarchical_flat_threshold_ = flat_fallback_threshold;
+    }
 
     real get_measurement(std::string name);
 
@@ -90,6 +102,18 @@ struct loop
     std::size_t this_locality_, num_localities_;
     bool transposed_out_ = false;
     std::size_t num_chunks_ = 0;
+    // alternative collectives (see set_hierarchical_parameters)
+    bool hierarchical_ = false;
+    bool pairwise_ = false;
+    bool hierarchical_scatter_ = false;
+    std::size_t hierarchical_arity_ = 2;
+    std::size_t hierarchical_flat_threshold_ = 16;
+    std::optional<hpx::collectives::hierarchical_communicator> hierarchical_communicator_;
+    std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
+    hpx::future<std::vector<std::vector<real>>> all_to_all_exchange(
+        std::vector<std::vector<real>> &&prep, std::size_t generation);
+    hpx::future<std::vector<real>> scatter_exchange(
+        std::size_t root, std::vector<std::vector<real>> &&prep, std::size_t generation);
     // communicators
     std::string COMM_FLAG_;
     std::vector<std::string> basename_storage_;
