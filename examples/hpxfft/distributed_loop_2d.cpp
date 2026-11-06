@@ -138,8 +138,9 @@ int main(int argc, char *argv[])
         value<bool>()->default_value(0),
         "Skip the final transpose and keep the result in (y_local, x) layout (default: false)")(
         "chunks",
-        value<std::size_t>()->default_value(1),
-        "Number of chunks per exchange to overlap communication with computation (default: 1 = no overlap)");
+        value<std::size_t>()->default_value(0),
+        "Number of chunks per exchange to overlap communication with computation (default: 0 = automatic, "
+        "1 = no overlap)");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities

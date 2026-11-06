@@ -33,15 +33,18 @@ struct loop
 
     // Split every exchange into this many chunks of rows. Each chunk is sent as
     // soon as it is computed, so communication overlaps with the remaining
-    // computation. 1 (default) keeps the original phase-by-phase algorithm.
-    void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks < 1 ? 1 : num_chunks; }
+    // computation. 1 keeps the phase-by-phase algorithm. 0 (default) chooses
+    // automatically: 8 chunks for all_to_all if the local data is large
+    // (chunking only pays off then), otherwise 1.
+    void set_num_chunks(std::size_t num_chunks) { num_chunks_ = num_chunks; }
 
     real get_measurement(std::string name);
 
     ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
 
   private:
-    vector_2d fft_2d_r2c_pipelined();
+    vector_2d fft_2d_r2c_pipelined(std::size_t num_chunks);
+    std::size_t effective_num_chunks() const;
 
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i);
@@ -86,7 +89,7 @@ struct loop
     // locality information
     std::size_t this_locality_, num_localities_;
     bool transposed_out_ = false;
-    std::size_t num_chunks_ = 1;
+    std::size_t num_chunks_ = 0;
     // communicators
     std::string COMM_FLAG_;
     std::vector<std::string> basename_storage_;
