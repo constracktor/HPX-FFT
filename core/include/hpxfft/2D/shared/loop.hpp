@@ -27,8 +27,6 @@ struct loop
 
     void write_plans_to_file(std::string file_path);
 
-    ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
-
   private:
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i);
@@ -46,6 +44,8 @@ struct loop
     // parameters
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     // 1D adapters
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
     hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
