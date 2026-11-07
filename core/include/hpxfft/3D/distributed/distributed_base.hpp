@@ -39,8 +39,6 @@ struct base
         hierarchical_flat_threshold_ = flat_fallback_threshold;
     }
 
-    ~base() { hpxfft::util::fftw_adapter::cleanup(); }
-
   protected:
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i, const std::size_t j);
@@ -85,6 +83,8 @@ struct base
     std::size_t dim_r_z_, dim_c_z_, dim_c_y_, dim_c_x_;
     std::size_t dim_c_z_part_, dim_c_y_part_, dim_c_x_part_;
 
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fftw_r2c_adapter_dir_z_;
     hpxfft::util::fftw_adapter::c2c_1d fftw_c2c_adapter_dir_y_;
     hpxfft::util::fftw_adapter::c2c_1d fftw_c2c_adapter_dir_x_;

@@ -19,8 +19,6 @@ struct base
 
     real get_measurement(std::string name);
 
-    ~base() { hpxfft::util::fftw_adapter::cleanup(); }
-
   protected:
     // FFT backend
     void fft_1d_r2c_inplace(const std::size_t i, const std::size_t j);
@@ -35,6 +33,8 @@ struct base
   protected:
     // prarameters
     std::size_t dim_r_z_, dim_c_z_, dim_c_y_, dim_c_x_;
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     // IMPORTANT: declare r2c adapter before c2c so r2c destructor is called after c2c
     hpxfft::util::fftw_adapter::r2c_1d fftw_r2c_adapter_dir_z_;
     hpxfft::util::fftw_adapter::c2c_1d fftw_c2c_adapter_dir_y_;

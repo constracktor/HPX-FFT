@@ -19,6 +19,15 @@ enum class plan_flag {
 
 void cleanup();
 
+// Calls fftw_cleanup() on destruction. Place it as the first data member of a class that owns plans.
+struct cleanup_guard
+{
+    cleanup_guard() = default;
+    cleanup_guard(const cleanup_guard &) = delete;
+    cleanup_guard &operator=(const cleanup_guard &) = delete;
+    ~cleanup_guard() { cleanup(); }
+};
+
 inline plan_flag string_to_fftw_plan_flag(const std::string &flag_str)
 {
     if (flag_str == "estimate")

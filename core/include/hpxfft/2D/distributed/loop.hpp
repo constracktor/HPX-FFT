@@ -43,8 +43,6 @@ struct loop
 
     real get_measurement(std::string name);
 
-    ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
-
   private:
 
     // FFT backend
@@ -73,6 +71,8 @@ struct loop
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     std::size_t dim_c_y_part_, dim_c_x_part_;
     // 1D adapters
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
     hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
