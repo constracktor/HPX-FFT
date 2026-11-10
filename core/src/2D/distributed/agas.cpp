@@ -108,16 +108,16 @@ void hpxfft::fft2D::distributed::agas_server::transpose_y_to_x(const std::size_t
     std::size_t index_in;
     std::size_t index_out;
     const std::size_t offset_in = 2 * k;
-    const std::size_t offset_out = 2 * i;
+    // the rows (x) of locality i form the block starting at x = i * dim_input
     const std::size_t factor_in = dim_c_y_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / factor_in;
+    const std::size_t offset_out = 2 * i * dim_input;
 
     for (std::size_t j = 0; j < dim_input; ++j)
     {
         // compute indices once use twice
         index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
+        index_out = 2 * j + offset_out;
         // transpose
         trans_values_vec_(k, index_out) = communication_vec_[i][index_in];
         trans_values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
@@ -128,9 +128,9 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
 {
     std::size_t index_in;
     std::size_t index_out;
-    const std::size_t offset_out = 2 * i;
+    // the rows (y) of locality i form the block starting at y = i * n_y_local_
+    const std::size_t offset_out = 2 * i * n_y_local_;
     const std::size_t factor_in = dim_c_x_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
 
     for (std::size_t k = 0; k < dim_input; ++k)
@@ -138,7 +138,7 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
         // compute indices once use twice
         std::size_t offset_in = 2 * k;
         index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
+        index_out = 2 * j + offset_out;
         // transpose
         values_vec_(k, index_out) = communication_vec_[i][index_in];
         values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
