@@ -117,8 +117,9 @@ constexpr std::size_t TILE = 16;
 void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t tile, const std::size_t i)
 {
     const std::size_t factor_in = dim_c_y_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / factor_in;
+    // the rows (x) of locality i form the block starting at x = i * dim_input
+    const std::size_t x_offset = i * dim_input;
     const real *src = communication_vec_[i].data();
     const std::size_t k_begin = tile * TILE;
     const std::size_t k_end = std::min(k_begin + TILE, n_y_local_);
@@ -132,7 +133,7 @@ void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t tile, 
             for (std::size_t j = j_begin; j < j_end; ++j)
             {
                 const std::size_t index_in = factor_in * j + 2 * k;
-                const std::size_t index_out = factor_out * j + 2 * i;
+                const std::size_t index_out = 2 * (x_offset + j);
                 dst[index_out] = src[index_in];
                 dst[index_out + 1] = src[index_in + 1];
             }
@@ -144,8 +145,9 @@ void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t tile, 
 void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, const std::size_t i)
 {
     const std::size_t factor_in = dim_c_x_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
+    // the rows (y) of locality i form the block starting at y = i * n_y_local_
+    const std::size_t y_offset = i * n_y_local_;
     const real *src = communication_vec_[i].data();
     const std::size_t j_begin = tile * TILE;
     const std::size_t j_end = std::min(j_begin + TILE, n_y_local_);
@@ -159,7 +161,7 @@ void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, 
             for (std::size_t j = j_begin; j < j_end; ++j)
             {
                 const std::size_t index_in = factor_in * j + 2 * k;
-                const std::size_t index_out = factor_out * j + 2 * i;
+                const std::size_t index_out = 2 * (y_offset + j);
                 dst[index_out] = src[index_in];
                 dst[index_out + 1] = src[index_in + 1];
             }
