@@ -25,6 +25,16 @@ We provide a simple compilation script for HPX-FFT. The script assumes an gcc co
 
 HPX-FFT comes with several examples for HPX-FFT itself as well as for a FFTW reference. The examples can be compiled with the respective compilation scripts.
 
+## Problem Sizes
+
+The size of the real input is `nx x ny x nz` (3D) or `nx x ny` (2D); even and odd sizes are supported. Every row of the last dimension holds `2 * (nz / 2 + 1)` doubles, of which the first `nz` are the real input. Pass `nz` (3D) or `ny` (2D) as last argument of `initialize`; without it the size is derived from the row length and assumed to be even.
+
+Distributed runs split the input into equal blocks of rows in x (slab and 2D) or blocks in x and y (pencil, on a square number of localities). Every locality passes its block; the blocks must have the same shape on all localities, which is checked during initialization. The dimensions that are redistributed during the computation (y for slab and 2D, z for pencil) are split into blocks of `n / L` entries, where the first `n % L` blocks hold one more, so no divisibility is required. With `set_transposed_output(true)` the result stays in this distribution; `local_y_count()` and `local_y_offset()` (slab, 2D) or `local_z_count()` and `local_z_offset()` (pencil) give the block of the locality. The sizes must provide at least one entry per locality in the redistributed dimension (`ny` or `ny / 2 + 1` for slab and 2D, `nz / 2 + 1` for pencil).
+
+## Tests
+
+`ctest` runs the distributed tests on 1 to 9 localities of the local machine (`test/run_localities.sh`) and compares the result with a naive DFT. The tests use the default HPX ports and must not run concurrently.
+
 ## How to Run Examples
 
 ### HPX-FFT
