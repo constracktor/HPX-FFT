@@ -3,6 +3,7 @@
 #define hpxfft_distributed_loop_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/check_shape.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
 #include <optional>
