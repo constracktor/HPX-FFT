@@ -15,7 +15,6 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     // parameters
     n_x_local_ = values_vec_.n_x();
     n_y_local_ = values_vec_.n_y();
-    n_z_local_ = values_vec_.n_z() / (2 * localities_per_dir_);
     dim_c_x_ = n_x_local_ * localities_per_dir_;
     dim_c_y_ = n_y_local_ * localities_per_dir_;
     dim_c_z_ = values_vec_.n_z() / 2;
@@ -31,15 +30,17 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     {
         throw std::invalid_argument("Number of localities must be a square number using pencil decomposition");
     }
-    // z is split into complex numbers (dim_c_z = nz / 2 + 1 of them), so dim_c_z must be divisible by the number of
-    // localities per direction
-    if (dim_c_z_ % localities_per_dir_ != 0)
+    // z is split into blocks of complex numbers (dim_c_z = nz / 2 + 1 of them): dim_c_z / P each, the first
+    // dim_c_z % P blocks hold one more
+    if (dim_c_z_ < localities_per_dir_)
     {
-        throw std::invalid_argument("Number of complex values in z (nz / 2 + 1) is not divisable by the number of "
+        throw std::invalid_argument("Number of complex values in z (nz / 2 + 1) is smaller than the number of "
                                     "localities per direction");
     }
     pos_dir_x_ = this_locality_ / localities_per_dir_;
     pos_dir_y_ = this_locality_ % localities_per_dir_;
+    z_offsets_ = hpxfft::util::block_offsets(dim_c_z_, localities_per_dir_);
+    n_z_local_ = z_offsets_[pos_dir_y_ + 1] - z_offsets_[pos_dir_y_];
     // resize other data structures
     permuted_vec_ = std::move(vector_3d(n_x_local_, n_z_local_, 2 * dim_c_y_));
     values_prep_.resize(localities_per_dir_);
@@ -49,7 +50,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     for (std::size_t i = 0; i < localities_per_dir_; ++i)
     {
         permuted_values_prep_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_);
-        values_prep_[i] = vector_3d(n_x_local_, n_y_local_, 2 * n_z_local_);
+        values_prep_[i] = vector_3d(n_x_local_, n_y_local_, 2 * (z_offsets_[i + 1] - z_offsets_[i]));
         permuted_values_prep2_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_);
         values_prep2_[i] = vector_3d(n_y_local_, n_z_local_, 2 * n_x_local_);
     }
@@ -349,8 +350,9 @@ void hpxfft::fft3D::distributed::loop::pencil::permute_distributed_x_z_y(const s
     }
     else
     {
-        const std::size_t part = values_vec_.n_z() / localities_per_dir_;
-        transpose_slice_yz(values_vec_, communication_vec_[i], slice_x, part * i, part / 2);
+        // the z block of locality i of the group
+        transpose_slice_yz(
+            values_vec_, communication_vec_[i], slice_x, 2 * z_offsets_[i], z_offsets_[i + 1] - z_offsets_[i]);
     }
 }
 
@@ -391,13 +393,13 @@ void hpxfft::fft3D::distributed::loop::pencil::split_vec(const std::size_t x, co
 {
     if (dummy == 1)
     {
-        std::size_t part = values_vec_.n_z() / localities_per_dir_;
         for (std::size_t j = 0; j < localities_per_dir_; j++)
         {
+            const std::size_t part = 2 * (z_offsets_[j + 1] - z_offsets_[j]);
             for (std::size_t y = 0; y < values_prep_[j].n_y(); ++y)
             {
                 // contiguous run in z: plain copy
-                std::copy_n(&values_vec_(x, y, part * j), part, &values_prep_[j](x, y, 0));
+                std::copy_n(&values_vec_(x, y, 2 * z_offsets_[j]), part, &values_prep_[j](x, y, 0));
             }
         }
     }
@@ -580,7 +582,15 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::pencil::
     }
     generation_counterx_++;
     auto start_second_permute = t_.now();
-    values_vec_.rearrange(n_y_local_, n_z_local_, 2 * dim_c_x_);
+    // reuse the buffer when the size is the same, otherwise allocate
+    if (n_y_local_ * n_z_local_ * 2 * dim_c_x_ == values_vec_.n_x() * values_vec_.n_y() * values_vec_.n_z())
+    {
+        values_vec_.rearrange(n_y_local_, n_z_local_, 2 * dim_c_x_);
+    }
+    else
+    {
+        values_vec_ = vector_3d(n_y_local_, n_z_local_, 2 * dim_c_x_, vector_3d::uninitialized);
+    }
     // for every locality
     hpx::experimental::for_loop(
         hpx::execution::par,
@@ -734,7 +744,14 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::pencil::
     }
     generation_countery_++;
     auto start_fourth_permute = t_.now();
-    values_vec_.rearrange(n_x_local_, n_y_local_, 2 * dim_c_z_);
+    if (n_x_local_ * n_y_local_ * 2 * dim_c_z_ == values_vec_.n_x() * values_vec_.n_y() * values_vec_.n_z())
+    {
+        values_vec_.rearrange(n_x_local_, n_y_local_, 2 * dim_c_z_);
+    }
+    else
+    {
+        values_vec_ = vector_3d(n_x_local_, n_y_local_, 2 * dim_c_z_, vector_3d::uninitialized);
+    }
     // for every locality
     hpx::experimental::for_loop(
         hpx::execution::par,
