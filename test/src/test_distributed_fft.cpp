@@ -218,7 +218,9 @@ void run_2d(const params &p)
     double scale = 0.0;
     for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
     // natural: rows of this locality, all dcy frequencies; transposed: (y_local, x) with y distributed
-    const std::size_t rows = p.transposed ? dcy / nl : p.nx / nl;
+    // transposed: the y frequencies are split into blocks of dcy / L, the first dcy % L localities hold one more
+    const auto yo = hpxfft::util::block_offsets(dcy, nl);
+    const std::size_t rows = p.transposed ? yo[me + 1] - yo[me] : p.nx / nl;
     const std::size_t cols = p.transposed ? p.nx : dcy;
     std::string what;
     bool ok = true;
@@ -234,7 +236,7 @@ void run_2d(const params &p)
         for (std::size_t i = 0; i < rows; ++i)
             for (std::size_t j = 0; j < cols; ++j)
             {
-                const reference::cplx e = p.transposed ? ref.at(j, me * rows + i) : ref.at(me * rows + i, j);
+                const reference::cplx e = p.transposed ? ref.at(j, yo[me] + i) : ref.at(me * rows + i, j);
                 worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - e));
             }
         what = "max_rel_err=" + std::to_string(worst / scale);

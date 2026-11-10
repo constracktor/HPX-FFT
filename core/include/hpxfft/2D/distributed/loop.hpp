@@ -3,6 +3,7 @@
 #define hpxfft_distributed_loop_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
@@ -46,6 +47,10 @@ struct loop
 
     real get_measurement(std::string name);
 
+    // y frequencies (complex numbers) held by this locality in the transposed output, and the first one
+    std::size_t local_y_count() const { return n_y_local_; }
+    std::size_t local_y_offset() const { return y_offsets_[this_locality_]; }
+
   private:
 
     // FFT backend
@@ -73,6 +78,8 @@ struct loop
     std::size_t n_x_local_, n_y_local_;
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     std::size_t dim_c_y_part_, dim_c_x_part_;
+    // block offsets of y: locality i holds the y frequencies [y_offsets_[i], y_offsets_[i + 1]) after the first exchange
+    std::vector<std::size_t> y_offsets_;
     // 1D adapters
     // must precede the plans: destroyed after them
     hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;

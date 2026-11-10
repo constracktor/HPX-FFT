@@ -200,17 +200,16 @@ foreach(l 1 2 3 4)
   add_distributed_cases(slab ${l} "12,12,10;12,12,12;12,12,9;12,13,10;12,7,9" "${DIST_FLAGS}")
 endforeach()
 add_distributed_cases(pencil 4 "8,8,6;8,8,10;8,8,11" "${DIST_FLAGS}")
-# 2D: the case is "nx,ny,0"; ny / 2 + 1 must be divisible by the number of localities
+# 2D: the case is "nx,ny,0"; ny / 2 + 1 (5, 5 and 6 here) need not be divisible by the number of localities
 foreach(l 1 2 4)
-  add_distributed_cases(2d ${l} "8,6,0;8,14,0" "${DIST_FLAGS}")
+  add_distributed_cases(2d ${l} "8,6,0;8,14,0;8,8,0;8,9,0;8,11,0" "${DIST_FLAGS}")
 endforeach()
-add_distributed_cases(2d 2 "8,10,0;8,11,0" "${DIST_FLAGS}")
-add_distributed_cases(2d 1 "8,9,0" "${DIST_FLAGS}")
+add_distributed_cases(2d 2 "8,10,0" "${DIST_FLAGS}")
 
 # sizes that must be rejected on every locality
 add_distributed_test(dist_reject_pencil_odd_dcz 4 --mode=pencil --nx=8 --ny=8 --nz=8 --expect_throw=1)
 add_distributed_test(dist_reject_slab_y 4 --mode=slab --nx=8 --ny=3 --nz=6 --expect_throw=1)
-add_distributed_test(dist_reject_2d_odd_dcy 2 --mode=2d --nx=8 --ny=8 --nz=0 --expect_throw=1)
+add_distributed_test(dist_reject_2d_small_y 4 --mode=2d --nx=8 --ny=2 --nz=0 --expect_throw=1)
 add_distributed_test(dist_reject_slab_unequal_x 2 --mode=slab --nx=8 --ny=8 --nz=6 --uneven_x=1 --expect_throw=1)
 add_distributed_test(dist_reject_2d_unequal_x 2 --mode=2d --nx=8 --ny=6 --uneven_x=1 --expect_throw=1)
 
