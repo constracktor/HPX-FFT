@@ -3,6 +3,7 @@
 // naive DFT reference. With --expect_throw the case passes only if initialize rejects the input on every locality.
 #include "hpxfft/2D/distributed/loop.hpp"
 #include "hpxfft/3D/distributed/loop.hpp"
+#include "hpxfft/3D/shared/loop.hpp"
 #include "reference_dft.hpp"
 #include <cmath>
 #include <cstdio>
@@ -66,7 +67,7 @@ bool initialize_3d(Fft &f, hpxfft::fft3D::distributed::vector_3d &&v, const para
     f.set_hierarchical_parameters(2, 0);
     try
     {
-        f.initialize(std::move(v), p.run, "estimate");
+        f.initialize(std::move(v), p.run, "estimate", p.nz);
     }
     catch (const std::exception &e)
     {
@@ -155,6 +156,26 @@ void run_3d(const params &p, bool pencil)
     report(p, me, ok, what);
 }
 
+
+// shared memory 3D loop (single locality), natural layout
+void run_shared(const params &p)
+{
+    const std::size_t dcz = p.nz / 2 + 1;
+    hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
+    for (std::size_t i = 0; i < p.nx; ++i)
+        for (std::size_t j = 0; j < p.ny; ++j)
+            for (std::size_t k = 0; k < 2 * dcz; ++k) v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : 0.0;
+    hpxfft::fft3D::shared::loop f;
+    f.initialize(std::move(v), "estimate", p.nz);
+    auto out = f.fft_3d_r2c_par();
+    reference::rfft3 ref(p.nx, p.ny, p.nz);
+    double scale = 0.0;
+    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    std::string what;
+    const bool ok = compare_block(out, p.nx, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(i, j, k); }, what);
+    report(p, 0, ok, what);
+}
+
 void run_2d(const params &p)
 {
     const std::size_t me = hpx::get_locality_id();
@@ -172,7 +193,7 @@ void run_2d(const params &p)
     bool initialized = true;
     try
     {
-        f.initialize(std::move(v), p.run, "estimate");
+        f.initialize(std::move(v), p.run, "estimate", p.ny);
     }
     catch (const std::exception &)
     {
@@ -235,6 +256,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
     {
         if (p.mode == "2d")
             run_2d(p);
+        else if (p.mode == "shared")
+            run_shared(p);
         else
             run_3d(p, p.mode == "pencil");
     }
