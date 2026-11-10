@@ -26,6 +26,7 @@ struct params
     std::string mode, run;
     std::size_t nx, ny, nz;
     bool transposed, expect_throw, uneven_x;
+    long size_arg = -1;  // size passed to initialize instead of nz / ny (-1: the true size)
 };
 
 void report(const params &p, std::size_t me, bool ok, const std::string &what)
@@ -73,7 +74,7 @@ bool initialize_3d(Fft &f, hpxfft::fft3D::distributed::vector_3d &&v, const para
     f.set_hierarchical_parameters(2, 0);
     try
     {
-        f.initialize(std::move(v), p.run, "estimate", p.nz);
+        f.initialize(std::move(v), p.run, "estimate", p.size_arg >= 0 ? std::size_t(p.size_arg) : p.nz);
     }
     catch (const std::exception &e)
     {
@@ -276,7 +277,7 @@ void run_2d(const params &p)
     bool initialized = true;
     try
     {
-        f.initialize(std::move(v), p.run, "estimate", p.ny);
+        f.initialize(std::move(v), p.run, "estimate", p.size_arg >= 0 ? std::size_t(p.size_arg) : p.ny);
     }
     catch (const std::exception &)
     {
@@ -337,6 +338,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     p.transposed = vm["transposed"].as<bool>();
     p.expect_throw = vm["expect_throw"].as<bool>();
     p.uneven_x = vm["uneven_x"].as<bool>();
+    p.size_arg = vm["size_arg"].as<long>();
     try
     {
         if (p.mode == "2d")
@@ -364,7 +366,8 @@ int main(int argc, char *argv[])
         "run", value<std::string>()->default_value("scatter"), "communication run flag")(
         "nx", value<std::size_t>()->default_value(8))("ny", value<std::size_t>()->default_value(8))(
         "nz", value<std::size_t>()->default_value(6))("transposed", value<bool>()->default_value(false))(
-        "expect_throw", value<bool>()->default_value(false))("uneven_x", value<bool>()->default_value(false));
+        "expect_throw", value<bool>()->default_value(false))("uneven_x", value<bool>()->default_value(false))(
+        "size_arg", value<long>()->default_value(-1));
     hpx::init_params ip;
     ip.desc_cmdline = d;
     ip.cfg = {"hpx.run_hpx_main!=1"};

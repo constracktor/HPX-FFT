@@ -214,7 +214,16 @@ add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
+# remaining run flags of the 3D loops
+add_distributed_cases(slab 3 "12,13,10;12,7,9" "scatter_async;all_to_all_routed")
+add_distributed_cases(pencil 4 "8,8,11;8,8,6" "scatter_async;all_to_all_routed")
+add_distributed_cases(pencil 9 "12,12,10" "scatter_async;all_to_all_routed")
+
 # sizes that must be rejected on every locality
+add_distributed_test(dist_reject_slab_nz_mismatch 2 --mode=slab --nx=8 --ny=8 --nz=6 --size_arg=8 --expect_throw=1)
+add_distributed_test(dist_reject_pencil_nz_mismatch 4 --mode=pencil --nx=8 --ny=8 --nz=6 --size_arg=8 --expect_throw=1)
+add_distributed_test(dist_reject_2d_ny_mismatch 2 --mode=2d --nx=8 --ny=6 --size_arg=9 --expect_throw=1)
+add_distributed_test(dist_reject_pencil_not_square 2 --mode=pencil --nx=8 --ny=8 --nz=6 --expect_throw=1)
 add_distributed_test(dist_reject_pencil_small_z 4 --mode=pencil --nx=8 --ny=8 --nz=1 --expect_throw=1)
 add_distributed_test(dist_reject_slab_y 4 --mode=slab --nx=8 --ny=3 --nz=6 --expect_throw=1)
 add_distributed_test(dist_reject_2d_small_y 4 --mode=2d --nx=8 --ny=2 --nz=0 --expect_throw=1)
