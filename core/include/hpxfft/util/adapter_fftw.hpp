@@ -66,7 +66,8 @@ struct r2c_1d
     ~r2c_1d() { fftw_destroy_plan(plan_r2c_1d_); }
 
   private:
-    fftw_plan plan_r2c_1d_;
+    // null until planned: an adapter that never planned (initialize threw) must be destructible
+    fftw_plan plan_r2c_1d_ = nullptr;
 };
 
 struct c2c_1d
@@ -83,7 +84,7 @@ struct c2c_1d
     ~c2c_1d() { fftw_destroy_plan(plan_c2c_1d_); }
 
   private:
-    fftw_plan plan_c2c_1d_;
+    fftw_plan plan_c2c_1d_ = nullptr;
 };
 }  // namespace hpxfft::util::fftw_adapter
 #endif  // fftw_adapter_H_INCLUDED
