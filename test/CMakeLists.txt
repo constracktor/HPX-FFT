@@ -160,3 +160,54 @@ add_test(
   NAME test_shared_sync_3d
   COMMAND test_shared_sync_3d
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+# ---- Distributed correctness tests: several localities per test, naive DFT reference ----
+add_executable(test_distributed_fft src/test_distributed_fft.cpp)
+target_link_libraries(
+  test_distributed_fft
+  PRIVATE HPXFFT::hpxfft
+  PUBLIC HPX::hpx)
+target_compile_features(test_distributed_fft PRIVATE cxx_std_17)
+
+# name suffix, localities, then the arguments of the test program
+function(add_distributed_test name localities)
+  add_test(
+    NAME ${name}
+    COMMAND ${CMAKE_CURRENT_LIST_DIR}/run_localities.sh ${localities}
+            $<TARGET_FILE:test_distributed_fft> ${ARGN})
+  set_tests_properties(${name} PROPERTIES TIMEOUT 200)
+endfunction()
+
+# a case is "nx,ny,nz"
+function(add_distributed_cases mode localities cases flags)
+  foreach(case ${cases})
+    string(REPLACE "," ";" dims ${case})
+    list(GET dims 0 nx)
+    list(GET dims 1 ny)
+    list(GET dims 2 nz)
+    foreach(flag ${flags})
+      foreach(tr 0 1)
+        add_distributed_test(
+          dist_${mode}_L${localities}_${nx}x${ny}x${nz}_${flag}_t${tr} ${localities}
+          --mode=${mode} --nx=${nx} --ny=${ny} --nz=${nz} --run=${flag} --transposed=${tr})
+      endforeach()
+    endforeach()
+  endforeach()
+endfunction()
+
+set(DIST_FLAGS scatter all_to_all scatter_hierarchical)
+foreach(l 1 2 3 4)
+  add_distributed_cases(slab ${l} "12,12,10;12,12,12" "${DIST_FLAGS}")
+endforeach()
+add_distributed_cases(pencil 4 "8,8,6;8,8,10" "${DIST_FLAGS}")
+foreach(l 1 2 4)
+  add_distributed_cases(2d ${l} "8,8,6;8,8,14" "${DIST_FLAGS}")
+endforeach()
+add_distributed_cases(2d 2 "8,8,10" "${DIST_FLAGS}")
+
+# sizes that must be rejected on every locality
+add_distributed_test(dist_reject_pencil_odd_dcz 4 --mode=pencil --nx=8 --ny=8 --nz=8 --expect_throw=1)
+add_distributed_test(dist_reject_slab_y 4 --mode=slab --nx=8 --ny=6 --nz=6 --expect_throw=1)
+add_distributed_test(dist_reject_2d_odd_dcy 2 --mode=2d --nx=8 --ny=8 --expect_throw=1)
+add_distributed_test(dist_reject_slab_unequal_x 2 --mode=slab --nx=8 --ny=8 --nz=6 --uneven_x=1 --expect_throw=1)
+add_distributed_test(dist_reject_2d_unequal_x 2 --mode=2d --nx=8 --ny=6 --uneven_x=1 --expect_throw=1)
