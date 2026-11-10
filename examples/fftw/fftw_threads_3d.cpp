@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     const std::uint32_t dim_r_z = std::stoi(argv[4]);  // N_Z;
     const std::uint32_t dim_c_z = dim_r_z / 2 + 1;
     // FFTW plans
-    std::string plan_flag = argv[4];
+    std::string plan_flag = argv[5];
     unsigned FFTW_PLAN_FLAG = FFTW_ESTIMATE;
     if (plan_flag == "measure")
     {
