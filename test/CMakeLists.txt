@@ -201,11 +201,18 @@ foreach(l 1 2 3 4)
 endforeach()
 add_distributed_cases(pencil 4 "8,8,6;8,8,10;8,8,11;8,8,8;8,8,12" "${DIST_FLAGS}")
 add_distributed_cases(pencil 9 "12,12,10;12,12,8" "${DIST_FLAGS}")
+add_distributed_cases(pencil 16 "16,16,12;16,16,11" "${DIST_FLAGS}")
+# sizes beyond one 16x16 transpose tile, with partial tiles and uneven blocks
+add_distributed_cases(slab 4 "40,37,35;36,40,34" "${DIST_FLAGS}")
+add_distributed_cases(pencil 4 "40,36,35" "${DIST_FLAGS}")
 # 2D: the case is "nx,ny,0"; ny / 2 + 1 (5, 5 and 6 here) need not be divisible by the number of localities
 foreach(l 1 2 4)
   add_distributed_cases(2d ${l} "8,6,0;8,14,0;8,8,0;8,9,0;8,11,0" "${DIST_FLAGS}")
 endforeach()
 add_distributed_cases(2d 2 "8,10,0" "${DIST_FLAGS}")
+add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
+add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
+add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
 # sizes that must be rejected on every locality
 add_distributed_test(dist_reject_pencil_small_z 4 --mode=pencil --nx=8 --ny=8 --nz=1 --expect_throw=1)
