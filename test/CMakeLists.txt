@@ -214,6 +214,8 @@ add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
+add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
+
 # agas components (ny even); the distributed one has no uneven-block support, so dcy must divide
 foreach(l 1 2)
   foreach(flag scatter all_to_all)
@@ -268,4 +270,16 @@ target_compile_features(test_create_dir PRIVATE cxx_std_17)
 add_test(
   NAME test_create_dir
   COMMAND test_create_dir
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_util_helpers src/test_util_helpers.cpp)
+target_link_libraries(
+  test_util_helpers
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_util_helpers PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_util_helpers
+  COMMAND test_util_helpers
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")

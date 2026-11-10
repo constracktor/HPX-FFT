@@ -293,6 +293,94 @@ void run_agas_2d(const params &p)
     check_agas_2d(p, me, me * nxl, out);
 }
 
+// helpers of the shared classes: write_plans_to_file (also the error path) and get_measurement
+template <typename Fft>
+bool plans_file_ok(Fft &f, const std::string &path)
+{
+    std::remove(path.c_str());
+    f.write_plans_to_file(path);
+    std::FILE *file = std::fopen(path.c_str(), "r");
+    const bool written = file != nullptr && std::fgetc(file) != EOF;
+    if (file) std::fclose(file);
+    std::remove(path.c_str());
+    bool threw = false;
+    try
+    {
+        f.write_plans_to_file("/nonexistent_dir_for_hpxfft_test/plans.txt");
+    }
+    catch (const std::runtime_error &)
+    {
+        threw = true;
+    }
+    return written && threw;
+}
+
+void run_helpers(const params &p)
+{
+    const std::size_t dcz = p.nz / 2 + 1;
+    const std::size_t dcy = p.ny / 2 + 1;
+    auto make3 = [&]
+    {
+        hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
+        for (std::size_t i = 0; i < p.nx; ++i)
+            for (std::size_t j = 0; j < p.ny; ++j)
+                for (std::size_t k = 0; k < p.nz; ++k) v(i, j, k) = reference::input_value(i, j, k);
+        return v;
+    };
+    auto make2 = [&]
+    {
+        hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
+        for (std::size_t i = 0; i < p.nx; ++i)
+            for (std::size_t j = 0; j < p.ny; ++j) v(i, j) = reference::input_value(i, j, 0);
+        return v;
+    };
+    const std::string path = "hpxfft_plans_test.txt";
+    bool ok = true;
+    {
+        hpxfft::fft3D::shared::loop f;
+        f.initialize(make3(), "estimate", p.nz);
+        f.fft_3d_r2c_par();
+        ok = plans_file_ok(f, path) && ok;
+    }
+    {
+        hpxfft::fft3D::shared::naive f;
+        f.initialize(make3(), "estimate", p.nz);
+        f.fft_3d_r2c();
+        ok = plans_file_ok(f, path) && f.get_measurement("total") >= 0.0 && ok;
+    }
+    {
+        hpxfft::fft3D::shared::sync f;
+        f.initialize(make3(), "estimate", p.nz);
+        f.fft_3d_r2c();
+        ok = plans_file_ok(f, path) && ok;
+    }
+    {
+        hpxfft::fft2D::shared::loop f;
+        f.initialize(make2(), "estimate", p.ny);
+        f.fft_2d_r2c_par();
+        ok = plans_file_ok(f, path) && f.get_measurement("total") >= 0.0 && ok;
+    }
+    {
+        hpxfft::fft2D::shared::naive f;
+        f.initialize(make2(), "estimate", p.ny);
+        f.fft_2d_r2c();
+        ok = f.get_measurement("total") >= 0.0 && ok;
+    }
+    {
+        hpxfft::fft2D::shared::sync f;
+        f.initialize(make2(), "estimate", p.ny);
+        f.fft_2d_r2c();
+        ok = f.get_measurement("total") >= 0.0 && ok;
+    }
+    {
+        hpxfft::fft2D::shared::opt f;
+        f.initialize(make2(), "estimate", p.ny);
+        f.fft_2d_r2c();
+        ok = f.get_measurement("total") >= 0.0 && ok;
+    }
+    report(p, 0, ok, "helpers");
+}
+
 void run_2d(const params &p)
 {
     const std::size_t me = hpx::get_locality_id();
@@ -378,6 +466,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
             run_2d(p);
         else if (p.mode == "shared")
             run_shared(p);
+        else if (p.mode == "helpers")
+            run_helpers(p);
         else if (p.mode == "agas2d")
             run_agas_2d(p);
         else if (p.mode == "shared2d")
