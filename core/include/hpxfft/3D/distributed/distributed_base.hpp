@@ -3,6 +3,7 @@
 #define hpxfft_distributed_base_3D_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include <hpx/future.hpp>

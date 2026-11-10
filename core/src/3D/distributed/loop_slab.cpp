@@ -13,7 +13,9 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
     // parameters
     n_x_local_ = values_vec_.n_x();
-    n_y_local_ = values_vec_.n_y() / num_localities_;
+    // y is split into blocks of n_y / L elements; the first n_y % L localities hold one more
+    y_offsets_ = hpxfft::util::block_offsets(values_vec_.n_y(), num_localities_);
+    n_y_local_ = y_offsets_[this_locality_ + 1] - y_offsets_[this_locality_];
     n_z_local_ = values_vec_.n_z() / (2 * num_localities_);
     dim_c_y_ = values_vec_.n_y();
     dim_c_z_ = values_vec_.n_z() / 2;
@@ -27,10 +29,10 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
 
-    // z is never distributed in the slab decomposition, only y has to be divisible
-    if (values_vec_.n_y() % num_localities_ != 0)
+    // z is never distributed in the slab decomposition; y only has to provide at least one row per locality
+    if (values_vec_.n_y() < num_localities_)
     {
-        throw std::invalid_argument("Dimension y of the 3D Matrix is not divisable by number of localities");
+        throw std::invalid_argument("Dimension y of the 3D Matrix is smaller than the number of localities");
     }
 
     // resize other data structures
@@ -39,7 +41,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     permuted_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
     {
-        permuted_values_prep_[i] = vector_3d(n_x_local_, dim_c_z_, 2 * n_y_local_, vector_3d::uninitialized);
+        permuted_values_prep_[i] = vector_3d(
+            n_x_local_, dim_c_z_, 2 * (y_offsets_[i + 1] - y_offsets_[i]), vector_3d::uninitialized);
         values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_, vector_3d::uninitialized);
     }
     // create FFTW plans
@@ -276,8 +279,7 @@ void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_y_x(const std
 
 void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i)
 {
-    const std::size_t part = permuted_vec_.n_y() / num_localities_;
-    const std::size_t offset = part * i;
+    const std::size_t offset = y_offsets_[i];
     const std::size_t n_0 = permuted_vec_.n_x();      // x
     const std::size_t n_1 = permuted_vec_.n_z() / 2;  // z (complex)
     const vector_3d &comm = communication_vec_[i];
@@ -322,12 +324,12 @@ void hpxfft::fft3D::distributed::loop::slab::split_vec(const std::size_t x, cons
 
 void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_t x, const std::size_t dummy)
 {
-    const std::size_t part = permuted_vec_.n_z() / num_localities_;
     for (std::size_t j = 0; j < num_localities_; j++)
     {
+        const std::size_t part = 2 * (y_offsets_[j + 1] - y_offsets_[j]);
         for (std::size_t y = 0; y < permuted_vec_.n_y(); ++y)
         {
-            std::copy_n(&permuted_vec_(x, y, part * j), part, &permuted_values_prep_[j](x, y, 0));
+            std::copy_n(&permuted_vec_(x, y, 2 * y_offsets_[j]), part, &permuted_values_prep_[j](x, y, 0));
         }
     }
 }
@@ -420,7 +422,15 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
         hpx::finalize();
     }
     auto start_second_permute = t_.now();
-    values_vec_.rearrange(n_y_local_, dim_c_z_, 2 * dim_c_x_);
+    // the received y rows replace the input: reuse its buffer when the size is the same, otherwise allocate
+    if (n_y_local_ * dim_c_z_ * 2 * dim_c_x_ == values_vec_.n_x() * values_vec_.n_y() * values_vec_.n_z())
+    {
+        values_vec_.rearrange(n_y_local_, dim_c_z_, 2 * dim_c_x_);
+    }
+    else
+    {
+        values_vec_ = vector_3d(n_y_local_, dim_c_z_, 2 * dim_c_x_, vector_3d::uninitialized);
+    }
     // for every locality
     hpx::experimental::for_loop(
         hpx::execution::par,
@@ -526,7 +536,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             hpx::experimental::for_loop(
                 hpx::execution::par,
                 0,
-                n_y_local_,
+                communication_vec_[i].n_x(),  // y rows of locality i
                 [&](auto j)
                 {
                     // permute whole matrix y-z-x -> x-y-z
