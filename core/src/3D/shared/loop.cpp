@@ -1,12 +1,16 @@
 #include "../../../include/hpxfft/3D/shared/loop.hpp"
 
-void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::string PLAN_FLAG)
+void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz)
 {
     values_vec_ = std::move(values_vec);
     dim_c_x_ = values_vec_.n_x();
     dim_c_y_ = values_vec_.n_y();
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = 2 * dim_c_z_ - 2;
+    dim_r_z_ = nz != 0 ? nz : 2 * dim_c_z_ - 2;
+    if (dim_r_z_ / 2 + 1 != dim_c_z_)
+    {
+        throw std::invalid_argument("nz does not match the row length of the data (2 * (nz / 2 + 1) values)");
+    }
     // resize transposed data structure
     permuted_vec_ = vector_3d(dim_c_x_, dim_c_z_, 2 * dim_c_y_);
     auto start_plan = t_.now();

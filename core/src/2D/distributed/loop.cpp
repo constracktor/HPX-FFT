@@ -331,7 +331,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
 
 // initialization
 void hpxfft::fft2D::distributed::loop::initialize(
-    hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
+    hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t ny)
 {
     // move data into own structure
     values_vec_ = std::move(values_vec);
@@ -344,7 +344,11 @@ void hpxfft::fft2D::distributed::loop::initialize(
     n_x_local_ = values_vec_.n_row();
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_y_ = values_vec_.n_col() / 2;
-    dim_r_y_ = 2 * dim_c_y_ - 2;
+    dim_r_y_ = ny != 0 ? ny : 2 * dim_c_y_ - 2;
+    if (dim_r_y_ / 2 + 1 != dim_c_y_)
+    {
+        throw std::invalid_argument("ny does not match the row length of the data (2 * (ny / 2 + 1) values)");
+    }
     n_y_local_ = dim_c_y_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;

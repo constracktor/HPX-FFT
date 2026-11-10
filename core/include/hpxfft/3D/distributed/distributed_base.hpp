@@ -23,7 +23,9 @@ struct base
   public:
     base() = default;
 
-    virtual void initialize(vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG) = 0;
+    // nz: number of real values per row in z; 0 derives it from the row length as 2 * (n_z / 2 - 1)
+    virtual void initialize(
+        vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz = 0) = 0;
     virtual vector_3d fft_3d_r2c() = 0;
 
     real get_measurement(std::string name);

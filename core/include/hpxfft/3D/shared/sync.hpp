@@ -20,7 +20,8 @@ struct sync : public base
   public:
     sync() = default;
 
-    void initialize(vector_3d values_vec, const std::string PLAN_FLAG);
+    // nz: number of real values per row; 0 derives it from the row length as 2 * (n_z / 2 - 1)
+    void initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz = 0);
 
     vector_3d fft_3d_r2c();
 

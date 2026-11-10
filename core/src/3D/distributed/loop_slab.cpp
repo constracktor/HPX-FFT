@@ -2,7 +2,7 @@
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
 
 void hpxfft::fft3D::distributed::loop::slab::initialize(
-    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
+    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
     this_locality_ = hpx::get_locality_id();
     // move data into own structure
@@ -17,7 +17,11 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     n_z_local_ = values_vec_.n_z() / (2 * num_localities_);
     dim_c_y_ = values_vec_.n_y();
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = 2 * dim_c_z_ - 2;
+    dim_r_z_ = nz != 0 ? nz : 2 * dim_c_z_ - 2;
+    if (dim_r_z_ / 2 + 1 != dim_c_z_)
+    {
+        throw std::invalid_argument("nz does not match the row length of the data (2 * (nz / 2 + 1) values)");
+    }
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_z_part_ = 2 * dim_c_z_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
