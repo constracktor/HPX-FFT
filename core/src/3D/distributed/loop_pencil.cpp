@@ -25,9 +25,12 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     {
         throw std::invalid_argument("Number of localities must be a square number using pencil decomposition");
     }
-    if (values_vec_.n_z() % localities_per_dir_ != 0)
+    // z is split into complex numbers (dim_c_z = nz / 2 + 1 of them), so dim_c_z must be divisible by the number of
+    // localities per direction
+    if (dim_c_z_ % localities_per_dir_ != 0)
     {
-        throw std::invalid_argument("Dimensions of 3D Matrix are not divisable by number of localities");
+        throw std::invalid_argument("Number of complex values in z (nz / 2 + 1) is not divisable by the number of "
+                                    "localities per direction");
     }
     pos_dir_x_ = this_locality_ / localities_per_dir_;
     pos_dir_y_ = this_locality_ % localities_per_dir_;
