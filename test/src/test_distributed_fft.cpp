@@ -3,6 +3,7 @@
 // naive DFT reference. With --expect_throw the case passes only if initialize rejects the input on every locality.
 #include "hpxfft/2D/distributed/loop.hpp"
 #include "hpxfft/3D/distributed/loop.hpp"
+#include "hpxfft/2D/distributed/agas.hpp"
 #include "hpxfft/2D/shared/loop.hpp"
 #include "hpxfft/2D/shared/naive.hpp"
 #include "hpxfft/2D/shared/opt.hpp"
@@ -260,6 +261,38 @@ void run_shared_2d(const params &p)
     report(p, 0, ok, what);
 }
 
+// compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference
+void check_agas_2d(const params &p, std::size_t me, std::size_t x0, hpxfft::fft2D::distributed::vector_2d &out)
+{
+    const std::size_t dcy = p.ny / 2 + 1;
+    reference::rfft2 ref(p.nx, p.ny);
+    double scale = 0.0;
+    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    double worst = 0.0;
+    for (std::size_t i = 0; i < out.n_row(); ++i)
+        for (std::size_t j = 0; j < dcy; ++j)
+            worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
+    report(p, me, out.n_col() == 2 * dcy && worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
+}
+
+// 2D distributed agas component: ny must be even (the component derives ny from the row length). The shared agas
+// component cannot be used in the same program: both define a global fft_2d_r2c_action (see test_shared_agas).
+void run_agas_2d(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
+    const std::size_t dcy = p.ny / 2 + 1;
+    const std::size_t nxl = p.nx / nl;
+    hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
+    for (std::size_t i = 0; i < nxl; ++i)
+        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : 0.0;
+    hpxfft::fft2D::distributed::agas f;
+    f.initialize(std::move(v), p.run, "estimate").get();
+    hpx::distributed::barrier("test_init").wait();
+    hpxfft::fft2D::distributed::vector_2d out = f.fft_2d_r2c().get();
+    check_agas_2d(p, me, me * nxl, out);
+}
+
 void run_2d(const params &p)
 {
     const std::size_t me = hpx::get_locality_id();
@@ -345,6 +378,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
             run_2d(p);
         else if (p.mode == "shared")
             run_shared(p);
+        else if (p.mode == "agas2d")
+            run_agas_2d(p);
         else if (p.mode == "shared2d")
             run_shared_2d(p);
         else

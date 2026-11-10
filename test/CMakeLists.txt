@@ -214,6 +214,14 @@ add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
+# agas components (ny even); the distributed one has no uneven-block support, so dcy must divide
+foreach(l 1 2)
+  foreach(flag scatter all_to_all)
+    add_distributed_test(dist_agas2d_L${l}_8x10_${flag} ${l} --mode=agas2d --nx=8 --ny=10 --run=${flag})
+  endforeach()
+endforeach()
+add_distributed_test(dist_agas2d_L2_8x6_scatter 2 --mode=agas2d --nx=8 --ny=6 --run=scatter)
+
 # remaining run flags of the 3D loops
 add_distributed_cases(slab 3 "12,13,10;12,7,9" "scatter_async;all_to_all_routed")
 add_distributed_cases(pencil 4 "8,8,11;8,8,6" "scatter_async;all_to_all_routed")
@@ -249,3 +257,15 @@ foreach(case "6,8" "5,9" "7,10" "20,37")
     add_distributed_test(dist_shared2d_${variant}_${nx}x${ny} 1 --mode=shared2d --run=${variant} --nx=${nx} --ny=${ny})
   endforeach()
 endforeach()
+
+add_executable(test_create_dir src/test_create_dir.cpp)
+target_link_libraries(
+  test_create_dir
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_create_dir PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_create_dir
+  COMMAND test_create_dir
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
