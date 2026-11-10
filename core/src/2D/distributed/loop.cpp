@@ -344,6 +344,13 @@ void hpxfft::fft2D::distributed::loop::initialize(
     n_y_local_ = dim_c_y_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
+    // y is split into complex numbers (dim_c_y = ny / 2 + 1 of them), so dim_c_y must be divisible by the number of
+    // localities
+    if (dim_c_y_ % num_localities_ != 0)
+    {
+        throw std::invalid_argument(
+            "Number of complex values in y (ny / 2 + 1) is not divisable by the number of localities");
+    }
     // resize other data structures
     trans_values_vec_ = std::move(hpxfft::fft2D::distributed::vector_2d(n_y_local_, 2 * dim_c_x_));
     values_prep_.resize(num_localities_);
