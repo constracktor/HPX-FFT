@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdio>
 #include <hpx/hpx_init.hpp>
+#include <optional>
 #include <string>
 
 namespace
@@ -102,13 +103,15 @@ void run_3d(const params &p, bool pencil)
             for (std::size_t k = 0; k < 2 * dcz; ++k)
                 v(i, j, k) = k < p.nz ? reference::input_value(x0 + i, y0 + j, k) : 0.0;
 
-    hpxfft::fft3D::distributed::loop::slab slab;
-    hpxfft::fft3D::distributed::loop::pencil pen;
+    // construct only the decomposition under test: a default constructed object that is never initialized must not be
+    // destroyed
+    std::optional<hpxfft::fft3D::distributed::loop::slab> slab;
+    std::optional<hpxfft::fft3D::distributed::loop::pencil> pen;
     bool initialized;
     if (pencil)
-        initialized = initialize_3d(pen, std::move(v), p);
+        initialized = initialize_3d(pen.emplace(), std::move(v), p);
     else
-        initialized = initialize_3d(slab, std::move(v), p);
+        initialized = initialize_3d(slab.emplace(), std::move(v), p);
 
     if (p.expect_throw)
     {
@@ -121,7 +124,7 @@ void run_3d(const params &p, bool pencil)
         return;
     }
     hpx::distributed::barrier("test_init").wait();
-    hpxfft::fft3D::distributed::vector_3d out = pencil ? pen.fft_3d_r2c() : slab.fft_3d_r2c();
+    hpxfft::fft3D::distributed::vector_3d out = pencil ? pen->fft_3d_r2c() : slab->fft_3d_r2c();
 
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
