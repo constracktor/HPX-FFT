@@ -90,14 +90,13 @@ jobs:
     - name: Test sequential
       working-directory: test/build
       run: |
-        export HPX_LOCALITIES=1
-        ctest --output-on-failure --no-tests=ignore -j 2
+        ctest --output-on-failure --no-tests=ignore -j 2 -E '^dist_'
 
-    - name: Test parallel
+    # HPX ignores HPX_LOCALITIES: the dist_ tests start their own localities (test/run_localities.sh)
+    - name: Test distributed
       working-directory: test/build
       run: |
-        export HPX_LOCALITIES=2
-        ctest --output-on-failure --no-tests=ignore -j 2
+        ctest --output-on-failure --no-tests=ignore -R '^dist_'
       
     - name: Upload
       uses: actions/upload-artifact@v4
