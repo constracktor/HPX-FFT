@@ -46,7 +46,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::fft3D::shared::sync fft_computer;
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), plan_flag);
+    fft_computer.initialize(std::move(values_vec), plan_flag, dim_r_z);
     auto stop_init = t.now();
     values_vec = fft_computer.fft_3d_r2c();
     auto stop_total = t.now();

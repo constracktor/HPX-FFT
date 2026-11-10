@@ -43,7 +43,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::fft2D::shared::loop fft_computer;
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), plan_flag);
+    fft_computer.initialize(std::move(values_vec), plan_flag, dim_r_y);
     auto stop_init = t.now();
     if (run_flag == "seq")
     {
