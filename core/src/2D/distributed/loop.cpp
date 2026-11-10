@@ -21,9 +21,10 @@ void hpxfft::fft2D::distributed::loop::split_vec(const std::size_t i)
 {
     for (std::size_t j = 0; j < num_localities_; ++j)
     {  // std::move same performance
-        std::copy(values_vec_.row(i) + j * dim_c_y_part_,
-                  values_vec_.row(i) + (j + 1) * dim_c_y_part_,
-                  values_prep_[j].begin() + i * dim_c_y_part_);
+        const std::size_t part = 2 * (y_offsets_[j + 1] - y_offsets_[j]);
+        std::copy(values_vec_.row(i) + 2 * y_offsets_[j],
+                  values_vec_.row(i) + 2 * y_offsets_[j] + part,
+                  values_prep_[j].begin() + i * part);
     }
 }
 
@@ -145,12 +146,14 @@ void hpxfft::fft2D::distributed::loop::transpose_y_to_x(const std::size_t tile, 
 void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, const std::size_t i)
 {
     const std::size_t factor_in = dim_c_x_part_;
-    const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
-    // the rows (y) of locality i form the block starting at y = i * n_y_local_
-    const std::size_t y_offset = i * n_y_local_;
+    // the rows (y) of locality i form the block starting at y_offsets_[i]; the rows (x) of the received block are the
+    // local rows of this locality
+    const std::size_t dim_input = n_x_local_;
+    const std::size_t y_offset = y_offsets_[i];
+    const std::size_t n_y_source = y_offsets_[i + 1] - y_offsets_[i];
     const real *src = communication_vec_[i].data();
     const std::size_t j_begin = tile * TILE;
-    const std::size_t j_end = std::min(j_begin + TILE, n_y_local_);
+    const std::size_t j_end = std::min(j_begin + TILE, n_y_source);
 
     for (std::size_t k_begin = 0; k_begin < dim_input; k_begin += TILE)
     {
@@ -304,7 +307,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
             hpx::experimental::for_loop(
                 hpx::execution::par,
                 0,
-                (n_y_local_ + TILE - 1) / TILE,
+                (y_offsets_[i + 1] - y_offsets_[i] + TILE - 1) / TILE,
                 [&](auto j)
                 {
                     // blocked transpose from x-direction to y-direction
@@ -349,23 +352,24 @@ void hpxfft::fft2D::distributed::loop::initialize(
     {
         throw std::invalid_argument("ny does not match the row length of the data (2 * (ny / 2 + 1) values)");
     }
-    n_y_local_ = dim_c_y_ / num_localities_;
-    dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
-    dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
-    // y is split into complex numbers (dim_c_y = ny / 2 + 1 of them), so dim_c_y must be divisible by the number of
-    // localities
-    if (dim_c_y_ % num_localities_ != 0)
+    // y is split into blocks of complex numbers (dim_c_y = ny / 2 + 1 of them): dim_c_y / L each, the first
+    // dim_c_y % L localities hold one more
+    if (dim_c_y_ < num_localities_)
     {
-        throw std::invalid_argument(
-            "Number of complex values in y (ny / 2 + 1) is not divisable by the number of localities");
+        throw std::invalid_argument("Number of complex values in y (ny / 2 + 1) is smaller than the number of localities");
     }
+    y_offsets_ = hpxfft::util::block_offsets(dim_c_y_, num_localities_);
+    n_y_local_ = y_offsets_[this_locality_ + 1] - y_offsets_[this_locality_];
+    // length of a row of the block of y received from every other locality, in doubles
+    dim_c_y_part_ = 2 * n_y_local_;
+    dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
     // resize other data structures
     trans_values_vec_ = std::move(hpxfft::fft2D::distributed::vector_2d(n_y_local_, 2 * dim_c_x_));
     values_prep_.resize(num_localities_);
     trans_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
     {
-        values_prep_[i].resize(n_x_local_ * dim_c_y_part_);
+        values_prep_[i].resize(n_x_local_ * 2 * (y_offsets_[i + 1] - y_offsets_[i]));
         trans_values_prep_[i].resize(n_y_local_ * dim_c_x_part_);
     }
     // create FFTW plans
