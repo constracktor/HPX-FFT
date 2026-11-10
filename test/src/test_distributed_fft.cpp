@@ -144,8 +144,10 @@ void run_3d(const params &p, bool pencil)
     }
     else if (!pencil)
     {
-        const std::size_t yl = p.ny / nl;
-        ok = compare_block(out, yl, dcz, p.nx, scale, [&](auto i, auto j, auto k) { return ref.at(k, me * yl + i, j); }, what);
+        // y rows of this locality: blocks of ny / L, the first ny % L localities hold one more
+        const auto yo = hpxfft::util::block_offsets(p.ny, nl);
+        ok = compare_block(
+            out, yo[me + 1] - yo[me], dcz, p.nx, scale, [&](auto i, auto j, auto k) { return ref.at(k, yo[me] + i, j); }, what);
     }
     else
     {

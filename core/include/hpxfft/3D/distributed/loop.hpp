@@ -51,6 +51,13 @@ struct slab : public base
     // whose hierarchical communicators support a root site other than 0
     std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
     hpx::future<vector_3d> scatter_exchange(std::size_t root, std::vector<vector_3d> &&prep, std::size_t generation);
+    // block offsets of y: locality i holds the y rows [y_offsets_[i], y_offsets_[i + 1]) after the first exchange
+    std::vector<std::size_t> y_offsets_;
+
+  public:
+    // y rows held by this locality in the transposed output (set_transposed_output), and the first one
+    std::size_t local_y_count() const { return n_y_local_; }
+    std::size_t local_y_offset() const { return y_offsets_[this_locality_]; }
 };
 
 struct pencil : public base
