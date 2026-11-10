@@ -151,9 +151,17 @@ void run_3d(const params &p, bool pencil)
     }
     else
     {
-        const std::size_t zl = dcz / P;
+        // z frequencies of this locality: blocks of dcz / P, the first dcz % P positions hold one more
+        const auto zo = hpxfft::util::block_offsets(dcz, P);
+        const std::size_t pz = me % P;
         ok = compare_block(
-            out, nyl, zl, p.nx, scale, [&](auto i, auto j, auto k) { return ref.at(k, (me / P) * nyl + i, (me % P) * zl + j); }, what);
+            out,
+            nyl,
+            zo[pz + 1] - zo[pz],
+            p.nx,
+            scale,
+            [&](auto i, auto j, auto k) { return ref.at(k, (me / P) * nyl + i, zo[pz] + j); },
+            what);
     }
     report(p, me, ok, what);
 }

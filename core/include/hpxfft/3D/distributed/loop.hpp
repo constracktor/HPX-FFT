@@ -72,6 +72,11 @@ struct pencil : public base
 
     vector_3d fft_3d_r2c() override;
 
+    // z frequencies (complex numbers) held by this locality in the transposed output (set_transposed_output), and the
+    // first one
+    std::size_t local_z_count() const { return n_z_local_; }
+    std::size_t local_z_offset() const { return z_offsets_[pos_dir_y_]; }
+
   private:
     // permute (only local data)
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
@@ -100,6 +105,9 @@ struct pencil : public base
     std::size_t pos_dir_y_;
     std::size_t generation_counterx_;
     std::size_t generation_countery_;
+    // block offsets of z: the localities with position i in y direction hold the z frequencies
+    // [z_offsets_[i], z_offsets_[i + 1]) after the first exchange
+    std::vector<std::size_t> z_offsets_;
 
     vector_comm values_prep2_;
     vector_comm permuted_values_prep2_;
