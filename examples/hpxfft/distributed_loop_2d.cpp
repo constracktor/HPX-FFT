@@ -42,7 +42,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     fft_computer.set_transposed_output(transposed_out);
     fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
+    fft_computer.initialize(std::move(values_vec), run_flag, plan_flag, dim_r_y);
     auto stop_init = t.now();
     values_vec = fft_computer.fft_2d_r2c();
     auto stop_total = t.now();
