@@ -20,7 +20,8 @@ struct naive
   public:
     naive() = default;
 
-    void initialize(vector_2d values_vec, const std::string PLAN_FLAG);
+    // ny: number of real values per row; 0 derives it from the row length as 2 * (n_col / 2 - 1)
+    void initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
     vector_2d fft_2d_r2c();
 

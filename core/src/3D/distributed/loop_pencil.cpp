@@ -2,7 +2,7 @@
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
 
 void hpxfft::fft3D::distributed::loop::pencil::initialize(
-    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
+    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
     // move data into own structure
     values_vec_ = std::move(values_vec);
@@ -19,7 +19,11 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     dim_c_x_ = n_x_local_ * localities_per_dir_;
     dim_c_y_ = n_y_local_ * localities_per_dir_;
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = 2 * dim_c_z_ - 2;
+    dim_r_z_ = nz != 0 ? nz : 2 * dim_c_z_ - 2;
+    if (dim_r_z_ / 2 + 1 != dim_c_z_)
+    {
+        throw std::invalid_argument("nz does not match the row length of the data (2 * (nz / 2 + 1) values)");
+    }
     dim_c_z_part_ = 2 * dim_c_z_ / localities_per_dir_;
     dim_c_y_part_ = 2 * dim_c_y_ / localities_per_dir_;
     dim_c_x_part_ = 2 * dim_c_x_ / localities_per_dir_;

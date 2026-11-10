@@ -21,7 +21,10 @@ struct slab : public base
   public:
     slab() = default;
 
-    void initialize(vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG) override;
+    void initialize(vector_3d values_vec,
+                    const std::string COMM_FLAG,
+                    const std::string PLAN_FLAG,
+                    const std::size_t nz = 0) override;
 
     vector_3d fft_3d_r2c() override;
 
@@ -55,7 +58,10 @@ struct pencil : public base
   public:
     pencil() = default;
 
-    void initialize(vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG) override;
+    void initialize(vector_3d values_vec,
+                    const std::string COMM_FLAG,
+                    const std::string PLAN_FLAG,
+                    const std::size_t nz = 0) override;
 
     vector_3d fft_3d_r2c() override;
 
