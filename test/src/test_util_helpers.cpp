@@ -1,7 +1,7 @@
 // Small utilities: FFTW plan flag parsing, vector bounds/serialization/comparison helpers
-#include "hpxfft/util/adapter_fftw.hpp"
-#include "hpxfft/util/vector_2d.hpp"
-#include "hpxfft/util/vector_3d.hpp"
+#include "../../core/include/hpxfft/util/adapter_fftw.hpp"
+#include "../../core/include/hpxfft/util/vector_2d.hpp"
+#include "../../core/include/hpxfft/util/vector_3d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <hpx/serialization/input_archive.hpp>
 #include <hpx/serialization/output_archive.hpp>
