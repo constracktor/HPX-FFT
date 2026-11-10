@@ -21,9 +21,10 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
 
-    if (values_vec_.n_y() % num_localities_ != 0 || values_vec_.n_z() % num_localities_ != 0)
+    // z is never distributed in the slab decomposition, only y has to be divisible
+    if (values_vec_.n_y() % num_localities_ != 0)
     {
-        throw std::invalid_argument("Dimensions of the 3D Matrix are not divisable by number of localities");
+        throw std::invalid_argument("Dimension y of the 3D Matrix is not divisable by number of localities");
     }
 
     // resize other data structures
