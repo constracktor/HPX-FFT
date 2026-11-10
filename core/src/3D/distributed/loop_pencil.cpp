@@ -6,6 +6,8 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
 {
     // move data into own structure
     values_vec_ = std::move(values_vec);
+    // the global size is derived from the local block: all blocks must have the same shape
+    hpxfft::util::check_equal_local_shape({values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z()});
     // locality information
     this_locality_ = hpx::get_locality_id();
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
