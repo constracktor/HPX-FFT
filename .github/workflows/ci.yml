@@ -36,7 +36,7 @@ jobs:
     - name: Set up Spack
       uses: spack/setup-spack@v2
       with:
-        ref: releases/v0.23
+        ref: releases/v1.1
         color: true       # Force color output (SPACK_COLOR=always)
         path: spack
 
@@ -45,6 +45,11 @@ jobs:
         cp spack-repo/environments/hpxfft_ci.yaml spack.yaml
         cat spack-repo/environments/ci_env_settings.yaml.tpl >> spack.yaml
   
+    - name: Find compilers
+      run: |
+        . /home/runner/work/HPX-FFT/HPX-FFT/spack/share/spack/setup-env.sh
+        spack compiler find
+
     - name: Concretize
       run: |
         spack -e . concretize
