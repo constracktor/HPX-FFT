@@ -20,6 +20,9 @@
 
 namespace
 {
+// value of the unused padding of every row: any path that reads it as data gives wrong results
+constexpr double kPad = 1.0e6;
+
 int g_failed = 0;
 std::string g_error;  // message of the exception that rejected initialize
 
@@ -99,17 +102,25 @@ bool initialize_3d(Fft &f, hpxfft::fft3D::distributed::vector_3d &&v, const para
     return true;
 }
 
+// the test program splits the input evenly unless --uneven_x asks for an uneven first block
+void require_divisible(const std::size_t n, const std::size_t parts, const char *what)
+{
+    if (n % parts != 0) throw std::invalid_argument(std::string(what) + " must be divisible by the number of localities");
+}
+
 void run_3d(const params &p, bool pencil)
 {
     const std::size_t me = hpx::get_locality_id();
     const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
     const std::size_t P = pencil ? static_cast<std::size_t>(std::sqrt(double(nl)) + 0.5) : 1;
     const std::size_t dcz = p.nz / 2 + 1;
+    require_divisible(p.nx, pencil ? P : nl, "nx");
+    if (pencil) require_divisible(p.ny, P, "ny");
     // input block
     std::size_t nxl, nyl, x0, y0;
     if (pencil)
     {
-        nxl = p.nx / P;
+        nxl = p.nx / P + (p.uneven_x && me == 0 ? 1 : 0);
         nyl = p.ny / P;
         x0 = (me / P) * nxl;
         y0 = (me % P) * nyl;
@@ -125,7 +136,7 @@ void run_3d(const params &p, bool pencil)
     for (std::size_t i = 0; i < nxl; ++i)
         for (std::size_t j = 0; j < nyl; ++j)
             for (std::size_t k = 0; k < 2 * dcz; ++k)
-                v(i, j, k) = k < p.nz ? reference::input_value(x0 + i, y0 + j, k) : 0.0;
+                v(i, j, k) = k < p.nz ? reference::input_value(x0 + i, y0 + j, k) : kPad;
 
     // construct only the decomposition under test: a default constructed object that is never initialized must not be
     // destroyed
@@ -197,7 +208,7 @@ void run_shared(const params &p)
     hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
     for (std::size_t i = 0; i < p.nx; ++i)
         for (std::size_t j = 0; j < p.ny; ++j)
-            for (std::size_t k = 0; k < 2 * dcz; ++k) v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : 0.0;
+            for (std::size_t k = 0; k < 2 * dcz; ++k) v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
     hpxfft::fft3D::distributed::vector_3d out;
     if (p.run == "naive")
     {
@@ -211,12 +222,14 @@ void run_shared(const params &p)
         f.initialize(std::move(v), "estimate", p.nz);
         out = f.fft_3d_r2c();
     }
-    else
+    else if (p.run == "par" || p.run == "seq")
     {
         hpxfft::fft3D::shared::loop f;
         f.initialize(std::move(v), "estimate", p.nz);
         out = p.run == "seq" ? f.fft_3d_r2c_seq() : f.fft_3d_r2c_par();
     }
+    else
+        throw std::invalid_argument("unknown shared variant " + p.run);
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
     for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
@@ -231,7 +244,7 @@ void run_shared_2d(const params &p)
     const std::size_t dcy = p.ny / 2 + 1;
     hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
     for (std::size_t i = 0; i < p.nx; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : 0.0;
+        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
     hpxfft::fft2D::distributed::vector_2d out;
     if (p.run == "naive")
     {
@@ -251,12 +264,14 @@ void run_shared_2d(const params &p)
         f.initialize(std::move(v), "estimate", p.ny);
         out = f.fft_2d_r2c();
     }
-    else
+    else if (p.run == "par" || p.run == "seq")
     {
         hpxfft::fft2D::shared::loop f;
         f.initialize(std::move(v), "estimate", p.ny);
         out = p.run == "seq" ? f.fft_2d_r2c_seq() : f.fft_2d_r2c_par();
     }
+    else
+        throw std::invalid_argument("unknown shared variant " + p.run);
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
     for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
@@ -283,11 +298,16 @@ void check_agas_2d(const params &p, std::size_t me, std::size_t x0, std::size_t 
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
     for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    if (out.n_row() != nxl || out.n_col() != 2 * dcy)
+    {
+        report(p, me, false, "shape " + std::to_string(out.n_row()) + "x" + std::to_string(out.n_col()));
+        return;
+    }
     double worst = 0.0;
     for (std::size_t i = 0; i < out.n_row(); ++i)
         for (std::size_t j = 0; j < dcy; ++j)
             worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
-    report(p, me, out.n_row() == nxl && out.n_col() == 2 * dcy && worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
+    report(p, me, worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
 }
 
 // 2D distributed agas component: ny must be even (the component derives ny from the row length). The shared agas
@@ -297,10 +317,11 @@ void run_agas_2d(const params &p)
     const std::size_t me = hpx::get_locality_id();
     const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
     const std::size_t dcy = p.ny / 2 + 1;
+    require_divisible(p.nx, nl, "nx");
     const std::size_t nxl = p.nx / nl;
     hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
     for (std::size_t i = 0; i < nxl; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : 0.0;
+        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : kPad;
     hpxfft::fft2D::distributed::agas f;
     bool initialized = true;
     try
@@ -415,11 +436,12 @@ void run_2d(const params &p)
     const std::size_t me = hpx::get_locality_id();
     const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
     const std::size_t dcy = p.ny / 2 + 1;
+    require_divisible(p.nx, nl, "nx");
     const std::size_t nxl = p.nx / nl + (p.uneven_x && me == 0 ? 1 : 0);
     const std::size_t x0 = me * (p.nx / nl);
     hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
     for (std::size_t i = 0; i < nxl; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(x0 + i, j, 0) : 0.0;
+        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(x0 + i, j, 0) : kPad;
 
     hpxfft::fft2D::distributed::loop f;
     f.set_transposed_output(p.transposed);
@@ -503,8 +525,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
             run_agas_2d(p);
         else if (p.mode == "shared2d")
             run_shared_2d(p);
-        else
+        else if (p.mode == "slab" || p.mode == "pencil")
             run_3d(p, p.mode == "pencil");
+        else
+            throw std::invalid_argument("unknown mode " + p.mode);
     }
     catch (const std::exception &e)
     {
