@@ -1,5 +1,6 @@
 #include "hpxfft/util/create_dir.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <filesystem>
 #include <fstream>
 
@@ -21,6 +22,7 @@ TEST_CASE("create_parent_dir reports a directory that cannot be created", "[util
     std::filesystem::remove_all(base);
     // a regular file in the way of the parent directory
     { std::ofstream(base) << "x"; }
-    REQUIRE_THROWS(hpxfft::util::create_parent_dir(base / "sub" / "result.csv"));
+    REQUIRE_THROWS_WITH(hpxfft::util::create_parent_dir(base / "sub" / "result.csv"),
+                        Catch::Matchers::ContainsSubstring("Failed to create directory"));
     std::filesystem::remove_all(base);
 }
