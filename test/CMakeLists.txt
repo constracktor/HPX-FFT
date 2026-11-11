@@ -214,6 +214,15 @@ add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
+# small and degenerate sizes: one row per locality, nz = 1 and 2, pencil with dcz == P, a single pencil, tiny y
+add_distributed_cases(slab 4 "4,7,9;8,4,6;8,8,1;8,8,2" "scatter;all_to_all")
+add_distributed_cases(slab 2 "4,4,2;4,4,1" "scatter;all_to_all")
+add_distributed_cases(pencil 4 "8,8,2" "scatter;all_to_all")
+add_distributed_cases(pencil 16 "16,16,6" "scatter;all_to_all")
+add_distributed_cases(pencil 1 "6,6,6;4,4,2" "scatter;all_to_all")
+add_distributed_cases(2d 1 "6,1,0;6,2,0;6,3,0" "scatter;all_to_all")
+add_distributed_cases(2d 4 "12,10,0" "scatter;all_to_all")
+
 add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
 
 # agas components (ny even); the distributed one has no uneven-block support, so dcy must divide
@@ -236,6 +245,7 @@ add_distributed_test(dist_reject_slab_nz_mismatch 2 --mode=slab --nx=8 --ny=8 --
 add_distributed_test(dist_reject_pencil_nz_mismatch 4 --mode=pencil --nx=8 --ny=8 --nz=6 --size_arg=8 --expect_throw=1 "--expect_msg=nz does not match")
 add_distributed_test(dist_reject_2d_ny_mismatch 2 --mode=2d --nx=8 --ny=6 --size_arg=9 --expect_throw=1 "--expect_msg=ny does not match")
 add_distributed_test(dist_reject_pencil_not_square 2 --mode=pencil --nx=8 --ny=8 --nz=6 --expect_throw=1 "--expect_msg=square number")
+add_distributed_test(dist_reject_pencil_unequal_x 4 --mode=pencil --nx=8 --ny=8 --nz=6 --uneven_x=1 --expect_throw=1 "--expect_msg=same shape")
 add_distributed_test(dist_reject_pencil_small_z 4 --mode=pencil --nx=8 --ny=8 --nz=1 --expect_throw=1 "--expect_msg=smaller than the number of")
 add_distributed_test(dist_reject_slab_y 4 --mode=slab --nx=8 --ny=3 --nz=6 --expect_throw=1 "--expect_msg=smaller than the number of")
 add_distributed_test(dist_reject_2d_small_y 4 --mode=2d --nx=8 --ny=2 --nz=0 --expect_throw=1 "--expect_msg=smaller than the number of")
