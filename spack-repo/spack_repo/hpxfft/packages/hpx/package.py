@@ -167,6 +167,10 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
 
     # Restrictions for 1.5.x
     conflicts("cxxstd=11", when="@1.5:")
+    # HPX 2.0 requires C++20
+    conflicts("cxxstd=11", when="@2:")
+    conflicts("cxxstd=14", when="@2:")
+    conflicts("cxxstd=17", when="@2:")
 
     # Restrictions for 1.2.X
     with when("@:1.2.1"):
@@ -246,7 +250,11 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
             "" if max_cpu_count == "auto" else max_cpu_count
         )
         args += [
-            self.define("HPX_WITH_CXX{0}".format(spec.variants["cxxstd"].value), True),
+            (
+                self.define("HPX_WITH_CXX_STANDARD", spec.variants["cxxstd"].value)
+                if spec.satisfies("@2:")
+                else self.define("HPX_WITH_CXX{0}".format(spec.variants["cxxstd"].value), True)
+            ),
             self.define_from_variant("HPX_WITH_MALLOC", "malloc"),
             self.define_from_variant("HPX_WITH_CUDA", "cuda"),
             self.define_from_variant("HPX_WITH_HIP", "rocm"),
