@@ -21,14 +21,25 @@
 namespace
 {
 int g_failed = 0;
+std::string g_error;  // message of the exception that rejected initialize
 
 struct params
 {
     std::string mode, run;
     std::size_t nx, ny, nz;
     bool transposed, expect_throw, uneven_x;
+    std::string expect_msg;  // with --expect_throw: text the error message must contain
     long size_arg = -1;  // size passed to initialize instead of nz / ny (-1: the true size)
 };
+
+void report(const params &p, std::size_t me, bool ok, const std::string &what);
+
+// pass only if initialize threw an error with the expected message (a throw for another reason must not pass)
+void report_rejection(const params &p, std::size_t me, bool initialized)
+{
+    const bool msg_ok = p.expect_msg.empty() || g_error.find(p.expect_msg) != std::string::npos;
+    report(p, me, !initialized && msg_ok, initialized ? "accepted an invalid size" : "rejected: " + g_error);
+}
 
 void report(const params &p, std::size_t me, bool ok, const std::string &what)
 {
@@ -79,6 +90,7 @@ bool initialize_3d(Fft &f, hpxfft::fft3D::distributed::vector_3d &&v, const para
     }
     catch (const std::exception &e)
     {
+        g_error = e.what();
         return false;
     }
     return true;
@@ -124,7 +136,7 @@ void run_3d(const params &p, bool pencil)
 
     if (p.expect_throw)
     {
-        report(p, me, !initialized, initialized ? "accepted an invalid size" : "rejected as expected");
+        report_rejection(p, me, initialized);
         return;
     }
     if (!initialized)
@@ -262,7 +274,7 @@ void run_shared_2d(const params &p)
 }
 
 // compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference
-void check_agas_2d(const params &p, std::size_t me, std::size_t x0, hpxfft::fft2D::distributed::vector_2d &out)
+void check_agas_2d(const params &p, std::size_t me, std::size_t x0, std::size_t nxl, hpxfft::fft2D::distributed::vector_2d &out)
 {
     const std::size_t dcy = p.ny / 2 + 1;
     reference::rfft2 ref(p.nx, p.ny);
@@ -272,7 +284,7 @@ void check_agas_2d(const params &p, std::size_t me, std::size_t x0, hpxfft::fft2
     for (std::size_t i = 0; i < out.n_row(); ++i)
         for (std::size_t j = 0; j < dcy; ++j)
             worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
-    report(p, me, out.n_col() == 2 * dcy && worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
+    report(p, me, out.n_row() == nxl && out.n_col() == 2 * dcy && worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
 }
 
 // 2D distributed agas component: ny must be even (the component derives ny from the row length). The shared agas
@@ -290,7 +302,7 @@ void run_agas_2d(const params &p)
     f.initialize(std::move(v), p.run, "estimate").get();
     hpx::distributed::barrier("test_init").wait();
     hpxfft::fft2D::distributed::vector_2d out = f.fft_2d_r2c().get();
-    check_agas_2d(p, me, me * nxl, out);
+    check_agas_2d(p, me, me * nxl, nxl, out);
 }
 
 // helpers of the shared classes: write_plans_to_file (also the error path) and get_measurement
@@ -346,7 +358,7 @@ void run_helpers(const params &p)
         hpxfft::fft3D::shared::naive f;
         f.initialize(make3(), "estimate", p.nz);
         f.fft_3d_r2c();
-        ok = plans_file_ok(f, path) && f.get_measurement("total") >= 0.0 && ok;
+        ok = plans_file_ok(f, path) && f.get_measurement("total") > 0.0 && ok;
     }
     {
         hpxfft::fft3D::shared::sync f;
@@ -358,25 +370,25 @@ void run_helpers(const params &p)
         hpxfft::fft2D::shared::loop f;
         f.initialize(make2(), "estimate", p.ny);
         f.fft_2d_r2c_par();
-        ok = plans_file_ok(f, path) && f.get_measurement("total") >= 0.0 && ok;
+        ok = plans_file_ok(f, path) && f.get_measurement("total") > 0.0 && ok;
     }
     {
         hpxfft::fft2D::shared::naive f;
         f.initialize(make2(), "estimate", p.ny);
         f.fft_2d_r2c();
-        ok = f.get_measurement("total") >= 0.0 && ok;
+        ok = f.get_measurement("total") > 0.0 && ok;
     }
     {
         hpxfft::fft2D::shared::sync f;
         f.initialize(make2(), "estimate", p.ny);
         f.fft_2d_r2c();
-        ok = f.get_measurement("total") >= 0.0 && ok;
+        ok = f.get_measurement("total") > 0.0 && ok;
     }
     {
         hpxfft::fft2D::shared::opt f;
         f.initialize(make2(), "estimate", p.ny);
         f.fft_2d_r2c();
-        ok = f.get_measurement("total") >= 0.0 && ok;
+        ok = f.get_measurement("total") > 0.0 && ok;
     }
     report(p, 0, ok, "helpers");
 }
@@ -400,13 +412,14 @@ void run_2d(const params &p)
     {
         f.initialize(std::move(v), p.run, "estimate", p.size_arg >= 0 ? std::size_t(p.size_arg) : p.ny);
     }
-    catch (const std::exception &)
+    catch (const std::exception &e)
     {
+        g_error = e.what();
         initialized = false;
     }
     if (p.expect_throw)
     {
-        report(p, me, !initialized, initialized ? "accepted an invalid size" : "rejected as expected");
+        report_rejection(p, me, initialized);
         return;
     }
     if (!initialized)
@@ -460,6 +473,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     p.expect_throw = vm["expect_throw"].as<bool>();
     p.uneven_x = vm["uneven_x"].as<bool>();
     p.size_arg = vm["size_arg"].as<long>();
+    p.expect_msg = vm["expect_msg"].as<std::string>();
     try
     {
         if (p.mode == "2d")
@@ -492,7 +506,7 @@ int main(int argc, char *argv[])
         "nx", value<std::size_t>()->default_value(8))("ny", value<std::size_t>()->default_value(8))(
         "nz", value<std::size_t>()->default_value(6))("transposed", value<bool>()->default_value(false))(
         "expect_throw", value<bool>()->default_value(false))("uneven_x", value<bool>()->default_value(false))(
-        "size_arg", value<long>()->default_value(-1));
+        "size_arg", value<long>()->default_value(-1))("expect_msg", value<std::string>()->default_value(""));
     hpx::init_params ip;
     ip.desc_cmdline = d;
     ip.cfg = {"hpx.run_hpx_main!=1"};
