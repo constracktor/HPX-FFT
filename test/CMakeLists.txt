@@ -175,7 +175,7 @@ function(add_distributed_test name localities)
     NAME ${name}
     COMMAND ${CMAKE_CURRENT_LIST_DIR}/run_localities.sh ${localities}
             $<TARGET_FILE:test_distributed_fft> ${ARGN})
-  set_tests_properties(${name} PROPERTIES TIMEOUT 200)
+  set_tests_properties(${name} PROPERTIES TIMEOUT 200 RESOURCE_LOCK hpx_ports)
 endfunction()
 
 # a case is "nx,ny,nz"
