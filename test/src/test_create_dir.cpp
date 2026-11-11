@@ -16,6 +16,11 @@ TEST_CASE("create_parent_dir creates a missing parent directory", "[util]")
     std::filesystem::remove_all(base);
 }
 
+TEST_CASE("create_parent_dir accepts a bare file name", "[util]")
+{
+    REQUIRE_NOTHROW(hpxfft::util::create_parent_dir("result.csv"));
+}
+
 TEST_CASE("create_parent_dir reports a directory that cannot be created", "[util]")
 {
     const auto base = std::filesystem::temp_directory_path() / "hpxfft_create_dir_test_file";
