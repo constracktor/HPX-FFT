@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/2D/distributed/loop.hpp"
 
 #include <hpx/hpx_init.hpp>
@@ -347,11 +348,7 @@ void hpxfft::fft2D::distributed::loop::initialize(
     n_x_local_ = values_vec_.n_row();
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_y_ = values_vec_.n_col() / 2;
-    dim_r_y_ = ny != 0 ? ny : 2 * dim_c_y_ - 2;
-    if (dim_r_y_ / 2 + 1 != dim_c_y_)
-    {
-        throw std::invalid_argument("ny does not match the row length of the data (2 * (ny / 2 + 1) values)");
-    }
+    dim_r_y_ = hpxfft::util::real_length(dim_c_y_, ny, "ny");
     // y is split into blocks of complex numbers (dim_c_y = ny / 2 + 1 of them): dim_c_y / L each, the first
     // dim_c_y % L localities hold one more
     if (dim_c_y_ < num_localities_)
