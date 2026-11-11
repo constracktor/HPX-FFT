@@ -224,6 +224,8 @@ foreach(l 1 2)
 endforeach()
 add_distributed_test(dist_agas2d_L2_8x6_scatter 2 --mode=agas2d --nx=8 --ny=6 --run=scatter)
 
+add_distributed_test(dist_reject_agas2d_indivisible_y 2 --mode=agas2d --nx=8 --ny=8 --expect_throw=1 "--expect_msg=must be divisible")
+
 # remaining run flags of the 3D loops
 add_distributed_cases(slab 3 "12,13,10;12,7,9" "scatter_async;all_to_all_routed")
 add_distributed_cases(pencil 4 "8,8,11;8,8,6" "scatter_async;all_to_all_routed")
