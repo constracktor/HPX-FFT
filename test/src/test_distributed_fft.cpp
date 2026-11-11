@@ -57,6 +57,9 @@ void report(const params &p, std::size_t me, bool ok, const std::string &what)
     std::fflush(stdout);
 }
 
+// running maximum of the errors; a NaN error counts as infinite (std::max would silently drop it)
+inline double worse(const double worst, const double err) { return std::isnan(err) ? HUGE_VAL : std::max(worst, err); }
+
 // compare a block (nx_b x ny_b x nz_b complex numbers stored interleaved) with reference(i, j, k)
 template <typename Vec, typename Ref>
 bool compare_block(const Vec &out, std::size_t n0, std::size_t n1, std::size_t n2, double scale, Ref ref, std::string &what)
@@ -73,7 +76,7 @@ bool compare_block(const Vec &out, std::size_t n0, std::size_t n1, std::size_t n
             for (std::size_t k = 0; k < n2; ++k)
             {
                 const reference::cplx e = ref(i, j, k);
-                worst = std::max(worst, std::abs(reference::cplx(out(i, j, 2 * k), out(i, j, 2 * k + 1)) - e));
+                worst = worse(worst, std::abs(reference::cplx(out(i, j, 2 * k), out(i, j, 2 * k + 1)) - e));
             }
     what = "max_rel_err=" + std::to_string(worst / scale);
     return worst / scale < 1e-10;
@@ -264,7 +267,7 @@ void run_shared_2d(const params &p)
     {
         for (std::size_t i = 0; i < p.nx; ++i)
             for (std::size_t j = 0; j < dcy; ++j)
-                worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(i, j)));
+                worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(i, j)));
         what = "max_rel_err=" + std::to_string(worst / scale);
         ok = worst / scale < 1e-10;
     }
@@ -283,7 +286,7 @@ void check_agas_2d(const params &p, std::size_t me, std::size_t x0, std::size_t 
     double worst = 0.0;
     for (std::size_t i = 0; i < out.n_row(); ++i)
         for (std::size_t j = 0; j < dcy; ++j)
-            worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
+            worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
     report(p, me, out.n_row() == nxl && out.n_col() == 2 * dcy && worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
 }
 
@@ -453,7 +456,7 @@ void run_2d(const params &p)
             for (std::size_t j = 0; j < cols; ++j)
             {
                 const reference::cplx e = p.transposed ? ref.at(j, yo[me] + i) : ref.at(me * rows + i, j);
-                worst = std::max(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - e));
+                worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - e));
             }
         what = "max_rel_err=" + std::to_string(worst / scale);
         ok = worst / scale < 1e-10;
