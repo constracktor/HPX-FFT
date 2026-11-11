@@ -302,7 +302,21 @@ void run_agas_2d(const params &p)
     for (std::size_t i = 0; i < nxl; ++i)
         for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : 0.0;
     hpxfft::fft2D::distributed::agas f;
-    f.initialize(std::move(v), p.run, "estimate").get();
+    bool initialized = true;
+    try
+    {
+        f.initialize(std::move(v), p.run, "estimate").get();
+    }
+    catch (const std::exception &e)
+    {
+        g_error = e.what();
+        initialized = false;
+    }
+    if (p.expect_throw)
+    {
+        report_rejection(p, me, initialized);
+        return;
+    }
     hpx::distributed::barrier("test_init").wait();
     hpxfft::fft2D::distributed::vector_2d out = f.fft_2d_r2c().get();
     check_agas_2d(p, me, me * nxl, nxl, out);

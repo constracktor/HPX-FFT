@@ -313,6 +313,10 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_y_ = values_vec_.n_col() / 2;
     dim_r_y_ = 2 * dim_c_y_ - 2;
+    if (dim_c_y_ % num_localities_ != 0)
+    {
+        throw std::invalid_argument("Number of complex values in y (ny / 2 + 1) must be divisible by the number of localities");
+    }
     n_y_local_ = dim_c_y_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
