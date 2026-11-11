@@ -112,3 +112,51 @@ add_test(
   NAME test_vector_2d
   COMMAND test_vector_2d
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_vector_3d src/test_vector_3d.cpp)
+target_link_libraries(
+  test_vector_3d
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_vector_3d PUBLIC cxx_std_20)
+
+add_test(
+  NAME test_vector_3d
+  COMMAND test_vector_3d
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_shared_loop_3d src/test_shared_loop_3d.cpp)
+target_link_libraries(
+  test_shared_loop_3d
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_shared_loop_3d PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_shared_loop_3d
+  COMMAND test_shared_loop_3d
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_shared_naive_3d src/test_shared_naive_3d.cpp)
+target_link_libraries(
+  test_shared_naive_3d
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_shared_naive_3d PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_shared_naive_3d
+  COMMAND test_shared_naive_3d
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_shared_sync_3d src/test_shared_sync_3d.cpp)
+target_link_libraries(
+  test_shared_sync_3d
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_shared_sync_3d PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_shared_sync_3d
+  COMMAND test_shared_sync_3d
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")

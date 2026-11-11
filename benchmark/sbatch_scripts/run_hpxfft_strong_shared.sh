@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=hpxfft_job          # Job name
-#SBATCH --output=hpxfft_job.log        # Standard output and error log
+#SBATCH --output=hpxfft_job.log        # Standard output
+#SBATCH --error=hpxfft_error_%A.log    # Error Log
 #SBATCH --mail-type=NONE               # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --time=2:00:00                 # Time limit hrs:min:sec
 #SBATCH --exclusive                    # Exclusive ressource access
@@ -24,6 +25,9 @@ LOOP=$6
 COMMAND="srun -N 1 -n 1 -c $((2**POW_START))"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2"
+if [[ "$EXECUTABLE" == *"3d"* ]]; then
+    ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2"
+fi
 # Strong scaling loop from 2^pow_start to 2^pow_stop cores
 $COMMAND $EXECUTABLE $ARGUMENTS --header=true 
 for (( j=1; j<$LOOP; j=j+1 ))

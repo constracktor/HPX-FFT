@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=hpxfft_job          # Job name
-#SBATCH --output=hpxfft_job.log        # Standard output and error log
+#SBATCH --output=hpxfft_job.log        # Standard output
+#SBATCH --error=hpxfft_error_%A.log    # Error Log
 #SBATCH --mail-type=NONE               # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --time=2:00:00                 # Time limit hrs:min:sec
 #SBATCH --exclusive                    # Exclusive ressource access
@@ -24,6 +25,9 @@ LOOP=$6
 COMMAND="srun -N 1 -n 1 -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$((2**POW_START)) --ny=$((2**POW_START)) --plan=$2"
+if [[ "$EXECUTABLE" == *"3d"* ]]; then
+    ARGUMENTS="--nx=$((2**POW_START)) --ny=$((2**POW_START)) --nz=$((2**POW_START-2)) --plan=$2"
+fi
 # Problem size scaling loop from 2^pow_start to 2^pow_stop
 $COMMAND $EXECUTABLE $ARGUMENTS --header=true
 for (( j=1; j<$LOOP; j=j+1 ))
@@ -33,6 +37,9 @@ done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
     ARGUMENTS="--nx=$i --ny=$i --plan=$2"
+    if [[ "$EXECUTABLE" == *"3d"* ]]; then
+        ARGUMENTS="--nx=$i --ny=$i --nz=$i --plan=$2"
+    fi
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         $COMMAND $EXECUTABLE $ARGUMENTS

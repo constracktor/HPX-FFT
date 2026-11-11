@@ -77,6 +77,10 @@ struct vector_2d
         ar &n_row_;
         ar &n_col_;
         ar &size_;
+        if (size_ > 0 && values_ == nullptr)
+        {
+            values_ = new T[size_];
+        }
         for(std::size_t i=0; i<size_; ++i)
         {
             ar& values_[i];

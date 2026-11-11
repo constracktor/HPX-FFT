@@ -6,11 +6,14 @@ HPX-FFT is an open-source library for FFT computation. Leveraging the asynchrono
 
 HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.html) for asynchronous task-based parallelization. Further one-dimensional FFTs are computed via an [FFTW](https://www.fftw.org/) backend.
 
+As a reference implementation [P3DFFT++](https://p3dfft.readthedocs.io/en/latest/p3dfft++_documentation.html) is used. 
+
 ### Install dependencies
 
 All dependencies can be installed using [Spack](https://github.com/spack/spack).
 For HPX we recommend: `spack install hpx@1.11.0 networking={tcp/mpi/lci/all} max_cpu_count=256`
 For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
+For P3DFFT++ we recommend `spack install p3dfft3@develop +fftw +mpi`
 The requirements can be also installed using the provided spack environments. 
 The spack-repo directory add support for installing HPX with the LCI or all parcelports at once.
 
@@ -32,7 +35,11 @@ Shared examples:
 2=FFTW Planning flag (estimate/measure)
 3=Print info into runtime file (true/false)
 4=Number of HPX threads
-./hpxfft_shared_loop --nx=$1 --ny=$1 --plan=$2 --header=$3 --hpx:threads=$4
+./hpxfft_shared_loop_2d --nx=$1 --ny=$1 --plan=$2 --header=$3 --hpx:threads=$4
+```
+or
+```
+./hpxfft_shared_naive_3d --nx=$1 --ny=$1 --nz=$1 --plan=$2 --header=$3 --hpx:threads=$4
 ```
 
 Distributed examples with slurm:
@@ -45,30 +52,47 @@ Distributed examples with slurm:
 6=Number of HPX localities
 7=Partition
 
-srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
+srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_2d --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
+```
+or
+```
+srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_3d_slab --nx=$1 --ny=$1 --nz=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
 ```
 
 ### FFTW
 
 Shared examples:
 ```
-//        threads N_X N_Y  plan     header
-./fftw_omp   1      8  14 estimate    0
+//            threads N_X N_Y  plan     header
+./fftw_omp_2d   1      8  14 estimate    0
+```
+or
+```
+//            threads N_X N_Y N_Z  plan     header
+./fftw_omp_3d   1      8  14  32 estimate    0
 ```
 
 Distributed examples with srun or mpirun:
 ```
-//              nodes ranks    prog    threads N_X N_Y    plan  header
-srun --mpi=pmix -N 2  -n 4 fftw_mpi_omp   4     8   14  estimate  0
-               mpirun -n 4 fftw_mpi_omp   4     8   14  estimate  0
+//              nodes ranks    prog       threads N_X N_Y    plan  header
+srun --mpi=pmix -N 2  -n 4 fftw_mpi_omp_2d   4     8   14  estimate  0
+               mpirun -n 4 fftw_mpi_omp_2d   4     8   14  estimate  0
 ```
+or
+```
+//              nodes ranks    prog       threads N_X N_Y N_Z    plan  header
+srun --mpi=pmix -N 2  -n 4 fftw_mpi_omp_3d   4     8   14 32   estimate  0
+               mpirun -n 4 fftw_mpi_omp_3d   4     8   14 32   estimate  0
+```
+
 
 ## How to Run Benchmarks (wip)
 
 ### Shared
 All:
 
-- `./shared_benchmark.sh estimate/measure partition_name`
+- `./shared_benchmark.sh estimate/measure`
+- `./shared_benchmark_3d.sh estimate/measure`
 
 Executables only:
 
@@ -83,6 +107,7 @@ Executables only:
 ### Distributed
 
 - `./distributed_benchmark.sh estimate/measure scatter/all_to_all tcp/mpi/lci`
+- `./distributed_benchmark_3d.sh estimate/measure scatter/all_to_all/scatter_async tcp/mpi/lci`
 
 ## The Team
 
@@ -94,7 +119,7 @@ We specifically thank the follow contributors:
 
 - [Alexander Strack](https://www.ipvs.uni-stuttgart.de/de/institut/team/Strack-00001/):
   Maintainer and [initial framework](https://doi.org/10.1007/978-3-031-32316-4_5).
-- Heiko Häfner: Testing and CI.
+- Heiko Häfner: Testing, CI and 3D support.
 
 ## How To Cite
 
@@ -105,5 +130,16 @@ We specifically thank the follow contributors:
   booktitle={Asynchronous Many-Task Systems and Applications},
   year={2024},
   publisher={Springer Nature}
+}
+```
+or
+```
+@techreport{haefner2026hpxfft,
+  author      = {Heiko H{\"a}fner and Alexander Strack},
+  title       = {{HPXFFT}: A Three-Dimensional {FFT} Framework Using Asynchronous Parallel Computation},
+  institution = {Institute of Parallel and Distributed Systems, University of Stuttgart},
+  type        = {Project Report},
+  address     = {Stuttgart, Germany},
+  year        = {2026}
 }
 ```

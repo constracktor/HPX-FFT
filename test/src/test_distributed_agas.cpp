@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/distributed/agas.hpp"
-#include "../../core/include/hpxfft/util/print_vector.hpp"
+#include "../../core/include/hpxfft/2D/distributed/agas.hpp"
+#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::distributed::agas;
+using hpxfft::fft2D::distributed::agas;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -17,7 +17,7 @@ int entrypoint_test1(int argc, char *argv[])
     const std::size_t n_row = 4;
     const std::size_t n_col = 6;
     const std::size_t n_x_local = n_row / num_localities;
-    hpxfft::distributed::vector_2d values_vec(n_x_local, n_col, 0.0);
+    hpxfft::fft2D::distributed::vector_2d values_vec(n_x_local, n_col, 0.0);
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -28,7 +28,7 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // expected output
-    hpxfft::distributed::vector_2d expected_output(n_x_local, n_col, 0.0);
+    hpxfft::fft2D::distributed::vector_2d expected_output(n_x_local, n_col, 0.0);
 
     if (this_locality == 0)
     {
@@ -39,11 +39,11 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // Computation
-    hpxfft::distributed::agas fft;
+    hpxfft::fft2D::distributed::agas fft;
     std::string plan_flag = "estimate";
     hpx::future<void> init_future = fft.initialize(std::move(values_vec), "scatter", plan_flag);
     init_future.get();
-    hpx::future<hpxfft::distributed::vector_2d> result_future = fft.fft_2d_r2c();
+    hpx::future<hpxfft::fft2D::distributed::vector_2d> result_future = fft.fft_2d_r2c();
     values_vec = result_future.get();
     REQUIRE(values_vec == expected_output);
 

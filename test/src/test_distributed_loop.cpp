@@ -1,11 +1,11 @@
-#include "../../core/include/hpxfft/distributed/loop.hpp"
-#include "../../core/include/hpxfft/util/print_vector.hpp"
+#include "../../core/include/hpxfft/2D/distributed/loop.hpp"
+#include "../../core/include/hpxfft/util/print_vector_2d.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fftw3.h>
 #include <hpx/hpx_init.hpp>
 
-using hpxfft::distributed::loop;
+using hpxfft::fft2D::distributed::loop;
 using real = double;
 
 int entrypoint_test1(int argc, char *argv[])
@@ -17,7 +17,7 @@ int entrypoint_test1(int argc, char *argv[])
     const std::size_t n_row = 4;
     const std::size_t n_col = 6;
     const std::size_t n_x_local = n_row / num_localities;
-    hpxfft::distributed::vector_2d values_vec(n_x_local, n_col, 0.0);
+    hpxfft::fft2D::distributed::vector_2d values_vec(n_x_local, n_col, 0.0);
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -28,7 +28,7 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // expected output
-    hpxfft::distributed::vector_2d expected_output(n_x_local, n_col, 0.0);
+    hpxfft::fft2D::distributed::vector_2d expected_output(n_x_local, n_col, 0.0);
 
     if (this_locality == 0)
     {
@@ -39,7 +39,7 @@ int entrypoint_test1(int argc, char *argv[])
     }
 
     // Computation
-    hpxfft::distributed::loop fft;
+    hpxfft::fft2D::distributed::loop fft;
     std::string plan_flag = "estimate";
     fft.initialize(std::move(values_vec), "scatter", plan_flag);
     values_vec = fft.fft_2d_r2c();

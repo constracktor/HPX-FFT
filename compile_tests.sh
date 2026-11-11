@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+#SBATCH --output=output/output_compile_tests_%j.log      # Standard output log
+#SBATCH --error=output/error_compile_tests_%j.log        # Error log file
 ################################################################################
 # Config
 ################################################################################
