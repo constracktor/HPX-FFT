@@ -123,7 +123,7 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_seq()
         fft_1d_r2c_inplace(i);
     }
     auto start_first_trans = t_.now();
-    for (std::size_t i = 0; i < dim_c_x_; ++i)
+    for (std::size_t i = 0; i < dim_c_y_; ++i)
     {
         // transpose from y-direction to x-direction
         transpose_shared_y_to_x(i);
