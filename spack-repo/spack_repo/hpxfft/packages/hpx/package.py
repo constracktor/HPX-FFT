@@ -6,8 +6,12 @@
 
 import sys
 
+from spack_repo.builtin.build_systems.cmake import CMakePackage, generator
+from spack_repo.builtin.build_systems.cuda import CudaPackage
+from spack_repo.builtin.build_systems.rocm import ROCmPackage
+from spack_repo.builtin.packages.boost.package import Boost
+
 from spack.package import *
-from spack.pkg.builtin.boost import Boost
 
 
 class Hpx(CMakePackage, CudaPackage, ROCmPackage):
@@ -24,6 +28,7 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
 
     version("master", branch="master")
     version("stable", tag="stable", commit="103a7b8e3719a0db948d1abde29de0ff91e070be")
+    version("2.0.0", sha256="c755ab893e9fdcbc896c6eb735ad411cc78b9314e916d87119c3cd5304928211")
     version("1.11.0", sha256="01ec47228a2253b41e318bb09c83325a75021eb6ef3262400fbda30ac7389279")
     version("1.10.0", sha256="5720ed7d2460fa0b57bd8cb74fa4f70593fe8675463897678160340526ec3c19")
     version("1.9.1", sha256="1adae9d408388a723277290ddb33c699aa9ea72defadf3f12d4acc913a0ff22d")

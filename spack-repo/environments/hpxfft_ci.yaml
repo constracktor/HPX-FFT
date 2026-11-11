@@ -1,6 +1,8 @@
 spack:
+  repos:
+  - spack-repo/spack_repo/hpxfft
   specs:
-  - hpx@1.10.0 malloc=system networking=mpi max_cpu_count=256 instrumentation=none
+  - hpxfft.hpx@2.0.0 malloc=system networking=mpi max_cpu_count=256 instrumentation=none
   - fftw@3.3.10 +mpi +openmp
   view: true
   concretizer:
