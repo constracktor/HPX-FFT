@@ -1,4 +1,5 @@
 #include "../../../include/hpxfft/2D/shared/naive.hpp"
+#include "../../../include/hpxfft/util/real_length.hpp"
 
 // FFT backend
 void hpxfft::fft2D::shared::naive::fft_1d_r2c_inplace(const std::size_t i)
@@ -107,11 +108,7 @@ void hpxfft::fft2D::shared::naive::initialize(hpxfft::fft2D::shared::vector_2d v
     // parameters
     dim_c_x_ = values_vec_.n_row();
     dim_c_y_ = values_vec_.n_col() / 2;
-    dim_r_y_ = ny != 0 ? ny : 2 * dim_c_y_ - 2;
-    if (dim_r_y_ / 2 + 1 != dim_c_y_)
-    {
-        throw std::invalid_argument("ny does not match the row length of the data (2 * (ny / 2 + 1) values)");
-    }
+    dim_r_y_ = hpxfft::util::real_length(dim_c_y_, ny, "ny");
     // resize transposed data structure
     trans_values_vec_ = std::move(hpxfft::fft2D::shared::vector_2d(dim_c_y_, 2 * dim_c_x_));
     // create FFTW plans

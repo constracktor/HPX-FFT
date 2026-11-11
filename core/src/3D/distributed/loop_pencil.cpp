@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
 
 void hpxfft::fft3D::distributed::loop::pencil::initialize(
@@ -18,11 +19,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     dim_c_x_ = n_x_local_ * localities_per_dir_;
     dim_c_y_ = n_y_local_ * localities_per_dir_;
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = nz != 0 ? nz : 2 * dim_c_z_ - 2;
-    if (dim_r_z_ / 2 + 1 != dim_c_z_)
-    {
-        throw std::invalid_argument("nz does not match the row length of the data (2 * (nz / 2 + 1) values)");
-    }
+    dim_r_z_ = hpxfft::util::real_length(dim_c_z_, nz, "nz");
     dim_c_z_part_ = 2 * dim_c_z_ / localities_per_dir_;
     dim_c_y_part_ = 2 * dim_c_y_ / localities_per_dir_;
     dim_c_x_part_ = 2 * dim_c_x_ / localities_per_dir_;
