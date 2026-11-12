@@ -79,6 +79,12 @@ struct pencil : public base
 
     std::size_t local_z_offset() const { return z_offsets_[pos_dir_y_]; }
 
+    // y rows held by this locality in the transposed output (y_local, z_local, x), and the first one: the y block of
+    // its position in x direction (not the y block of its input)
+    std::size_t local_y_count() const { return n_y_local_; }
+
+    std::size_t local_y_offset() const { return pos_dir_x_ * n_y_local_; }
+
   private:
     // permute (only local data)
     void permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i) override;
