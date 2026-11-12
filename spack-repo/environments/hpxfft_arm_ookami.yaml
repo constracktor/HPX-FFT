@@ -1,7 +1,11 @@
 spack:
+  # `spack env create <name> <this file>` turns this path, relative to the directory of
+  # this file, into an absolute one (only for the named form, not for a list entry).
+  repos:
+    hpxfft: ../spack_repo/hpxfft
   specs:
-  - hpx@1.11.0%gcc@14.2.0 malloc=system networking=mpi max_cpu_count=256 instrumentation=none
-  - fftw@3.3.10%gcc@14.2.0 +mpi +openmp
+  - hpxfft.hpx@2.0.0 cxxstd=20 malloc=system networking=tcp,mpi max_cpu_count=256 instrumentation=none %gcc@14.2.0
+  - fftw@3.3.10 +mpi +openmp %gcc@14.2.0
   view: true
   concretizer:
     unify: true

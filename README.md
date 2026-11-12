@@ -12,7 +12,7 @@ The one-dimensional FFTs use an FFTW backend; FFTW and P3DFFT++ serve as referen
 ## Dependencies
 
 HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.html) for asynchronous task-based parallelization. Further one-dimensional FFTs are computed via an [FFTW](https://www.fftw.org/) backend.
-The library is built with C++20.
+HPX-FFT requires HPX 2.0.0 or newer (built with C++20) and a C++20 compiler.
 
 As a reference implementation [P3DFFT++](https://p3dfft.readthedocs.io/en/latest/p3dfft++_documentation.html) is used.
 
@@ -33,10 +33,11 @@ starts the localities over TCP. With an MPI-only HPX every multi-locality test a
 "Could not find usable bootstrap parcelport".
 
 The requirements can be also installed using the provided spack environments in `spack-repo/environments`, e.g.
-`spack env create hpxfft_x86_buran spack-repo/environments/hpxfft_x86_buran.yaml`. `hpxfft_ci.yaml` is the CI
+`spack env create hpxfft_x86_buran spack-repo/environments/hpxfft_x86_buran.yaml` (the
+environments add the HPX recipe in `spack-repo/spack_repo/hpxfft` themselves). `hpxfft_ci.yaml` is the CI
 environment (HPX 2.0.0, TCP). The machine environments (`hpxfft_x86_buran`, `hpxfft_x86_epyc`, `hpxfft_arm_ookami`)
-still pin HPX 1.11.0 with GCC 14.2.0 and use `networking=all` (buran) or `networking=mpi` (epyc, ookami); the latter
-cannot run the distributed tests.
+use HPX 2.0.0 (`cxxstd=20`) with GCC 14.2.0 and `networking=all` (buran) or `networking=tcp,mpi` (epyc, ookami), so
+all of them can run the distributed tests.
 
 ## How to Compile HPX-FFT
 
