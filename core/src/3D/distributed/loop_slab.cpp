@@ -1,6 +1,6 @@
-#include <algorithm>
-#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include <algorithm>
 
 void hpxfft::fft3D::distributed::loop::slab::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
@@ -9,7 +9,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
-    hpxfft::util::check_equal_local_shape({values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z()});
+    hpxfft::util::check_equal_local_shape({ values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z() });
     // locality information
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
     // parameters
@@ -38,8 +38,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     permuted_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
     {
-        permuted_values_prep_[i] = vector_3d(
-            n_x_local_, dim_c_z_, 2 * (y_offsets_[i + 1] - y_offsets_[i]), vector_3d::uninitialized);
+        permuted_values_prep_[i] =
+            vector_3d(n_x_local_, dim_c_z_, 2 * (y_offsets_[i + 1] - y_offsets_[i]), vector_3d::uninitialized);
         values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_, vector_3d::uninitialized);
     }
     // create FFTW plans
@@ -149,10 +149,11 @@ hpx::future<hpxfft::fft3D::distributed::vector_3d> hpxfft::fft3D::distributed::l
                 hpx::collectives::generation_arg(generation));
         }
         // send from this locality (the root of the communicator)
-        return hpx::collectives::scatter_to(communicator,
-                                            std::move(prep),
-                                            hpx::collectives::this_site_arg(this_locality_),
-                                            hpx::collectives::generation_arg(generation));
+        return hpx::collectives::scatter_to(
+            communicator,
+            std::move(prep),
+            hpx::collectives::this_site_arg(this_locality_),
+            hpx::collectives::generation_arg(generation));
     }
     if (this_locality_ != root)
     {
@@ -186,13 +187,14 @@ hpxfft::fft3D::distributed::loop::slab::all_to_all_exchange(std::vector<vector_3
     }
     // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
     // explicit generation and at least three sites (otherwise HPX routes the data)
-    return hpx::collectives::all_to_all(basename_storage_[0].c_str(),
-                                        std::move(prep),
-                                        hpx::collectives::num_sites_arg(num_localities_),
-                                        hpx::collectives::this_site_arg(this_locality_),
-                                        hpx::collectives::generation_arg(generation),
-                                        hpx::collectives::root_site_arg(0),
-                                        hpx::collectives::pairwise_threshold_arg(0));
+    return hpx::collectives::all_to_all(
+        basename_storage_[0].c_str(),
+        std::move(prep),
+        hpx::collectives::num_sites_arg(num_localities_),
+        hpx::collectives::this_site_arg(this_locality_),
+        hpx::collectives::generation_arg(generation),
+        hpx::collectives::root_site_arg(0),
+        hpx::collectives::pairwise_threshold_arg(0));
 }
 
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_vec()
@@ -267,7 +269,8 @@ void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_y_x(const std
                 for (std::size_t x = xb; x < xe; ++x)
                 {
                     dst[z * dst_y + slice_y * dst_k + offset + 2 * x] = src[x * src_x + slice_y * src_k + 2 * z];
-                    dst[z * dst_y + slice_y * dst_k + offset + 2 * x + 1] = src[x * src_x + slice_y * src_k + 2 * z + 1];
+                    dst[z * dst_y + slice_y * dst_k + offset + 2 * x + 1] =
+                        src[x * src_x + slice_y * src_k + 2 * z + 1];
                 }
             }
         }

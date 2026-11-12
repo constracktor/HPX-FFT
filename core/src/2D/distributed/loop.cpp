@@ -1,7 +1,7 @@
-#include <algorithm>
-#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/2D/distributed/loop.hpp"
 
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include <algorithm>
 #include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
 
@@ -48,14 +48,16 @@ hpx::future<std::vector<real>> hpxfft::fft2D::distributed::loop::scatter_exchang
         auto &communicator = *hierarchical_scatter_communicators_[root];
         if (this_locality_ != root)
         {
-            return hpx::collectives::scatter_from<std::vector<real>>(communicator,
-                                                                     hpx::collectives::this_site_arg(this_locality_),
-                                                                     hpx::collectives::generation_arg(generation));
+            return hpx::collectives::scatter_from<std::vector<real>>(
+                communicator,
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::generation_arg(generation));
         }
-        return hpx::collectives::scatter_to(communicator,
-                                            std::move(prep),
-                                            hpx::collectives::this_site_arg(this_locality_),
-                                            hpx::collectives::generation_arg(generation));
+        return hpx::collectives::scatter_to(
+            communicator,
+            std::move(prep),
+            hpx::collectives::this_site_arg(this_locality_),
+            hpx::collectives::generation_arg(generation));
     }
     if (this_locality_ != root)
     {
@@ -89,13 +91,14 @@ hpx::future<std::vector<std::vector<real>>> hpxfft::fft2D::distributed::loop::al
     }
     // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
     // explicit generation and at least three sites (otherwise HPX routes the data)
-    return hpx::collectives::all_to_all(basename_storage_[0].c_str(),
-                                        std::move(prep),
-                                        hpx::collectives::num_sites_arg(num_localities_),
-                                        hpx::collectives::this_site_arg(this_locality_),
-                                        hpx::collectives::generation_arg(generation),
-                                        hpx::collectives::root_site_arg(0),
-                                        hpx::collectives::pairwise_threshold_arg(0));
+    return hpx::collectives::all_to_all(
+        basename_storage_[0].c_str(),
+        std::move(prep),
+        hpx::collectives::num_sites_arg(num_localities_),
+        hpx::collectives::this_site_arg(this_locality_),
+        hpx::collectives::generation_arg(generation),
+        hpx::collectives::root_site_arg(0),
+        hpx::collectives::pairwise_threshold_arg(0));
 }
 
 void hpxfft::fft2D::distributed::loop::communicate_all_to_all_vec()
@@ -334,13 +337,15 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
 }
 
 // initialization
-void hpxfft::fft2D::distributed::loop::initialize(
-    hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t ny)
+void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::vector_2d values_vec,
+                                                  const std::string COMM_FLAG,
+                                                  const std::string PLAN_FLAG,
+                                                  const std::size_t ny)
 {
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
-    hpxfft::util::check_equal_local_shape({values_vec_.n_row(), values_vec_.n_col()});
+    hpxfft::util::check_equal_local_shape({ values_vec_.n_row(), values_vec_.n_col() });
     // locality information
     this_locality_ = hpx::get_locality_id();
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
@@ -353,7 +358,8 @@ void hpxfft::fft2D::distributed::loop::initialize(
     // dim_c_y % L localities hold one more
     if (dim_c_y_ < num_localities_)
     {
-        throw std::invalid_argument("Number of complex values in y (ny / 2 + 1) is smaller than the number of localities");
+        throw std::invalid_argument(
+            "Number of complex values in y (ny / 2 + 1) is smaller than the number of localities");
     }
     y_offsets_ = hpxfft::util::block_offsets(dim_c_y_, num_localities_);
     n_y_local_ = y_offsets_[this_locality_ + 1] - y_offsets_[this_locality_];

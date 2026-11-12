@@ -1,6 +1,6 @@
 #include "../../../include/hpxfft/2D/shared/loop.hpp"
-#include "../../../include/hpxfft/util/real_length.hpp"
 
+#include "../../../include/hpxfft/util/real_length.hpp"
 #include <hpx/parallel/algorithms/for_loop.hpp>
 
 // FFT backend

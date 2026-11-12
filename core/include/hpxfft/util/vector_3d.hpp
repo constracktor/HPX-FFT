@@ -22,11 +22,12 @@ struct vector_3d
     // default constructor
     vector_3d();
     vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z);
+
     // allocate without zero-filling (for buffers that are completely overwritten before they are read)
     struct uninitialized_t
-    {
-    };
-    static constexpr uninitialized_t uninitialized{};
+    { };
+
+    constexpr static uninitialized_t uninitialized{};
     vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z, uninitialized_t);
     // explicit contructors
     vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z, const T &v);

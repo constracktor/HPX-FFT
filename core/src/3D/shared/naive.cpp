@@ -1,4 +1,5 @@
 #include "../../../include/hpxfft/3D/shared/naive.hpp"
+
 #include "../../../include/hpxfft/util/real_length.hpp"
 
 void hpxfft::fft3D::shared::naive::initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz)

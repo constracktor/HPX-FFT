@@ -1,6 +1,6 @@
-#include <algorithm>
-#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include <algorithm>
 
 void hpxfft::fft3D::distributed::loop::pencil::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
@@ -8,7 +8,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
-    hpxfft::util::check_equal_local_shape({values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z()});
+    hpxfft::util::check_equal_local_shape({ values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z() });
     // locality information
     this_locality_ = hpx::get_locality_id();
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
@@ -176,23 +176,29 @@ void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_vec_x(const s
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_vec_y(const std::size_t i)
 {
-    communication_futures_[i] = scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(values_prep_), generation_countery_);
+    communication_futures_[i] =
+        scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(values_prep_), generation_countery_);
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_permuted_vec_x(const std::size_t i)
 {
-    communication_futures_[i] = scatter_exchange(2 * i, i, pos_dir_x_, std::move(permuted_values_prep_), generation_counterx_);
+    communication_futures_[i] =
+        scatter_exchange(2 * i, i, pos_dir_x_, std::move(permuted_values_prep_), generation_counterx_);
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_scatter_permuted_vec_y(const std::size_t i)
 {
-    communication_futures_[i] = scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(permuted_values_prep2_), generation_countery_);
+    communication_futures_[i] =
+        scatter_exchange(2 * i + 1, i, pos_dir_y_, std::move(permuted_values_prep2_), generation_countery_);
 }
 
 // scatter communication (flat or hierarchical communicators): the locality `root` of a group sends one block to every
 // locality of the group; `slot` selects the communicator (2 root: x direction, 2 root + 1: y direction)
 hpx::future<hpxfft::fft3D::distributed::vector_3d> hpxfft::fft3D::distributed::loop::pencil::scatter_exchange(
-    const std::size_t slot, const std::size_t root, const std::size_t site, std::vector<vector_3d> &&prep,
+    const std::size_t slot,
+    const std::size_t root,
+    const std::size_t site,
+    std::vector<vector_3d> &&prep,
     const std::size_t generation)
 {
     if (hierarchical_scatter_)
@@ -200,27 +206,27 @@ hpx::future<hpxfft::fft3D::distributed::vector_3d> hpxfft::fft3D::distributed::l
         auto &communicator = *hierarchical_scatter_communicators_[slot];
         if (site != root)
         {
-            return hpx::collectives::scatter_from<vector_3d>(communicator,
-                                                             hpx::collectives::this_site_arg(site),
-                                                             hpx::collectives::generation_arg(generation));
+            return hpx::collectives::scatter_from<vector_3d>(
+                communicator, hpx::collectives::this_site_arg(site), hpx::collectives::generation_arg(generation));
         }
-        return hpx::collectives::scatter_to(communicator,
-                                            std::move(prep),
-                                            hpx::collectives::this_site_arg(site),
-                                            hpx::collectives::generation_arg(generation));
+        return hpx::collectives::scatter_to(
+            communicator,
+            std::move(prep),
+            hpx::collectives::this_site_arg(site),
+            hpx::collectives::generation_arg(generation));
     }
     if (site != root)
     {
         // receive from other locality
-        return hpx::collectives::scatter_from<vector_3d>(communicators_[slot],
-                                                         hpx::collectives::this_site_arg(site),
-                                                         hpx::collectives::generation_arg(generation));
+        return hpx::collectives::scatter_from<vector_3d>(
+            communicators_[slot], hpx::collectives::this_site_arg(site), hpx::collectives::generation_arg(generation));
     }
     // send from this locality
-    return hpx::collectives::scatter_to(communicators_[slot],
-                                        std::move(prep),
-                                        hpx::collectives::this_site_arg(site),
-                                        hpx::collectives::generation_arg(generation));
+    return hpx::collectives::scatter_to(
+        communicators_[slot],
+        std::move(prep),
+        hpx::collectives::this_site_arg(site),
+        hpx::collectives::generation_arg(generation));
 }
 
 // all to all communication of a group (0: x direction, 1: y direction): direct exchange between the localities of the
@@ -232,20 +238,22 @@ hpxfft::fft3D::distributed::loop::pencil::all_to_all_exchange(
     const std::size_t site = (group == 0) ? pos_dir_x_ : pos_dir_y_;
     if (routed_)
     {
-        return hpx::collectives::all_to_all(communicators_[group],
-                                            std::move(prep),
-                                            hpx::collectives::this_site_arg(site),
-                                            hpx::collectives::generation_arg(generation));
+        return hpx::collectives::all_to_all(
+            communicators_[group],
+            std::move(prep),
+            hpx::collectives::this_site_arg(site),
+            hpx::collectives::generation_arg(generation));
     }
     // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
     // explicit generation and at least three sites in the group (otherwise HPX routes the data)
-    return hpx::collectives::all_to_all(basename_storage_[group].c_str(),
-                                        std::move(prep),
-                                        hpx::collectives::num_sites_arg(localities_per_dir_),
-                                        hpx::collectives::this_site_arg(site),
-                                        hpx::collectives::generation_arg(generation),
-                                        hpx::collectives::root_site_arg(0),
-                                        hpx::collectives::pairwise_threshold_arg(0));
+    return hpx::collectives::all_to_all(
+        basename_storage_[group].c_str(),
+        std::move(prep),
+        hpx::collectives::num_sites_arg(localities_per_dir_),
+        hpx::collectives::this_site_arg(site),
+        hpx::collectives::generation_arg(generation),
+        hpx::collectives::root_site_arg(0),
+        hpx::collectives::pairwise_threshold_arg(0));
 }
 
 void hpxfft::fft3D::distributed::loop::pencil::communicate_all_to_all_vec_x()
@@ -277,8 +285,8 @@ constexpr std::size_t TILE = 16;
 using vector_3d = hpxfft::fft3D::distributed::vector_3d;
 
 // dst(slice, z, offset + 2 y) = src(slice, y, 2 z) for y < n_1, z < dst.n_y() (complex numbers)
-void transpose_slice_yz(vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset,
-                        const std::size_t n_1)
+void transpose_slice_yz(
+    vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset, const std::size_t n_1)
 {
     const std::size_t n_0 = dst.n_y();
     const double *s = src.data();
@@ -307,8 +315,8 @@ void transpose_slice_yz(vector_3d &dst, const vector_3d &src, const std::size_t 
 }
 
 // dst(z, slice, offset + 2 x) = src(x, slice, 2 z) for x < n_1, z < dst.n_x() (complex numbers)
-void transpose_slice_xz(vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset,
-                        const std::size_t n_1)
+void transpose_slice_xz(
+    vector_3d &dst, const vector_3d &src, const std::size_t slice, const std::size_t offset, const std::size_t n_1)
 {
     const std::size_t n_0 = dst.n_x();
     const double *s = src.data();

@@ -31,6 +31,7 @@ struct cleanup_guard
     cleanup_guard() = default;
     cleanup_guard(const cleanup_guard &) = delete;
     cleanup_guard &operator=(const cleanup_guard &) = delete;
+
     ~cleanup_guard() { cleanup(); }
 };
 

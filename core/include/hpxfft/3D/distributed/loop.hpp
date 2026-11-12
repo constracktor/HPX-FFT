@@ -57,6 +57,7 @@ struct slab : public base
   public:
     // y rows held by this locality in the transposed output (set_transposed_output), and the first one
     std::size_t local_y_count() const { return n_y_local_; }
+
     std::size_t local_y_offset() const { return y_offsets_[this_locality_]; }
 };
 
@@ -75,6 +76,7 @@ struct pencil : public base
     // z frequencies (complex numbers) held by this locality in the transposed output (set_transposed_output), and the
     // first one
     std::size_t local_z_count() const { return n_z_local_; }
+
     std::size_t local_z_offset() const { return z_offsets_[pos_dir_y_]; }
 
   private:
@@ -112,15 +114,14 @@ struct pencil : public base
     vector_comm values_prep2_;
     vector_comm permuted_values_prep2_;
 
-
     // all_to_all of the group (0: x direction, 1: y direction)
-    hpx::future<std::vector<vector_3d>> all_to_all_exchange(
-        std::size_t group, std::vector<vector_3d> &&prep, std::size_t generation);
+    hpx::future<std::vector<vector_3d>>
+    all_to_all_exchange(std::size_t group, std::vector<vector_3d> &&prep, std::size_t generation);
     // scatter through one hierarchical communicator per root (slot 2 i: x direction, 2 i + 1: y direction); needs an
     // HPX whose hierarchical communicators support a root site other than 0
     std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
-    hpx::future<vector_3d> scatter_exchange(std::size_t slot, std::size_t root, std::size_t site,
-                                            std::vector<vector_3d> &&prep, std::size_t generation);
+    hpx::future<vector_3d> scatter_exchange(
+        std::size_t slot, std::size_t root, std::size_t site, std::vector<vector_3d> &&prep, std::size_t generation);
 };
 
 }  // namespace hpxfft::fft3D::distributed::loop

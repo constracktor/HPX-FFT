@@ -16,7 +16,7 @@ namespace hpxfft::util
 // block, so unequal blocks would otherwise give wrong results or hangs.
 inline void check_equal_local_shape(const std::vector<std::uint64_t> &shape)
 {
-    static std::atomic<std::size_t> counter{0};
+    static std::atomic<std::size_t> counter{ 0 };
     const std::size_t num_sites = hpx::get_num_localities(hpx::launch::sync);
     if (num_sites == 1)
     {
@@ -24,11 +24,12 @@ inline void check_equal_local_shape(const std::vector<std::uint64_t> &shape)
     }
     const std::string basename = "hpxfft_shape_check_" + std::to_string(counter++);
     std::vector<std::vector<std::uint64_t>> all_shapes =
-        hpx::collectives::all_gather(basename.c_str(),
-                                     shape,
-                                     hpx::collectives::num_sites_arg(num_sites),
-                                     hpx::collectives::this_site_arg(hpx::get_locality_id()),
-                                     hpx::collectives::generation_arg(1))
+        hpx::collectives::all_gather(
+            basename.c_str(),
+            shape,
+            hpx::collectives::num_sites_arg(num_sites),
+            hpx::collectives::this_site_arg(hpx::get_locality_id()),
+            hpx::collectives::generation_arg(1))
             .get();
     for (const auto &s : all_shapes)
     {

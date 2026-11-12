@@ -1,4 +1,5 @@
 #include "../../../include/hpxfft/2D/shared/sync.hpp"
+
 #include "../../../include/hpxfft/util/real_length.hpp"
 
 // FFT backend
@@ -104,7 +105,8 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::sync::fft_2d_r2c()
 }
 
 // initialization
-void hpxfft::fft2D::shared::sync::initialize(hpxfft::fft2D::shared::vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny)
+void hpxfft::fft2D::shared::sync::initialize(
+    hpxfft::fft2D::shared::vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny)
 {
     // move data into own data structure
     values_vec_ = std::move(values_vec);
