@@ -224,6 +224,8 @@ add_distributed_cases(2d 1 "6,1,0;6,2,0;6,3,0" "scatter;all_to_all")
 add_distributed_cases(2d 4 "12,10,0" "scatter;all_to_all")
 
 add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
+# all localities export FFTW wisdom to the same file at once, then import it
+add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
 
 # agas components (ny even); the distributed one has no uneven-block support, so dcy must divide
 foreach(l 1 2)
@@ -294,4 +296,16 @@ target_compile_features(test_util_helpers PRIVATE cxx_std_17)
 add_test(
   NAME test_util_helpers
   COMMAND test_util_helpers
+  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
+add_executable(test_fftw_wisdom src/test_fftw_wisdom.cpp)
+target_link_libraries(
+  test_fftw_wisdom
+  PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
+  PUBLIC HPX::hpx)
+target_compile_features(test_fftw_wisdom PRIVATE cxx_std_17)
+
+add_test(
+  NAME test_fftw_wisdom
+  COMMAND test_fftw_wisdom
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")

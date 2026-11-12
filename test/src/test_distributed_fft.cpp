@@ -11,9 +11,12 @@
 #include "hpxfft/3D/shared/loop.hpp"
 #include "hpxfft/3D/shared/naive.hpp"
 #include "hpxfft/3D/shared/sync.hpp"
+#include "hpxfft/util/adapter_fftw.hpp"
+#include "hpxfft/util/fftw_wisdom.hpp"
 #include "reference_dft.hpp"
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <hpx/hpx_init.hpp>
 #include <optional>
 #include <string>
@@ -500,6 +503,41 @@ void run_2d(const params &p)
     report(p, me, ok, what);
 }
 
+// wisdom: every locality plans a c2c FFT of size nx with measure and exports to the same file at the same time; the
+// atomic rename must leave a complete file that every locality can import and plan from with FFTW_WISDOM_ONLY
+void run_wisdom(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    const auto dir = std::filesystem::temp_directory_path() / "hpxfft_dist_wisdom_test";
+    const std::string file = (dir / "wisdom.txt").string();
+    if (me == 0) std::filesystem::remove_all(dir);
+    hpx::distributed::barrier("wisdom_clean").wait();
+    const int n = static_cast<int>(p.nx);
+    fftw_complex *buf = fftw_alloc_complex(p.nx);
+    {
+        hpxfft::util::fftw_adapter::c2c_1d adapter;
+        adapter.plan(n, "measure", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        hpxfft::util::export_wisdom(file);
+    }
+    hpx::distributed::barrier("wisdom_export").wait();
+    fftw_forget_wisdom();
+    const bool imported = hpxfft::util::import_wisdom(file);
+    fftw_plan plan = fftw_plan_dft_1d(n, buf, buf, FFTW_FORWARD, FFTW_MEASURE | FFTW_WISDOM_ONLY);
+    const bool ok = imported && plan != nullptr;
+    fftw_destroy_plan(plan);
+    fftw_free(buf);
+    hpx::distributed::barrier("wisdom_import").wait();
+    std::size_t leftovers = 0;
+    for ([[maybe_unused]] const auto &entry : std::filesystem::directory_iterator(dir)) ++leftovers;
+    hpx::distributed::barrier("wisdom_count").wait();
+    if (me == 0) std::filesystem::remove_all(dir);
+    report(p,
+           me,
+           ok && leftovers == 1,
+           "imported=" + std::to_string(imported) + " wisdom_only_plan=" + std::to_string(plan != nullptr) +
+               " files=" + std::to_string(leftovers));
+}
+
 int hpx_main(hpx::program_options::variables_map &vm)
 {
     params p;
@@ -525,6 +563,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
             run_agas_2d(p);
         else if (p.mode == "shared2d")
             run_shared_2d(p);
+        else if (p.mode == "wisdom")
+            run_wisdom(p);
         else if (p.mode == "slab" || p.mode == "pencil")
             run_3d(p, p.mode == "pencil");
         else
