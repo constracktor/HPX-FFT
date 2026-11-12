@@ -1,4 +1,5 @@
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
+#include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
 #include <algorithm>
 
@@ -7,6 +8,8 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
 {
     // reject an unsupported run flag before any collective operation
     check_comm_flag(COMM_FLAG, "the pencil decomposition");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/pencil/");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
@@ -93,9 +96,10 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
             hierarchical_scatter_communicators_.resize(2 * localities_per_dir_);
             for (std::size_t i = 0; i < localities_per_dir_; ++i)
             {
-                basename_storage_[2 * i] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
+                basename_storage_[2 * i] =
+                    basename_prefix + "x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
                 basename_storage_[2 * i + 1] =
-                    "hpxfft/pencil/y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
+                    basename_prefix + "y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
                 hierarchical_scatter_communicators_[2 * i].emplace(hpx::collectives::create_hierarchical_communicator(
                     basename_storage_[2 * i].c_str(),
                     hpx::collectives::num_sites_arg(localities_per_dir_),
@@ -118,8 +122,9 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         }
         for (std::size_t i = 0; i < localities_per_dir_; ++i)
         {
-            basename_storage_[2 * i] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
-            basename_storage_[2 * i + 1] = "hpxfft/pencil/y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
+            basename_storage_[2 * i] = basename_prefix + "x/" + std::to_string(pos_dir_y_) + "/" + std::to_string(i);
+            basename_storage_[2 * i + 1] =
+                basename_prefix + "y/" + std::to_string(pos_dir_x_) + "/" + std::to_string(i);
             // Host communicator i on the site that scatters through it
             // (root_site = i); with the default root site (0) every scatter
             // is staged on site 0 of the group first.
@@ -149,8 +154,8 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
         // setup communicators
         basename_storage_.resize(2);
         communicators_.resize(2);
-        basename_storage_[0] = "hpxfft/pencil/x/" + std::to_string(pos_dir_y_);
-        basename_storage_[1] = "hpxfft/pencil/y/" + std::to_string(pos_dir_x_);
+        basename_storage_[0] = basename_prefix + "x/" + std::to_string(pos_dir_y_);
+        basename_storage_[1] = basename_prefix + "y/" + std::to_string(pos_dir_x_);
         if (routed_)
         {
             communicators_[0] = std::move(hpx::collectives::create_communicator(

@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/distributed/loop.hpp"
 
+#include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/comm_flag.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
 #include <algorithm>
@@ -345,6 +346,8 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
     // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
     hpxfft::util::check_comm_flag(
         COMM_FLAG, { "scatter", "scatter_hierarchical", "all_to_all", "all_to_all_routed" }, "the 2D loop");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/2d/");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
@@ -422,7 +425,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
             hierarchical_scatter_communicators_.resize(num_localities_);
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
-                basename_storage_[i] = std::to_string(i);
+                basename_storage_[i] = basename_prefix + std::to_string(i);
                 hierarchical_scatter_communicators_[i].emplace(hpx::collectives::create_hierarchical_communicator(
                     basename_storage_[i].c_str(),
                     hpx::collectives::num_sites_arg(num_localities_),
@@ -437,7 +440,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basename_storage_[i] = std::to_string(i);
+            basename_storage_[i] = basename_prefix + std::to_string(i);
             // Host the communicator on the locality that scatters through it
             // (root_site = i). With the default root site (0) every scatter is
             // staged on locality 0 first: the data crosses the network twice
@@ -464,7 +467,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
         // setup communicators
         basename_storage_.resize(1);
         communicators_.resize(1);
-        basename_storage_[0] = std::to_string(0);
+        basename_storage_[0] = basename_prefix + "0";
         if (routed_)
         {
             communicators_[0] = std::move(hpx::collectives::create_communicator(

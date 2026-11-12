@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/distributed/agas.hpp"
 
+#include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/comm_flag.hpp"
 #include <hpx/hpx_init.hpp>
 #include <hpx/modules/components.hpp>
@@ -305,6 +306,8 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
 {
     // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
     hpxfft::util::check_comm_flag(COMM_FLAG, { "scatter", "all_to_all" }, "the 2D agas class");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/agas2d/");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // locality information
@@ -355,7 +358,7 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basename_storage_[i] = std::to_string(i);
+            basename_storage_[i] = basename_prefix + std::to_string(i);
             // Host the communicator on the locality that scatters through it
             // (root_site = i). With the default root site (0) every scatter is
             // staged on locality 0 first: the data crosses the network twice
@@ -383,7 +386,7 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         // setup communicators
         basename_storage_.resize(1);
         communicators_.resize(1);
-        basename_storage_[0] = std::to_string(0);
+        basename_storage_[0] = basename_prefix + "0";
         communicators_[0] = std::move(hpx::collectives::create_communicator(
             basename_storage_[0].c_str(),
             hpx::collectives::num_sites_arg(num_localities_),

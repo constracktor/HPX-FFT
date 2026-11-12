@@ -237,6 +237,11 @@ add_distributed_cases(2d 4 "12,10,0" "scatter;all_to_all")
 add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
 # all localities export FFTW wisdom to the same file at once, then import it
 add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
+# several FFT objects in one process, one after the other and alive at the same
+# time: their communicator names must not collide
+foreach(l 2 4)
+  add_distributed_test(dist_reuse_L${l} ${l} --mode=reuse --nx=8 --ny=10 --nz=6)
+endforeach()
 
 # agas components (ny even); the distributed one has no uneven-block support, so
 # dcy must divide

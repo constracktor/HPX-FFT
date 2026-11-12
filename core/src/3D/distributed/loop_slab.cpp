@@ -1,4 +1,5 @@
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
+#include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
 #include <algorithm>
 
@@ -7,6 +8,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
 {
     // reject an unsupported run flag before any collective operation
     check_comm_flag(COMM_FLAG, "the slab decomposition");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/slab/");
     this_locality_ = hpx::get_locality_id();
     // move data into own structure
     values_vec_ = std::move(values_vec);
@@ -80,7 +83,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
             hierarchical_scatter_communicators_.resize(num_localities_);
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
-                basename_storage_[i] = std::to_string(i);
+                basename_storage_[i] = basename_prefix + std::to_string(i);
                 hierarchical_scatter_communicators_[i].emplace(hpx::collectives::create_hierarchical_communicator(
                     basename_storage_[i].c_str(),
                     hpx::collectives::num_sites_arg(num_localities_),
@@ -95,7 +98,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basename_storage_[i] = std::to_string(i);
+            basename_storage_[i] = basename_prefix + std::to_string(i);
             // Host the communicator on the locality that scatters through it
             // (root_site = i); with the default root site (0) every scatter
             // is staged on locality 0 first.
@@ -119,7 +122,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         // setup communicators
         basename_storage_.resize(1);
         communicators_.resize(1);
-        basename_storage_[0] = std::to_string(0);
+        basename_storage_[0] = basename_prefix + "0";
         if (routed_)
         {
             communicators_[0] = std::move(hpx::collectives::create_communicator(

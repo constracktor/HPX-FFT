@@ -28,6 +28,16 @@ constexpr double kPad = 1.0e6;
 
 int g_failed = 0;
 std::string g_error;  // message of the exception that rejected initialize
+// when set, report() appends to it instead of printing (modes that run several cases print one line per locality)
+std::string *g_steps = nullptr;
+
+// barriers of one process need distinct names when a mode runs several cases: a barrier name is only unregistered
+// asynchronously
+std::string barrier_name(const char *name)
+{
+    static std::size_t counter = 0;
+    return std::string(name) + "_" + std::to_string(counter++);
+}
 
 struct params
 {
@@ -52,6 +62,11 @@ void report(const params &p, std::size_t me, bool ok, const std::string &what)
     if (!ok)
     {
         g_failed = 1;
+    }
+    if (g_steps != nullptr)
+    {
+        *g_steps += std::string(ok ? " [ok " : " [FAIL ") + p.mode + " run=" + p.run + " " + what + "]";
+        return;
     }
     std::printf("%s locality %zu %s %zux%zux%zu run=%s transposed=%d %s\n",
                 ok ? "PASS" : "FAIL",
@@ -185,7 +200,7 @@ void run_3d(const params &p, bool pencil)
         report(p, me, false, "initialize threw");
         return;
     }
-    hpx::distributed::barrier("test_init").wait();
+    hpx::distributed::barrier(barrier_name("test_init")).wait();
     hpxfft::fft3D::distributed::vector_3d out = pencil ? pen->fft_3d_r2c() : slab->fft_3d_r2c();
 
     reference::rfft3 ref(p.nx, p.ny, p.nz);
@@ -416,7 +431,7 @@ void run_agas_2d(const params &p)
         report_rejection(p, me, initialized);
         return;
     }
-    hpx::distributed::barrier("test_init").wait();
+    hpx::distributed::barrier(barrier_name("test_init")).wait();
     hpxfft::fft2D::distributed::vector_2d out = f.fft_2d_r2c().get();
     check_agas_2d(p, me, me * nxl, nxl, out);
 }
@@ -524,7 +539,8 @@ void run_helpers(const params &p)
     report(p, 0, ok, "helpers");
 }
 
-void run_2d(const params &p)
+// build the input block of this locality and initialize the 2D loop; false if initialize threw (message in g_error)
+bool initialize_2d(hpxfft::fft2D::distributed::loop &f, const params &p)
 {
     const std::size_t me = hpx::get_locality_id();
     const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
@@ -541,10 +557,8 @@ void run_2d(const params &p)
         }
     }
 
-    hpxfft::fft2D::distributed::loop f;
     f.set_transposed_output(p.transposed);
     f.set_hierarchical_parameters(2, 0);
-    bool initialized = true;
     try
     {
         f.initialize(std::move(v), p.run, "estimate", p.size_arg >= 0 ? std::size_t(p.size_arg) : p.ny);
@@ -552,21 +566,17 @@ void run_2d(const params &p)
     catch (const std::exception &e)
     {
         g_error = e.what();
-        initialized = false;
+        return false;
     }
-    if (p.expect_throw)
-    {
-        report_rejection(p, me, initialized);
-        return;
-    }
-    if (!initialized)
-    {
-        report(p, me, false, "initialize threw");
-        return;
-    }
-    hpx::distributed::barrier("test_init").wait();
-    auto out = f.fft_2d_r2c();
+    return true;
+}
 
+// compare the result of the 2D loop with the reference
+void check_2d(const params &p, hpxfft::fft2D::distributed::vector_2d &out)
+{
+    const std::size_t me = hpx::get_locality_id();
+    const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
+    const std::size_t dcy = p.ny / 2 + 1;
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
     for (auto &c : ref.v)
@@ -601,6 +611,73 @@ void run_2d(const params &p)
         ok = worst / scale < 1e-10;
     }
     report(p, me, ok, what);
+}
+
+void run_2d(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    hpxfft::fft2D::distributed::loop f;
+    const bool initialized = initialize_2d(f, p);
+    if (p.expect_throw)
+    {
+        report_rejection(p, me, initialized);
+        return;
+    }
+    if (!initialized)
+    {
+        report(p, me, false, "initialize threw");
+        return;
+    }
+    hpx::distributed::barrier(barrier_name("test_init")).wait();
+    auto out = f.fft_2d_r2c();
+    check_2d(p, out);
+}
+
+// several objects in one process: their communicators must not collide. A slab is run and destroyed, then a second
+// slab with another run flag, then a slab while a 2D loop is alive (initialized before and run after it). Prints one
+// line per locality.
+void run_reuse(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    params slab_p = p;
+    slab_p.mode = "slab";
+    params loop_p = p;
+    loop_p.mode = "2d";
+    loop_p.nz = 0;
+    std::string steps;
+    const int failed_before = g_failed;
+    g_failed = 0;
+    g_steps = &steps;
+    try
+    {
+        slab_p.run = "scatter";
+        run_3d(slab_p, false);
+        slab_p.run = "all_to_all";
+        run_3d(slab_p, false);
+
+        hpxfft::fft2D::distributed::loop f;
+        loop_p.run = "scatter";
+        if (!initialize_2d(f, loop_p))
+        {
+            report(loop_p, me, false, "initialize threw: " + g_error);
+        }
+        else
+        {
+            slab_p.run = "scatter";
+            run_3d(slab_p, false);
+            hpx::distributed::barrier(barrier_name("test_reuse")).wait();
+            auto out = f.fft_2d_r2c();
+            check_2d(loop_p, out);
+        }
+    }
+    catch (const std::exception &e)
+    {
+        report(p, me, false, std::string("exception: ") + e.what());
+    }
+    g_steps = nullptr;
+    const bool ok = g_failed == 0;
+    g_failed = failed_before;
+    report(p, me, ok, steps);
 }
 
 // wisdom: every locality plans a c2c FFT of size nx with measure and exports to the same file at the same time; the
@@ -685,6 +762,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
         else if (p.mode == "wisdom")
         {
             run_wisdom(p);
+        }
+        else if (p.mode == "reuse")
+        {
+            run_reuse(p);
         }
         else if (p.mode == "slab" || p.mode == "pencil")
         {
