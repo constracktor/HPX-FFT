@@ -42,8 +42,11 @@ if(HPXFFT_BUILD_CORE)
     # find_package(<package>) call for consumers to find this project
     set(package HPXFFT)
 
+    # While the major version is 0, every minor release may break the API: a
+    # request for 0.x only accepts 0.x.y (SameMajorVersion would accept 0.2.0
+    # for 0.1). Switch to SameMajorVersion with 1.0.
     write_basic_package_version_file("${package}ConfigVersion.cmake"
-                                     COMPATIBILITY SameMajorVersion)
+                                     COMPATIBILITY SameMinorVersion)
     # Allow package maintainers to freely override the path for the configs
     set(HPXFFT_INSTALL_CMAKEDIR
         "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"
