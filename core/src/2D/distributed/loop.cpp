@@ -402,7 +402,9 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
                           reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
                           reinterpret_cast<fftw_complex *>(trans_values_vec_.row(0)),
                           hpxfft::util::fftw_adapter::direction::forward);
-    // communication specific initialization
+    // communication specific initialization (a new initialize must not keep the variant of the previous one)
+    routed_ = false;
+    hierarchical_scatter_ = false;
     COMM_FLAG_ = COMM_FLAG;
     if (COMM_FLAG == "scatter_hierarchical")
     {

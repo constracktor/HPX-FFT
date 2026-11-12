@@ -82,6 +82,10 @@ struct base
     // number of localities taking part in one exchange.
     void parse_comm_flag(const std::string &flag, std::size_t num_sites)
     {
+        // a new initialize must not keep the variant of the previous one
+        scatter_sync_ = true;
+        routed_ = false;
+        hierarchical_scatter_ = false;
         COMM_FLAG_ = flag;
         if (flag == "scatter_async")
         {
