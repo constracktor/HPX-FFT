@@ -5,13 +5,12 @@
 #include "../../util/adapter_fftw.hpp"
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
+#include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
 #include <optional>
-
-typedef double real;
 
 namespace hpxfft::fft2D::distributed
 {

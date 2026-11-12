@@ -43,7 +43,7 @@ void hpxfft::fft2D::distributed::loop::split_trans_vec(const std::size_t i)
 }
 
 // scatter communication (flat or hierarchical communicators): the locality `root` sends one block to every locality
-hpx::future<std::vector<real>> hpxfft::fft2D::distributed::loop::scatter_exchange(
+hpx::future<std::vector<hpxfft::real>> hpxfft::fft2D::distributed::loop::scatter_exchange(
     const std::size_t root, std::vector<std::vector<real>> &&prep, const std::size_t generation)
 {
     if (hierarchical_scatter_)
@@ -84,7 +84,7 @@ void hpxfft::fft2D::distributed::loop::communicate_scatter_trans_vec(const std::
 }
 
 // all to all communication: direct exchange between the localities, or (reference) routed through a root site
-hpx::future<std::vector<std::vector<real>>> hpxfft::fft2D::distributed::loop::all_to_all_exchange(
+hpx::future<std::vector<std::vector<hpxfft::real>>> hpxfft::fft2D::distributed::loop::all_to_all_exchange(
     std::vector<std::vector<real>> &&prep, const std::size_t generation)
 {
     if (routed_)
@@ -495,4 +495,4 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
 }
 
 // helpers
-real hpxfft::fft2D::distributed::loop::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::distributed::loop::get_measurement(std::string name) { return measurements_[name]; }

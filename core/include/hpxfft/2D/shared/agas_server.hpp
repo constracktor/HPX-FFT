@@ -3,13 +3,12 @@
 #define hpxfft_shared_agas_server_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
 #include <hpx/include/actions.hpp>
 #include <hpx/include/components.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft2D::shared
 {

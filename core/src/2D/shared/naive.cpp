@@ -139,4 +139,4 @@ void hpxfft::fft2D::shared::naive::initialize(
 }
 
 // helpers
-real hpxfft::fft2D::shared::naive::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::shared::naive::get_measurement(std::string name) { return measurements_[name]; }

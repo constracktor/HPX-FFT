@@ -2,12 +2,11 @@
 #ifndef hpxfft_shared_sync_3D_H_INCLUDED
 #define hpxfft_shared_sync_3D_H_INCLUDED
 
+#include "../../util/real.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include "shared_base.hpp"
 #include <hpx/future.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft3D::shared
 {

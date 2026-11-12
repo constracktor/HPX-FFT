@@ -6,13 +6,12 @@
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
 #include "../../util/comm_flag.hpp"
+#include "../../util/real.hpp"
 #include "../../util/transform_guard.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft3D::distributed
 {

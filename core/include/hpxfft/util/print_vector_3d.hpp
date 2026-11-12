@@ -1,10 +1,9 @@
 #ifndef print_vector_3d_H_INCLUDED
 #define print_vector_3d_H_INCLUDED
 
+#include "real.hpp"
 #include "vector_3d.hpp"
 #include <iostream>
-
-typedef double real;
 
 namespace hpxfft::util
 {

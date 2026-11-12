@@ -142,4 +142,4 @@ void hpxfft::fft2D::shared::sync::initialize(
 }
 
 // helpers
-real hpxfft::fft2D::shared::sync::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::shared::sync::get_measurement(std::string name) { return measurements_[name]; }
