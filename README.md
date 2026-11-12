@@ -83,6 +83,31 @@ The CI runs the two groups as separate steps.
 
 ### HPX-FFT
 
+The executables are built in `examples/hpxfft/build`:
+
+| Executable | Dimension | Memory |
+|---|---|---|
+| `hpxfft_shared_loop_2d`, `hpxfft_shared_naive_2d`, `hpxfft_shared_sync_2d`, `hpxfft_shared_opt_2d`, `hpxfft_shared_agas_2d` | 2D | shared |
+| `hpxfft_shared_loop_3d`, `hpxfft_shared_naive_3d`, `hpxfft_shared_sync_3d` | 3D | shared |
+| `hpxfft_distributed_loop_2d`, `hpxfft_distributed_agas_2d` | 2D | distributed |
+| `hpxfft_distributed_loop_3d_slab`, `hpxfft_distributed_loop_3d_pencil` | 3D | distributed |
+
+All examples take `--nx`, `--ny` (and `--nz` in 3D), `--plan` (FFTW planning flag: estimate, measure, patient or
+exhaustive), `--header` (write the header of the runtime file), `--result` (print the result) and `--wisdom_file`
+(see below). The shared loop examples choose `--run=par` (default) or `seq`. In the distributed examples `--run`
+selects the communication:
+
+| `--run` | Description | Examples |
+|---|---|---|
+| `scatter` (default) | HPX scatter collectives | all distributed |
+| `all_to_all` | loop examples: direct exchange between the localities (routed below three localities); agas: HPX all-to-all collective | all distributed |
+| `all_to_all_routed` | all-to-all routed through a root site (reference) | loop 2D, slab, pencil |
+| `scatter_hierarchical` | scatter over hierarchical communicators, tuned with `--hier_arity` (default 2) and `--hier_threshold` (default 16) | loop 2D, slab, pencil |
+| `scatter_async` | scatter without global synchronization; each part waits only for its own data | slab, pencil |
+
+With `--transposed_out=1` the loop examples (2D, slab, pencil) skip the final transpose or exchange and keep the
+result in the transposed distribution (see Problem Sizes).
+
 Shared examples:
 ```
 1=Base size of the problem
@@ -101,17 +126,19 @@ Distributed examples with slurm:
 1=Base size of the problem
 2=FFTW Planning flag (estimate/measure)
 3=Print info into runtime file (true/false)
-4=Collective operation (scatter/all_to_all)
+4=Communication (see --run above)
 5=Number of HPX threads
 6=Number of HPX localities
 7=Partition
 
-srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_2d --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
+srun --mpi=pmix -p $7 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_2d --nx=$1 --ny=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
 ```
 or
 ```
-srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_3d_slab --nx=$1 --ny=$1 --nz=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
+srun --mpi=pmix -p $7 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_3d_slab --nx=$1 --ny=$1 --nz=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
 ```
+The pencil example needs a square number of localities. `scripts/` holds ready-made `sbatch` scripts for the 3D
+examples on buran.
 
 ### FFTW wisdom
 
@@ -137,6 +164,10 @@ valid for the FFTW build and machine type it was created on.
 
 ### FFTW
 
+The reference executables in `examples/fftw/build` are `fftw_omp_*`, `fftw_threads_*` (shared) and
+`fftw_mpi_omp_*`, `fftw_mpi_threads_*` (distributed), each for `2d` and `3d`, plus `p3dfft_mpi_omp` (P3DFFT++, 3D).
+The `threads` variants take the same arguments as the `omp` variants.
+
 Shared examples:
 ```
 //            threads N_X N_Y  plan     header
@@ -159,6 +190,11 @@ or
 //              nodes ranks    prog       threads N_X N_Y N_Z    plan  header
 srun --mpi=pmix -N 2  -n 4 fftw_mpi_omp_3d   4     8   14 32   estimate  0
                mpirun -n 4 fftw_mpi_omp_3d   4     8   14 32   estimate  0
+```
+or with P3DFFT++ (`ndim` is the dimension of the process grid, 1 or 2)
+```
+//              nodes ranks    prog       threads N_X N_Y N_Z  ndim header
+srun --mpi=pmix -N 2  -n 4 p3dfft_mpi_omp    4    512 512 512   2     1
 ```
 
 
