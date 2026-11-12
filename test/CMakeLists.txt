@@ -461,6 +461,31 @@ foreach(case "6,8" "5,9" "7,10" "20,37")
   endforeach()
 endforeach()
 
+# shared classes: a second transform without a new initialize throws, and a new
+# initialize allows one again (par and seq call the other entry point the second
+# time)
+foreach(variant par seq naive sync)
+  add_distributed_test(
+    dist_twice_shared_${variant}
+    1
+    --mode=shared
+    --run=${variant}
+    --nx=5
+    --ny=6
+    --nz=9
+    --call_twice=1)
+endforeach()
+foreach(variant par seq naive sync opt)
+  add_distributed_test(
+    dist_twice_shared2d_${variant}
+    1
+    --mode=shared2d
+    --run=${variant}
+    --nx=7
+    --ny=10
+    --call_twice=1)
+endforeach()
+
 add_executable(test_create_dir src/test_create_dir.cpp)
 target_link_libraries(
   test_create_dir

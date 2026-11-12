@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <hpx/hpx_init.hpp>
+#include <stdexcept>
 
 using hpxfft::fft2D::shared::agas;
 using real = double;
@@ -25,6 +26,8 @@ int entrypoint_test1(int argc, char *argv[])
         values_vec(i, 3) = 4.0;
     }
 
+    hpxfft::fft2D::shared::vector_2d values_copy = values_vec;
+
     // expected output
     hpxfft::fft2D::shared::vector_2d expected_output(n_row, n_col, 0.0);
 
@@ -41,6 +44,12 @@ int entrypoint_test1(int argc, char *argv[])
     hpx::future<hpxfft::fft2D::shared::vector_2d> result_future = fft.fft_2d_r2c();
     hpxfft::fft2D::shared::vector_2d out1 = result_future.get();
     REQUIRE(out1 == expected_output);
+
+    // the transform moved the data out: a second one without a new initialize throws
+    REQUIRE_THROWS_AS(fft.fft_2d_r2c().get(), std::logic_error);
+    // a new initialize allows one transform again
+    fft.initialize(std::move(values_copy), plan_flag).get();
+    REQUIRE(fft.fft_2d_r2c().get() == expected_output);
 
     return hpx::finalize();
 }

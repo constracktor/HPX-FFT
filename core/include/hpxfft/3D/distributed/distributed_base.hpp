@@ -6,6 +6,7 @@
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
 #include "../../util/comm_flag.hpp"
+#include "../../util/transform_guard.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
@@ -60,16 +61,7 @@ struct base
   protected:
     // initialize + one transform per object: the transform moves the data and the communication buffers out of the
     // object, so a second call without a new initialize (or a call without any) throws std::logic_error
-    void begin_transform(const char *name)
-    {
-        if (!ready_)
-        {
-            throw std::logic_error(std::string(name)
-                                   + " needs a preceding initialize: every initialize allows one transform, which "
-                                     "moves the data out of the object");
-        }
-        ready_ = false;
-    }
+    void begin_transform(const char *name) { hpxfft::util::begin_transform(ready_, name); }
 
     // Throw std::invalid_argument on every locality if the run flag is not supported (call before any collective).
     static void check_comm_flag(const std::string &flag, const char *name)

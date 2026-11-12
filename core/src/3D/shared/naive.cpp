@@ -1,9 +1,12 @@
 #include "../../../include/hpxfft/3D/shared/naive.hpp"
 
 #include "../../../include/hpxfft/util/real_length.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 
 void hpxfft::fft3D::shared::naive::initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     values_vec_ = std::move(values_vec);
     dim_c_x_ = values_vec_.n_x();
     dim_c_y_ = values_vec_.n_y();
@@ -48,6 +51,8 @@ void hpxfft::fft3D::shared::naive::initialize(vector_3d values_vec, const std::s
     permute_second_futures_.resize(dim_c_z_);
     fft_x_c2c_futures_.resize(dim_c_y_);
     permute_third_futures_.resize(dim_c_y_);
+    // allow one transform
+    ready_ = true;
 }
 
 // wrapper for fft_1d_r2c_inplace to use with hpx::async
@@ -93,6 +98,7 @@ void hpxfft::fft3D::shared::naive::permute_shared_z_x_y_wrapper(naive *th, const
 
 hpxfft::fft3D::shared::vector_3d hpxfft::fft3D::shared::naive::fft_3d_r2c()
 {
+    hpxfft::util::begin_transform(ready_, "fft_3d_r2c of the 3D shared naive");
     auto start_total = t_.now();
 
     /////////////////////////////////////////////////////////////////

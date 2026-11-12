@@ -3,6 +3,7 @@
 #include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/comm_flag.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 #include <algorithm>
 #include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
@@ -182,12 +183,7 @@ void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, 
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c()
 {
     // initialize + one transform per object: the transform moves the data and buffers out of the object
-    if (!ready_)
-    {
-        throw std::logic_error("fft_2d_r2c of the 2D loop needs a preceding initialize: every initialize allows one "
-                               "transform, which moves the data out of the object");
-    }
-    ready_ = false;
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c of the 2D loop");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();

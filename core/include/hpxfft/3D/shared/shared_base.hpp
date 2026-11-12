@@ -45,6 +45,8 @@ struct base
     // time measurement
     hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
     std::map<std::string, real> measurements_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
 };
 
 inline real hpxfft::fft3D::shared::base::get_measurement(std::string name) { return measurements_[name]; }

@@ -20,6 +20,8 @@ struct loop
     // ny: number of real values per row; 0 derives it from the row length as 2 * (n_col / 2 - 1)
     void initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
+    // One transform per initialize: the result is moved out of the object, so calling a transform (par or seq) again
+    // without a new initialize throws std::logic_error.
     vector_2d fft_2d_r2c_par();
 
     vector_2d fft_2d_r2c_seq();
@@ -55,6 +57,8 @@ struct loop
     // time measurement
     hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
     std::map<std::string, real> measurements_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
 };
 }  // namespace hpxfft::fft2D::shared
 #endif  // hpxfft_shared_loop_H_INCLUDED

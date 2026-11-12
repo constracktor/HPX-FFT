@@ -287,39 +287,62 @@ void run_3d(const params &p, bool pencil)
     report(p, me, ok && again.ok, what + again.what);
 }
 
+// with --call_twice: the second transform (`second`, the other entry point for par / seq) must throw, and a new
+// initialize must allow a transform again; `out` is then the result of that transform
+template <typename Fft, typename Make, typename First, typename Second, typename Vec>
+second_call run_shared_variant(const params &p, std::size_t n, Make &&make, First &&first, Second &&second, Vec &out)
+{
+    Fft f;
+    f.initialize(make(), "estimate", n);
+    out = first(f);
+    second_call again = call_again(p, [&] { return second(f); });
+    if (p.call_twice)
+    {
+        f.initialize(make(), "estimate", n);
+        out = second(f);
+    }
+    return again;
+}
+
 // shared memory 3D variants (single locality, natural layout); --run picks the variant
 void run_shared(const params &p)
 {
     const std::size_t dcz = p.nz / 2 + 1;
-    hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
-    for (std::size_t i = 0; i < p.nx; ++i)
+    auto make = [&]
     {
-        for (std::size_t j = 0; j < p.ny; ++j)
+        hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
+        for (std::size_t i = 0; i < p.nx; ++i)
         {
-            for (std::size_t k = 0; k < 2 * dcz; ++k)
+            for (std::size_t j = 0; j < p.ny; ++j)
             {
-                v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+                for (std::size_t k = 0; k < 2 * dcz; ++k)
+                {
+                    v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+                }
             }
         }
-    }
+        return v;
+    };
+    auto r2c = [](auto &f) { return f.fft_3d_r2c(); };
+    auto par = [](auto &f) { return f.fft_3d_r2c_par(); };
+    auto seq = [](auto &f) { return f.fft_3d_r2c_seq(); };
     hpxfft::fft3D::distributed::vector_3d out;
+    second_call again;
     if (p.run == "naive")
     {
-        hpxfft::fft3D::shared::naive f;
-        f.initialize(std::move(v), "estimate", p.nz);
-        out = f.fft_3d_r2c();
+        again = run_shared_variant<hpxfft::fft3D::shared::naive>(p, p.nz, make, r2c, r2c, out);
     }
     else if (p.run == "sync")
     {
-        hpxfft::fft3D::shared::sync f;
-        f.initialize(std::move(v), "estimate", p.nz);
-        out = f.fft_3d_r2c();
+        again = run_shared_variant<hpxfft::fft3D::shared::sync>(p, p.nz, make, r2c, r2c, out);
     }
-    else if (p.run == "par" || p.run == "seq")
+    else if (p.run == "par")
     {
-        hpxfft::fft3D::shared::loop f;
-        f.initialize(std::move(v), "estimate", p.nz);
-        out = p.run == "seq" ? f.fft_3d_r2c_seq() : f.fft_3d_r2c_par();
+        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, p.nz, make, par, seq, out);
+    }
+    else if (p.run == "seq")
+    {
+        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, p.nz, make, seq, par, out);
     }
     else
     {
@@ -334,45 +357,49 @@ void run_shared(const params &p)
     std::string what;
     const bool ok =
         compare_block(out, p.nx, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(i, j, k); }, what);
-    report(p, 0, ok, what);
+    report(p, 0, ok && again.ok, what + again.what);
 }
 
 // shared memory 2D variants (single locality); --run picks the variant
 void run_shared_2d(const params &p)
 {
     const std::size_t dcy = p.ny / 2 + 1;
-    hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
-    for (std::size_t i = 0; i < p.nx; ++i)
+    auto make = [&]
     {
-        for (std::size_t j = 0; j < 2 * dcy; ++j)
+        hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
+        for (std::size_t i = 0; i < p.nx; ++i)
         {
-            v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
+            for (std::size_t j = 0; j < 2 * dcy; ++j)
+            {
+                v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
+            }
         }
-    }
+        return v;
+    };
+    auto r2c = [](auto &f) { return f.fft_2d_r2c(); };
+    auto par = [](auto &f) { return f.fft_2d_r2c_par(); };
+    auto seq = [](auto &f) { return f.fft_2d_r2c_seq(); };
     hpxfft::fft2D::distributed::vector_2d out;
+    second_call again;
     if (p.run == "naive")
     {
-        hpxfft::fft2D::shared::naive f;
-        f.initialize(std::move(v), "estimate", p.ny);
-        out = f.fft_2d_r2c();
+        again = run_shared_variant<hpxfft::fft2D::shared::naive>(p, p.ny, make, r2c, r2c, out);
     }
     else if (p.run == "sync")
     {
-        hpxfft::fft2D::shared::sync f;
-        f.initialize(std::move(v), "estimate", p.ny);
-        out = f.fft_2d_r2c();
+        again = run_shared_variant<hpxfft::fft2D::shared::sync>(p, p.ny, make, r2c, r2c, out);
     }
     else if (p.run == "opt")
     {
-        hpxfft::fft2D::shared::opt f;
-        f.initialize(std::move(v), "estimate", p.ny);
-        out = f.fft_2d_r2c();
+        again = run_shared_variant<hpxfft::fft2D::shared::opt>(p, p.ny, make, r2c, r2c, out);
     }
-    else if (p.run == "par" || p.run == "seq")
+    else if (p.run == "par")
     {
-        hpxfft::fft2D::shared::loop f;
-        f.initialize(std::move(v), "estimate", p.ny);
-        out = p.run == "seq" ? f.fft_2d_r2c_seq() : f.fft_2d_r2c_par();
+        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, p.ny, make, par, seq, out);
+    }
+    else if (p.run == "seq")
+    {
+        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, p.ny, make, seq, par, out);
     }
     else
     {
@@ -403,7 +430,7 @@ void run_shared_2d(const params &p)
     {
         what = "shape mismatch";
     }
-    report(p, 0, ok, what);
+    report(p, 0, ok && again.ok, what + again.what);
 }
 
 // compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference

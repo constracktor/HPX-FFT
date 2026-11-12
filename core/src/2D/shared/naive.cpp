@@ -1,6 +1,7 @@
 #include "../../../include/hpxfft/2D/shared/naive.hpp"
 
 #include "../../../include/hpxfft/util/real_length.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 
 // FFT backend
 void hpxfft::fft2D::shared::naive::fft_1d_r2c_inplace(const std::size_t i)
@@ -57,6 +58,7 @@ void hpxfft::fft2D::shared::naive::transpose_shared_x_to_y_wrapper(naive *th, co
 // 2D FFT algorithm
 hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::naive::fft_2d_r2c()
 {
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c of the 2D shared naive");
     auto start_total = t_.now();
     // first dimension
     for (std::size_t i = 0; i < dim_c_x_; ++i)
@@ -105,6 +107,8 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::naive::fft_2d_r2c()
 void hpxfft::fft2D::shared::naive::initialize(
     hpxfft::fft2D::shared::vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     // move data into own data structure
     values_vec_ = std::move(values_vec);
     // parameters
@@ -130,6 +134,8 @@ void hpxfft::fft2D::shared::naive::initialize(
     trans_y_to_x_futures_.resize(dim_c_x_);
     c2c_futures_.resize(dim_c_y_);
     trans_x_to_y_futures_.resize(dim_c_y_);
+    // allow one transform
+    ready_ = true;
 }
 
 // helpers

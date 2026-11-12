@@ -132,7 +132,8 @@ inline vector_2d<T>::vector_2d(const vector_2d<T> &src) :
     n_row_(src.n_row_),
     n_col_(src.n_col_),
     size_(src.size_),
-    values_(new T[size_])
+    // values_ is declared (and so initialized) before size_: allocate with the size of src
+    values_(new T[src.size_])
 {
     // for(std::size_t i = 0; i < size_; ++i)
     //     values_[ i ] = src.values_[ i ];

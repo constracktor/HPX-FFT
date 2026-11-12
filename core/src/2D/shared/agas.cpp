@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/shared/agas.hpp"
 
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 #include <hpx/modules/components.hpp>
 
 // HPX_REGISTER_COMPONENT() exposes the component creation
@@ -46,6 +47,7 @@ void hpxfft::fft2D::shared::agas_server::transpose_shared_x_to_y(const std::size
 // 2D FFT algorithm
 hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::agas_server::fft_2d_r2c()
 {
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c of the 2D shared agas");
     // first dimension
     for (std::size_t i = 0; i < dim_c_x_; ++i)
     {
@@ -89,6 +91,8 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::agas_server::fft_2d_r2c(
 void hpxfft::fft2D::shared::agas_server::initialize(hpxfft::fft2D::shared::vector_2d values_vec,
                                                     const std::string PLAN_FLAG)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     // move data into own data structure
     values_vec_ = std::move(values_vec);
     // parameters
@@ -114,4 +118,6 @@ void hpxfft::fft2D::shared::agas_server::initialize(hpxfft::fft2D::shared::vecto
     trans_y_to_x_futures_.resize(dim_c_x_);
     c2c_futures_.resize(dim_c_y_);
     trans_x_to_y_futures_.resize(dim_c_y_);
+    // allow one transform
+    ready_ = true;
 }
