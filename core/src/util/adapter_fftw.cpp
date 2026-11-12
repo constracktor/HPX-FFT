@@ -1,5 +1,6 @@
 #include "../../include/hpxfft/util/adapter_fftw.hpp"
 
+#include <cstddef>
 #include <utility>
 
 namespace
@@ -27,6 +28,28 @@ void hpxfft::util::fftw_adapter::cleanup()
 {
     std::lock_guard<std::mutex> lock(planner_mutex());
     fftw_cleanup();
+}
+
+namespace
+{
+// number of live cleanup_guard objects; guarded by planner_mutex()
+std::size_t live_guards = 0;
+}  // namespace
+
+hpxfft::util::fftw_adapter::cleanup_guard::cleanup_guard()
+{
+    std::lock_guard<std::mutex> lock(planner_mutex());
+    ++live_guards;
+}
+
+hpxfft::util::fftw_adapter::cleanup_guard::~cleanup_guard()
+{
+    std::lock_guard<std::mutex> lock(planner_mutex());
+    // only the last live object cleans up: fftw_cleanup() invalidates the plans of every other object
+    if (--live_guards == 0)
+    {
+        fftw_cleanup();
+    }
 }
 
 void hpxfft::util::fftw_adapter::r2c_1d::plan(int dim_r, std::string plan_flag, double *in, fftw_complex *out)

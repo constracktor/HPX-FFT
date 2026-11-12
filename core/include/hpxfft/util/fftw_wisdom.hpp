@@ -5,8 +5,8 @@
 
 // FFTW wisdom: saved planner knowledge that makes measure/patient/exhaustive planning fast and reproducible.
 // Both calls hold hpxfft::util::fftw_adapter::planner_mutex(), so they never run concurrently with planning.
-// Wisdom is process-wide and is discarded by fftw_cleanup(), which HPX-FFT objects call on destruction:
-// export while the planned objects are still alive.
+// Wisdom is process-wide and is discarded by fftw_cleanup(), which runs when the last live HPX-FFT object of the
+// process is destroyed: export while at least one HPX-FFT object is alive (or before the last one is destroyed).
 namespace hpxfft::util
 {
 // Merges the wisdom stored in path into the wisdom of this process.

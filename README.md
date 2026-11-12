@@ -155,8 +155,9 @@ In code, use `hpxfft/util/fftw_wisdom.hpp`:
 - `void hpxfft::util::export_wisdom(const std::string &path)` creates the parent directory, writes to a temporary
   file and renames it atomically; it throws `std::runtime_error` on failure.
 
-Import before calling `initialize` and export while the FFT object is still alive: HPX-FFT objects call
-`fftw_cleanup()` on destruction, which discards the wisdom. Both calls share a lock with the planning in HPX-FFT, as
+Import before calling `initialize` and export while at least one HPX-FFT object is still alive: when the last live
+HPX-FFT object of the process is destroyed, it calls `fftw_cleanup()`, which discards the wisdom (destroying one
+object while others are alive keeps their plans and the wisdom). Both calls share a lock with the planning in HPX-FFT, as
 the FFTW planner is not thread-safe. Wisdom is per process, so every locality imports for itself. Several
 localities may export to the same file safely, but the last writer wins; use one file per locality (e.g. with the
 locality id in the name) to keep all of them. The distributed examples export from locality 0 only. Wisdom is only

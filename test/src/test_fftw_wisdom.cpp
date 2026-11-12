@@ -5,6 +5,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <type_traits>
 #include <unistd.h>
 #include <utility>
@@ -254,5 +255,38 @@ TEST_CASE("fftw adapters can be planned again", "[util][adapter]")
     }
     fftw_free(out);
     fftw_free(in);
+    fftw_free(buf);
+}
+
+static_assert(!std::is_copy_constructible_v<hpxfft::util::fftw_adapter::cleanup_guard>);
+static_assert(!std::is_move_constructible_v<hpxfft::util::fftw_adapter::cleanup_guard>);
+
+TEST_CASE("only the last live cleanup_guard calls fftw_cleanup", "[util][adapter][wisdom]")
+{
+    fftw_forget_wisdom();
+    fftw_complex *buf = fftw_alloc_complex(n);
+    auto first = std::make_unique<hpxfft::util::fftw_adapter::cleanup_guard>();
+    auto second = std::make_unique<hpxfft::util::fftw_adapter::cleanup_guard>();
+    {
+        // the adapter belongs to the first object (destroyed before its guard)
+        hpxfft::util::fftw_adapter::c2c_1d adapter;
+        adapter.plan(n, "measure", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        REQUIRE(plan_c2c(FFTW_MEASURE | FFTW_WISDOM_ONLY));
+
+        // destroying another object keeps the plan and the wisdom
+        second.reset();
+        REQUIRE(c2c_impulse_ok(adapter, buf, n));
+        REQUIRE(plan_c2c(FFTW_MEASURE | FFTW_WISDOM_ONLY));
+        char *wisdom = fftw_export_wisdom_to_string();
+        REQUIRE(wisdom != nullptr);
+        fftw_forget_wisdom();
+        REQUIRE_FALSE(plan_c2c(FFTW_MEASURE | FFTW_WISDOM_ONLY));
+        REQUIRE(fftw_import_wisdom_from_string(wisdom) != 0);
+        fftw_free(wisdom);
+        REQUIRE(plan_c2c(FFTW_MEASURE | FFTW_WISDOM_ONLY));
+    }
+    // the last live object cleans up: the wisdom is gone
+    first.reset();
+    REQUIRE_FALSE(plan_c2c(FFTW_MEASURE | FFTW_WISDOM_ONLY));
     fftw_free(buf);
 }

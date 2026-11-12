@@ -18,6 +18,7 @@ enum class plan_flag {
     exhaustive = FFTW_EXHAUSTIVE
 };
 
+// Calls fftw_cleanup() unconditionally (invalidates all plans and discards the wisdom of this process).
 void cleanup();
 
 // The FFTW planner is not thread-safe (only fftw_execute is): every planner call of this library (planning,
@@ -25,14 +26,17 @@ void cleanup();
 // functions directly while HPX-FFT objects may be planning on other threads.
 std::mutex &planner_mutex();
 
-// Calls fftw_cleanup() on destruction. Place it as the first data member of a class that owns plans.
+// Process-wide reference count of the live HPX-FFT objects: every guard increments it on construction and decrements
+// it on destruction, and the destruction of the last live guard calls fftw_cleanup() (which invalidates all plans and
+// discards the wisdom). Destroying one object therefore never invalidates the plans of another one that is still
+// alive. Place it as the first data member of a class that owns plans, so the plans are destroyed before it runs.
 struct cleanup_guard
 {
-    cleanup_guard() = default;
+    cleanup_guard();
     cleanup_guard(const cleanup_guard &) = delete;
     cleanup_guard &operator=(const cleanup_guard &) = delete;
 
-    ~cleanup_guard() { cleanup(); }
+    ~cleanup_guard();
 };
 
 inline plan_flag string_to_fftw_plan_flag(const std::string &flag_str)
