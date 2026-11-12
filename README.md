@@ -200,26 +200,21 @@ srun --mpi=pmix -N 2  -n 4 p3dfft_mpi_omp    4    512 512 512   2     1
 
 ## How to Run Benchmarks (wip)
 
-### Shared
-All:
+Compile the examples first and run the scripts from the repository root, e.g.
+`./benchmark/shared_3D_benchmark.sh measure`. They pick the cluster by hostname (rostam1 with the buran partition;
+the shared scripts also know login1 and ipvsmisc) and exit elsewhere. The shared scripts submit `sbatch` jobs, the
+distributed and message scripts call `srun` for every run. The jobs use the scripts in `benchmark/sbatch_scripts/`
+and write the runtimes to `<shared|distributed|message>_benchmark_on_<partition>/`.
 
-- `./shared_benchmark.sh estimate/measure`
-- `./shared_benchmark_3d.sh estimate/measure`
-
-Executables only:
-
-- fft_hpx_loop_shared/fft_hpx_task_sync_shared/fft_hpx_task_shared/fft_hpx_task_naive_shared
-/fft_hpx_task_agas_shared/fft_hpx_loop/fft_hpx_task_agas:
-`sbatch -p $PARTITION -N 1 -n 1 -c $THREADS run_hpx_shared.sh executable_name estimate/measure $THREAD_POW`
-
-
-- fftw_hpx/fftw_mpi_threads/fftw_mpi_omp:
-`sbatch -p $PARTITION -N 1 -n 1 -c $THREADS run_fftw_shared.sh executable_name estimate/measure $THREAD_POW`
-
-### Distributed
-
-- `./distributed_benchmark.sh estimate/measure scatter/all_to_all tcp/mpi/lci`
-- `./distributed_benchmark_3d.sh estimate/measure scatter/all_to_all/scatter_async tcp/mpi/lci`
+- `shared_3D_benchmark.sh estimate/measure`: strong, weak and problem size scaling of the 3D shared examples (and
+  the slab example on one locality) against `fftw_{omp,threads,mpi_omp,mpi_threads}_3d`.
+- `distributed_3D_benchmark.sh estimate/measure <run> tcp/mpi/lci`: strong scaling of slab (1 to 16 nodes) and pencil
+  (1, 4, 9, 16 nodes) against FFTW MPI and P3DFFT++, weak scaling of slab against FFTW MPI; `<run>` is passed as
+  `--run`.
+- `message_3D_benchmark.sh <run> tcp/mpi/lci`: message size scaling of the slab example on two nodes.
+- `shared_benchmark.sh`, `distributed_benchmark.sh`, `message_benchmark.sh`: the 2D counterparts (same arguments).
+  They still use the old executable names without the `_2d` suffix (e.g. `hpxfft_shared_loop`, `fftw_omp`) and
+  need to be updated before use.
 
 ## The Team
 
