@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 
 project(HPXFFTTests LANGUAGES CXX)
 
@@ -17,12 +17,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 # ---- Tests ----
+# C++20 comes with HPXFFT::hpxfft (its interface requires cxx_std_20)
 add_executable(test_naive src/test_naive.cpp)
 target_link_libraries(
   test_naive
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_naive PRIVATE cxx_std_17)
 
 add_test(
   NAME test_naive
@@ -34,7 +34,6 @@ target_link_libraries(
   test_shared_agas
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_agas PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_agas
@@ -46,7 +45,6 @@ target_link_libraries(
   test_shared_loop
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_loop PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_loop
@@ -58,7 +56,6 @@ target_link_libraries(
   test_shared_sync
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_sync PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_sync
@@ -70,7 +67,6 @@ target_link_libraries(
   test_shared_opt
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_opt PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_opt
@@ -82,7 +78,6 @@ target_link_libraries(
   test_distributed_loop
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_distributed_loop PRIVATE cxx_std_17)
 
 add_test(
   NAME test_distributed_loop
@@ -94,7 +89,6 @@ target_link_libraries(
   test_distributed_agas
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_distributed_agas PRIVATE cxx_std_17)
 
 add_test(
   NAME test_distributed_agas
@@ -106,7 +100,6 @@ target_link_libraries(
   test_vector_2d
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_vector_2d PUBLIC cxx_std_20)
 
 add_test(
   NAME test_vector_2d
@@ -118,7 +111,6 @@ target_link_libraries(
   test_vector_3d
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_vector_3d PUBLIC cxx_std_20)
 
 add_test(
   NAME test_vector_3d
@@ -130,7 +122,6 @@ target_link_libraries(
   test_shared_loop_3d
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_loop_3d PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_loop_3d
@@ -142,7 +133,6 @@ target_link_libraries(
   test_shared_naive_3d
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_naive_3d PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_naive_3d
@@ -154,7 +144,6 @@ target_link_libraries(
   test_shared_sync_3d
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_shared_sync_3d PRIVATE cxx_std_17)
 
 add_test(
   NAME test_shared_sync_3d
@@ -168,7 +157,6 @@ target_link_libraries(
   test_distributed_fft
   PRIVATE HPXFFT::hpxfft
   PUBLIC HPX::hpx)
-target_compile_features(test_distributed_fft PRIVATE cxx_std_17)
 
 # name suffix, localities, then the arguments of the test program
 function(add_distributed_test name localities)
@@ -508,7 +496,6 @@ target_link_libraries(
   test_create_dir
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_create_dir PRIVATE cxx_std_17)
 
 add_test(
   NAME test_create_dir
@@ -520,7 +507,6 @@ target_link_libraries(
   test_util_helpers
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_util_helpers PRIVATE cxx_std_17)
 
 add_test(
   NAME test_util_helpers
@@ -532,7 +518,6 @@ target_link_libraries(
   test_fftw_wisdom
   PRIVATE HPXFFT::hpxfft Catch2::Catch2WithMain
   PUBLIC HPX::hpx)
-target_compile_features(test_fftw_wisdom PRIVATE cxx_std_17)
 
 add_test(
   NAME test_fftw_wisdom
