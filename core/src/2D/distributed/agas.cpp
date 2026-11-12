@@ -349,17 +349,17 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         communication_vec_.resize(num_localities_);
         communication_futures_.resize(num_localities_);
         // setup communicators
-        basenames_.resize(num_localities_);
+        basename_storage_.resize(num_localities_);
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basenames_[i] = std::move(std::to_string(i).c_str());
+            basename_storage_[i] = std::to_string(i);
             // Host the communicator on the locality that scatters through it
             // (root_site = i). With the default root site (0) every scatter is
             // staged on locality 0 first: the data crosses the network twice
             // and locality 0 becomes a hub for all of them.
             communicators_[i] = std::move(hpx::collectives::create_communicator(
-                basenames_[i],
+                basename_storage_[i].c_str(),
                 hpx::collectives::num_sites_arg(num_localities_),
                 hpx::collectives::this_site_arg(this_locality_),
                 hpx::collectives::generation_arg(),
@@ -379,11 +379,11 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         communication_vec_.resize(1);
         communication_futures_.resize(1);
         // setup communicators
-        basenames_.resize(1);
+        basename_storage_.resize(1);
         communicators_.resize(1);
-        basenames_[0] = std::move(std::to_string(0).c_str());
+        basename_storage_[0] = std::to_string(0);
         communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basenames_[0],
+            basename_storage_[0].c_str(),
             hpx::collectives::num_sites_arg(num_localities_),
             hpx::collectives::this_site_arg(this_locality_)));
     }
