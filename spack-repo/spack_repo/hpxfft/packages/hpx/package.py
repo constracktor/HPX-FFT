@@ -54,10 +54,19 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
 
     map_cxxstd = lambda cxxstd: "2a" if cxxstd == "20" else cxxstd
     cxxstds = ("11", "14", "17", "20")
+    # HPX 2.0 requires C++20 (see the conflicts below): default to it there, keep C++17 for older versions
+    variant(
+        "cxxstd",
+        default="20",
+        values=cxxstds,
+        when="@2:",
+        description="Use the specified C++ standard when building.",
+    )
     variant(
         "cxxstd",
         default="17",
         values=cxxstds,
+        when="@:1",
         description="Use the specified C++ standard when building.",
     )
 

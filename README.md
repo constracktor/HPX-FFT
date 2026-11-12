@@ -23,8 +23,8 @@ All dependencies can be installed using [Spack](https://github.com/spack/spack) 
 and externals, and adds the HPX recipe in `spack-repo/spack_repo/hpxfft` that is used by the CI.
 
 - For HPX we recommend: `spack install hpxfft.hpx@2.0.0 cxxstd=20 networking=tcp max_cpu_count=256`
-  (HPX 2.0 requires `cxxstd=20`). `networking` takes any combination of `tcp`, `mpi` and `lci`, or `all`
-  for all three, e.g. `networking=tcp,mpi`.
+  (HPX 2.0 requires `cxxstd=20`, which the recipe selects by default for 2.x; 1.x defaults to `cxxstd=17`).
+  `networking` takes any combination of `tcp`, `mpi` and `lci`, or `all` for all three, e.g. `networking=tcp,mpi`.
 - For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
 - For P3DFFT++ we recommend `spack install p3dfft3@develop +fftw +mpi`
 
