@@ -1,5 +1,7 @@
 // Small utilities: FFTW plan flag parsing, vector bounds/serialization/comparison helpers
 #include "../../core/include/hpxfft/util/adapter_fftw.hpp"
+#include "../../core/include/hpxfft/util/blocks.hpp"
+#include "../../core/include/hpxfft/util/real_length.hpp"
 #include "../../core/include/hpxfft/util/vector_2d.hpp"
 #include "../../core/include/hpxfft/util/vector_3d.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -7,8 +9,6 @@
 #include <hpx/serialization/input_archive.hpp>
 #include <hpx/serialization/output_archive.hpp>
 #include <hpx/serialization/serialize.hpp>
-#include "../../core/include/hpxfft/util/blocks.hpp"
-#include "../../core/include/hpxfft/util/real_length.hpp"
 #include <vector>
 
 namespace fa = hpxfft::util::fftw_adapter;
@@ -70,11 +70,11 @@ TEST_CASE("vector_3d checked access, rearrange and comparison", "[vector_3d]")
 TEST_CASE("block_offsets splits any n into blocks that differ by at most one", "[util][blocks]")
 {
     using hpxfft::util::block_offsets;
-    REQUIRE(block_offsets(12, 4) == std::vector<std::size_t>{0, 3, 6, 9, 12});
-    REQUIRE(block_offsets(10, 4) == std::vector<std::size_t>{0, 3, 6, 8, 10});
-    REQUIRE(block_offsets(3, 5) == std::vector<std::size_t>{0, 1, 2, 3, 3, 3});
-    REQUIRE(block_offsets(7, 1) == std::vector<std::size_t>{0, 7});
-    REQUIRE(block_offsets(0, 3) == std::vector<std::size_t>{0, 0, 0, 0});
+    REQUIRE(block_offsets(12, 4) == std::vector<std::size_t>{ 0, 3, 6, 9, 12 });
+    REQUIRE(block_offsets(10, 4) == std::vector<std::size_t>{ 0, 3, 6, 8, 10 });
+    REQUIRE(block_offsets(3, 5) == std::vector<std::size_t>{ 0, 1, 2, 3, 3, 3 });
+    REQUIRE(block_offsets(7, 1) == std::vector<std::size_t>{ 0, 7 });
+    REQUIRE(block_offsets(0, 3) == std::vector<std::size_t>{ 0, 0, 0, 0 });
 }
 
 TEST_CASE("real_length derives or validates the real row length", "[util][real_length]")

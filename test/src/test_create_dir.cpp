@@ -26,7 +26,9 @@ TEST_CASE("create_parent_dir reports a directory that cannot be created", "[util
     const auto base = std::filesystem::temp_directory_path() / "hpxfft_create_dir_test_file";
     std::filesystem::remove_all(base);
     // a regular file in the way of the parent directory
-    { std::ofstream(base) << "x"; }
+    {
+        std::ofstream(base) << "x";
+    }
     REQUIRE_THROWS_WITH(hpxfft::util::create_parent_dir(base / "sub" / "result.csv"),
                         Catch::Matchers::ContainsSubstring("Failed to create directory"));
     std::filesystem::remove_all(base);

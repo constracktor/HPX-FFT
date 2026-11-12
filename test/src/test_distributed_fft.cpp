@@ -1,13 +1,13 @@
 // Distributed FFT correctness test: one case per process invocation (see run_localities.sh).
 // Every locality builds its block of a deterministic random input, runs the FFT and compares its output block with a
 // naive DFT reference. With --expect_throw the case passes only if initialize rejects the input on every locality.
-#include "hpxfft/2D/distributed/loop.hpp"
-#include "hpxfft/3D/distributed/loop.hpp"
 #include "hpxfft/2D/distributed/agas.hpp"
+#include "hpxfft/2D/distributed/loop.hpp"
 #include "hpxfft/2D/shared/loop.hpp"
 #include "hpxfft/2D/shared/naive.hpp"
 #include "hpxfft/2D/shared/opt.hpp"
 #include "hpxfft/2D/shared/sync.hpp"
+#include "hpxfft/3D/distributed/loop.hpp"
 #include "hpxfft/3D/shared/loop.hpp"
 #include "hpxfft/3D/shared/naive.hpp"
 #include "hpxfft/3D/shared/sync.hpp"
@@ -35,7 +35,7 @@ struct params
     std::size_t nx, ny, nz;
     bool transposed, expect_throw, uneven_x;
     std::string expect_msg;  // with --expect_throw: text the error message must contain
-    long size_arg = -1;  // size passed to initialize instead of nz / ny (-1: the true size)
+    long size_arg = -1;      // size passed to initialize instead of nz / ny (-1: the true size)
 };
 
 void report(const params &p, std::size_t me, bool ok, const std::string &what);
@@ -49,7 +49,10 @@ void report_rejection(const params &p, std::size_t me, bool initialized)
 
 void report(const params &p, std::size_t me, bool ok, const std::string &what)
 {
-    if (!ok) g_failed = 1;
+    if (!ok)
+    {
+        g_failed = 1;
+    }
     std::printf("%s locality %zu %s %zux%zux%zu run=%s transposed=%d %s\n",
                 ok ? "PASS" : "FAIL",
                 me,
@@ -68,22 +71,27 @@ inline double worse(const double worst, const double err) { return std::isnan(er
 
 // compare a block (nx_b x ny_b x nz_b complex numbers stored interleaved) with reference(i, j, k)
 template <typename Vec, typename Ref>
-bool compare_block(const Vec &out, std::size_t n0, std::size_t n1, std::size_t n2, double scale, Ref ref, std::string &what)
+bool compare_block(
+    const Vec &out, std::size_t n0, std::size_t n1, std::size_t n2, double scale, Ref ref, std::string &what)
 {
     if (out.n_x() != n0 || out.n_y() != n1 || out.n_z() != 2 * n2)
     {
-        what = "shape " + std::to_string(out.n_x()) + "x" + std::to_string(out.n_y()) + "x" + std::to_string(out.n_z()) +
-            " expected " + std::to_string(n0) + "x" + std::to_string(n1) + "x" + std::to_string(2 * n2);
+        what = "shape " + std::to_string(out.n_x()) + "x" + std::to_string(out.n_y()) + "x" + std::to_string(out.n_z())
+               + " expected " + std::to_string(n0) + "x" + std::to_string(n1) + "x" + std::to_string(2 * n2);
         return false;
     }
     double worst = 0.0;
     for (std::size_t i = 0; i < n0; ++i)
+    {
         for (std::size_t j = 0; j < n1; ++j)
+        {
             for (std::size_t k = 0; k < n2; ++k)
             {
                 const reference::cplx e = ref(i, j, k);
                 worst = worse(worst, std::abs(reference::cplx(out(i, j, 2 * k), out(i, j, 2 * k + 1)) - e));
             }
+        }
+    }
     what = "max_rel_err=" + std::to_string(worst / scale);
     return worst / scale < 1e-10;
 }
@@ -108,7 +116,10 @@ bool initialize_3d(Fft &f, hpxfft::fft3D::distributed::vector_3d &&v, const para
 // the test program splits the input evenly unless --uneven_x asks for an uneven first block
 void require_divisible(const std::size_t n, const std::size_t parts, const char *what)
 {
-    if (n % parts != 0) throw std::invalid_argument(std::string(what) + " must be divisible by the number of localities");
+    if (n % parts != 0)
+    {
+        throw std::invalid_argument(std::string(what) + " must be divisible by the number of localities");
+    }
 }
 
 void run_3d(const params &p, bool pencil)
@@ -118,7 +129,10 @@ void run_3d(const params &p, bool pencil)
     const std::size_t P = pencil ? static_cast<std::size_t>(std::sqrt(double(nl)) + 0.5) : 1;
     const std::size_t dcz = p.nz / 2 + 1;
     require_divisible(p.nx, pencil ? P : nl, "nx");
-    if (pencil) require_divisible(p.ny, P, "ny");
+    if (pencil)
+    {
+        require_divisible(p.ny, P, "ny");
+    }
     // input block
     std::size_t nxl, nyl, x0, y0;
     if (pencil)
@@ -137,9 +151,15 @@ void run_3d(const params &p, bool pencil)
     }
     hpxfft::fft3D::distributed::vector_3d v(nxl, nyl, 2 * dcz);
     for (std::size_t i = 0; i < nxl; ++i)
+    {
         for (std::size_t j = 0; j < nyl; ++j)
+        {
             for (std::size_t k = 0; k < 2 * dcz; ++k)
+            {
                 v(i, j, k) = k < p.nz ? reference::input_value(x0 + i, y0 + j, k) : kPad;
+            }
+        }
+    }
 
     // construct only the decomposition under test: a default constructed object that is never initialized must not be
     // destroyed
@@ -147,9 +167,13 @@ void run_3d(const params &p, bool pencil)
     std::optional<hpxfft::fft3D::distributed::loop::pencil> pen;
     bool initialized;
     if (pencil)
+    {
         initialized = initialize_3d(pen.emplace(), std::move(v), p);
+    }
     else
+    {
         initialized = initialize_3d(slab.emplace(), std::move(v), p);
+    }
 
     if (p.expect_throw)
     {
@@ -166,13 +190,17 @@ void run_3d(const params &p, bool pencil)
 
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
-    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    for (auto &c : ref.v)
+    {
+        scale = std::max(scale, std::abs(c));
+    }
     std::string what;
     bool ok;
     if (!p.transposed && !pencil)
     {
         const std::size_t xl = p.nx / nl;
-        ok = compare_block(out, xl, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(me * xl + i, j, k); }, what);
+        ok = compare_block(
+            out, xl, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(me * xl + i, j, k); }, what);
     }
     else if (!p.transposed)
     {
@@ -184,7 +212,13 @@ void run_3d(const params &p, bool pencil)
         // y rows of this locality: blocks of ny / L, the first ny % L localities hold one more
         const auto yo = hpxfft::util::block_offsets(p.ny, nl);
         ok = compare_block(
-            out, yo[me + 1] - yo[me], dcz, p.nx, scale, [&](auto i, auto j, auto k) { return ref.at(k, yo[me] + i, j); }, what);
+            out,
+            yo[me + 1] - yo[me],
+            dcz,
+            p.nx,
+            scale,
+            [&](auto i, auto j, auto k) { return ref.at(k, yo[me] + i, j); },
+            what);
     }
     else
     {
@@ -203,15 +237,21 @@ void run_3d(const params &p, bool pencil)
     report(p, me, ok, what);
 }
 
-
 // shared memory 3D variants (single locality, natural layout); --run picks the variant
 void run_shared(const params &p)
 {
     const std::size_t dcz = p.nz / 2 + 1;
     hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
     for (std::size_t i = 0; i < p.nx; ++i)
+    {
         for (std::size_t j = 0; j < p.ny; ++j)
-            for (std::size_t k = 0; k < 2 * dcz; ++k) v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+        {
+            for (std::size_t k = 0; k < 2 * dcz; ++k)
+            {
+                v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+            }
+        }
+    }
     hpxfft::fft3D::distributed::vector_3d out;
     if (p.run == "naive")
     {
@@ -232,12 +272,18 @@ void run_shared(const params &p)
         out = p.run == "seq" ? f.fft_3d_r2c_seq() : f.fft_3d_r2c_par();
     }
     else
+    {
         throw std::invalid_argument("unknown shared variant " + p.run);
+    }
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
-    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    for (auto &c : ref.v)
+    {
+        scale = std::max(scale, std::abs(c));
+    }
     std::string what;
-    const bool ok = compare_block(out, p.nx, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(i, j, k); }, what);
+    const bool ok =
+        compare_block(out, p.nx, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(i, j, k); }, what);
     report(p, 0, ok, what);
 }
 
@@ -247,7 +293,12 @@ void run_shared_2d(const params &p)
     const std::size_t dcy = p.ny / 2 + 1;
     hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
     for (std::size_t i = 0; i < p.nx; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
+    {
+        for (std::size_t j = 0; j < 2 * dcy; ++j)
+        {
+            v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
+        }
+    }
     hpxfft::fft2D::distributed::vector_2d out;
     if (p.run == "naive")
     {
@@ -274,33 +325,48 @@ void run_shared_2d(const params &p)
         out = p.run == "seq" ? f.fft_2d_r2c_seq() : f.fft_2d_r2c_par();
     }
     else
+    {
         throw std::invalid_argument("unknown shared variant " + p.run);
+    }
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
-    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    for (auto &c : ref.v)
+    {
+        scale = std::max(scale, std::abs(c));
+    }
     double worst = 0.0;
     std::string what;
     bool ok = out.n_row() == p.nx && out.n_col() == 2 * dcy;
     if (ok)
     {
         for (std::size_t i = 0; i < p.nx; ++i)
+        {
             for (std::size_t j = 0; j < dcy; ++j)
+            {
                 worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(i, j)));
+            }
+        }
         what = "max_rel_err=" + std::to_string(worst / scale);
         ok = worst / scale < 1e-10;
     }
     else
+    {
         what = "shape mismatch";
+    }
     report(p, 0, ok, what);
 }
 
 // compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference
-void check_agas_2d(const params &p, std::size_t me, std::size_t x0, std::size_t nxl, hpxfft::fft2D::distributed::vector_2d &out)
+void check_agas_2d(
+    const params &p, std::size_t me, std::size_t x0, std::size_t nxl, hpxfft::fft2D::distributed::vector_2d &out)
 {
     const std::size_t dcy = p.ny / 2 + 1;
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
-    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    for (auto &c : ref.v)
+    {
+        scale = std::max(scale, std::abs(c));
+    }
     if (out.n_row() != nxl || out.n_col() != 2 * dcy)
     {
         report(p, me, false, "shape " + std::to_string(out.n_row()) + "x" + std::to_string(out.n_col()));
@@ -308,8 +374,12 @@ void check_agas_2d(const params &p, std::size_t me, std::size_t x0, std::size_t 
     }
     double worst = 0.0;
     for (std::size_t i = 0; i < out.n_row(); ++i)
+    {
         for (std::size_t j = 0; j < dcy; ++j)
+        {
             worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
+        }
+    }
     report(p, me, worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
 }
 
@@ -324,7 +394,12 @@ void run_agas_2d(const params &p)
     const std::size_t nxl = p.nx / nl;
     hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
     for (std::size_t i = 0; i < nxl; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : kPad;
+    {
+        for (std::size_t j = 0; j < 2 * dcy; ++j)
+        {
+            v(i, j) = j < p.ny ? reference::input_value(me * nxl + i, j, 0) : kPad;
+        }
+    }
     hpxfft::fft2D::distributed::agas f;
     bool initialized = true;
     try
@@ -354,7 +429,10 @@ bool plans_file_ok(Fft &f, const std::string &path)
     f.write_plans_to_file(path);
     std::FILE *file = std::fopen(path.c_str(), "r");
     const bool written = file != nullptr && std::fgetc(file) != EOF;
-    if (file) std::fclose(file);
+    if (file)
+    {
+        std::fclose(file);
+    }
     std::remove(path.c_str());
     bool threw = false;
     try
@@ -376,15 +454,27 @@ void run_helpers(const params &p)
     {
         hpxfft::fft3D::distributed::vector_3d v(p.nx, p.ny, 2 * dcz);
         for (std::size_t i = 0; i < p.nx; ++i)
+        {
             for (std::size_t j = 0; j < p.ny; ++j)
-                for (std::size_t k = 0; k < p.nz; ++k) v(i, j, k) = reference::input_value(i, j, k);
+            {
+                for (std::size_t k = 0; k < p.nz; ++k)
+                {
+                    v(i, j, k) = reference::input_value(i, j, k);
+                }
+            }
+        }
         return v;
     };
     auto make2 = [&]
     {
         hpxfft::fft2D::distributed::vector_2d v(p.nx, 2 * dcy);
         for (std::size_t i = 0; i < p.nx; ++i)
-            for (std::size_t j = 0; j < p.ny; ++j) v(i, j) = reference::input_value(i, j, 0);
+        {
+            for (std::size_t j = 0; j < p.ny; ++j)
+            {
+                v(i, j) = reference::input_value(i, j, 0);
+            }
+        }
         return v;
     };
     const std::string path = "hpxfft_plans_test.txt";
@@ -444,7 +534,12 @@ void run_2d(const params &p)
     const std::size_t x0 = me * (p.nx / nl);
     hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
     for (std::size_t i = 0; i < nxl; ++i)
-        for (std::size_t j = 0; j < 2 * dcy; ++j) v(i, j) = j < p.ny ? reference::input_value(x0 + i, j, 0) : kPad;
+    {
+        for (std::size_t j = 0; j < 2 * dcy; ++j)
+        {
+            v(i, j) = j < p.ny ? reference::input_value(x0 + i, j, 0) : kPad;
+        }
+    }
 
     hpxfft::fft2D::distributed::loop f;
     f.set_transposed_output(p.transposed);
@@ -474,7 +569,10 @@ void run_2d(const params &p)
 
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
-    for (auto &c : ref.v) scale = std::max(scale, std::abs(c));
+    for (auto &c : ref.v)
+    {
+        scale = std::max(scale, std::abs(c));
+    }
     // natural: rows of this locality, all dcy frequencies; transposed: (y_local, x) with y distributed
     // transposed: the y frequencies are split into blocks of dcy / L, the first dcy % L localities hold one more
     const auto yo = hpxfft::util::block_offsets(dcy, nl);
@@ -485,18 +583,20 @@ void run_2d(const params &p)
     if (out.n_row() != rows || out.n_col() != 2 * cols)
     {
         ok = false;
-        what = "shape " + std::to_string(out.n_row()) + "x" + std::to_string(out.n_col()) + " expected " +
-            std::to_string(rows) + "x" + std::to_string(2 * cols);
+        what = "shape " + std::to_string(out.n_row()) + "x" + std::to_string(out.n_col()) + " expected "
+               + std::to_string(rows) + "x" + std::to_string(2 * cols);
     }
     else
     {
         double worst = 0.0;
         for (std::size_t i = 0; i < rows; ++i)
+        {
             for (std::size_t j = 0; j < cols; ++j)
             {
                 const reference::cplx e = p.transposed ? ref.at(j, yo[me] + i) : ref.at(me * rows + i, j);
                 worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - e));
             }
+        }
         what = "max_rel_err=" + std::to_string(worst / scale);
         ok = worst / scale < 1e-10;
     }
@@ -510,7 +610,10 @@ void run_wisdom(const params &p)
     const std::size_t me = hpx::get_locality_id();
     const auto dir = std::filesystem::temp_directory_path() / "hpxfft_dist_wisdom_test";
     const std::string file = (dir / "wisdom.txt").string();
-    if (me == 0) std::filesystem::remove_all(dir);
+    if (me == 0)
+    {
+        std::filesystem::remove_all(dir);
+    }
     hpx::distributed::barrier("wisdom_clean").wait();
     const int n = static_cast<int>(p.nx);
     fftw_complex *buf = fftw_alloc_complex(p.nx);
@@ -528,14 +631,20 @@ void run_wisdom(const params &p)
     fftw_free(buf);
     hpx::distributed::barrier("wisdom_import").wait();
     std::size_t leftovers = 0;
-    for ([[maybe_unused]] const auto &entry : std::filesystem::directory_iterator(dir)) ++leftovers;
+    for ([[maybe_unused]] const auto &entry : std::filesystem::directory_iterator(dir))
+    {
+        ++leftovers;
+    }
     hpx::distributed::barrier("wisdom_count").wait();
-    if (me == 0) std::filesystem::remove_all(dir);
+    if (me == 0)
+    {
+        std::filesystem::remove_all(dir);
+    }
     report(p,
            me,
            ok && leftovers == 1,
-           "imported=" + std::to_string(imported) + " wisdom_only_plan=" + std::to_string(plan != nullptr) +
-               " files=" + std::to_string(leftovers));
+           "imported=" + std::to_string(imported) + " wisdom_only_plan=" + std::to_string(plan != nullptr)
+               + " files=" + std::to_string(leftovers));
 }
 
 int hpx_main(hpx::program_options::variables_map &vm)
@@ -554,21 +663,37 @@ int hpx_main(hpx::program_options::variables_map &vm)
     try
     {
         if (p.mode == "2d")
+        {
             run_2d(p);
+        }
         else if (p.mode == "shared")
+        {
             run_shared(p);
+        }
         else if (p.mode == "helpers")
+        {
             run_helpers(p);
+        }
         else if (p.mode == "agas2d")
+        {
             run_agas_2d(p);
+        }
         else if (p.mode == "shared2d")
+        {
             run_shared_2d(p);
+        }
         else if (p.mode == "wisdom")
+        {
             run_wisdom(p);
+        }
         else if (p.mode == "slab" || p.mode == "pencil")
+        {
             run_3d(p, p.mode == "pencil");
+        }
         else
+        {
             throw std::invalid_argument("unknown mode " + p.mode);
+        }
     }
     catch (const std::exception &e)
     {
@@ -590,7 +715,7 @@ int main(int argc, char *argv[])
         "size_arg", value<long>()->default_value(-1))("expect_msg", value<std::string>()->default_value(""));
     hpx::init_params ip;
     ip.desc_cmdline = d;
-    ip.cfg = {"hpx.run_hpx_main!=1"};
+    ip.cfg = { "hpx.run_hpx_main!=1" };
     int rc = hpx::init(hpx_main, argc, argv, ip);
     return rc != 0 ? rc : g_failed;
 }

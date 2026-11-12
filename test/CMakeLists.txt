@@ -161,7 +161,8 @@ add_test(
   COMMAND test_shared_sync_3d
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
-# ---- Distributed correctness tests: several localities per test, naive DFT reference ----
+# ---- Distributed correctness tests: several localities per test, naive DFT
+# reference ----
 add_executable(test_distributed_fft src/test_distributed_fft.cpp)
 target_link_libraries(
   test_distributed_fft
@@ -171,10 +172,9 @@ target_compile_features(test_distributed_fft PRIVATE cxx_std_17)
 
 # name suffix, localities, then the arguments of the test program
 function(add_distributed_test name localities)
-  add_test(
-    NAME ${name}
-    COMMAND ${CMAKE_CURRENT_LIST_DIR}/run_localities.sh ${localities}
-            $<TARGET_FILE:test_distributed_fft> ${ARGN})
+  add_test(NAME ${name}
+           COMMAND ${CMAKE_CURRENT_LIST_DIR}/run_localities.sh ${localities}
+                   $<TARGET_FILE:test_distributed_fft> ${ARGN})
   set_tests_properties(${name} PROPERTIES TIMEOUT 200 RESOURCE_LOCK hpx_ports)
 endfunction()
 
@@ -188,8 +188,14 @@ function(add_distributed_cases mode localities cases flags)
     foreach(flag ${flags})
       foreach(tr 0 1)
         add_distributed_test(
-          dist_${mode}_L${localities}_${nx}x${ny}x${nz}_${flag}_t${tr} ${localities}
-          --mode=${mode} --nx=${nx} --ny=${ny} --nz=${nz} --run=${flag} --transposed=${tr})
+          dist_${mode}_L${localities}_${nx}x${ny}x${nz}_${flag}_t${tr}
+          ${localities}
+          --mode=${mode}
+          --nx=${nx}
+          --ny=${ny}
+          --nz=${nz}
+          --run=${flag}
+          --transposed=${tr})
       endforeach()
     endforeach()
   endforeach()
@@ -197,24 +203,29 @@ endfunction()
 
 set(DIST_FLAGS scatter all_to_all scatter_hierarchical)
 foreach(l 1 2 3 4)
-  add_distributed_cases(slab ${l} "12,12,10;12,12,12;12,12,9;12,13,10;12,7,9" "${DIST_FLAGS}")
+  add_distributed_cases(slab ${l} "12,12,10;12,12,12;12,12,9;12,13,10;12,7,9"
+                        "${DIST_FLAGS}")
 endforeach()
-add_distributed_cases(pencil 4 "8,8,6;8,8,10;8,8,11;8,8,8;8,8,12" "${DIST_FLAGS}")
+add_distributed_cases(pencil 4 "8,8,6;8,8,10;8,8,11;8,8,8;8,8,12"
+                      "${DIST_FLAGS}")
 add_distributed_cases(pencil 9 "12,12,10;12,12,8" "${DIST_FLAGS}")
 add_distributed_cases(pencil 16 "16,16,12;16,16,11" "${DIST_FLAGS}")
 # sizes beyond one 16x16 transpose tile, with partial tiles and uneven blocks
 add_distributed_cases(slab 4 "40,37,35;36,40,34" "${DIST_FLAGS}")
 add_distributed_cases(pencil 4 "40,36,35" "${DIST_FLAGS}")
-# 2D: the case is "nx,ny,0"; ny / 2 + 1 (5, 5 and 6 here) need not be divisible by the number of localities
+# 2D: the case is "nx,ny,0"; ny / 2 + 1 (5, 5 and 6 here) need not be divisible
+# by the number of localities
 foreach(l 1 2 4)
-  add_distributed_cases(2d ${l} "8,6,0;8,14,0;8,8,0;8,9,0;8,11,0" "${DIST_FLAGS}")
+  add_distributed_cases(2d ${l} "8,6,0;8,14,0;8,8,0;8,9,0;8,11,0"
+                        "${DIST_FLAGS}")
 endforeach()
 add_distributed_cases(2d 2 "8,10,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "40,37,0;40,34,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 3 "12,9,0" "${DIST_FLAGS}")
 add_distributed_cases(2d 4 "8,9,0;40,37,0" "all_to_all_routed")
 
-# small and degenerate sizes: one row per locality, nz = 1 and 2, pencil with dcz == P, a single pencil, tiny y
+# small and degenerate sizes: one row per locality, nz = 1 and 2, pencil with
+# dcz == P, a single pencil, tiny y
 add_distributed_cases(slab 4 "4,7,9;8,4,6;8,8,1;8,8,2" "scatter;all_to_all")
 add_distributed_cases(slab 2 "4,4,2;4,4,1" "scatter;all_to_all")
 add_distributed_cases(pencil 4 "8,8,2" "scatter;all_to_all")
@@ -227,32 +238,127 @@ add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
 # all localities export FFTW wisdom to the same file at once, then import it
 add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
 
-# agas components (ny even); the distributed one has no uneven-block support, so dcy must divide
+# agas components (ny even); the distributed one has no uneven-block support, so
+# dcy must divide
 foreach(l 1 2)
   foreach(flag scatter all_to_all)
-    add_distributed_test(dist_agas2d_L${l}_8x10_${flag} ${l} --mode=agas2d --nx=8 --ny=10 --run=${flag})
+    add_distributed_test(dist_agas2d_L${l}_8x10_${flag} ${l} --mode=agas2d
+                         --nx=8 --ny=10 --run=${flag})
   endforeach()
 endforeach()
-add_distributed_test(dist_agas2d_L2_8x6_scatter 2 --mode=agas2d --nx=8 --ny=6 --run=scatter)
+add_distributed_test(dist_agas2d_L2_8x6_scatter 2 --mode=agas2d --nx=8 --ny=6
+                     --run=scatter)
 
-add_distributed_test(dist_reject_agas2d_indivisible_y 2 --mode=agas2d --nx=8 --ny=8 --expect_throw=1 "--expect_msg=must be divisible")
+add_distributed_test(
+  dist_reject_agas2d_indivisible_y
+  2
+  --mode=agas2d
+  --nx=8
+  --ny=8
+  --expect_throw=1
+  "--expect_msg=must be divisible")
 
 # remaining run flags of the 3D loops
-add_distributed_cases(slab 3 "12,13,10;12,7,9" "scatter_async;all_to_all_routed")
+add_distributed_cases(slab 3 "12,13,10;12,7,9"
+                      "scatter_async;all_to_all_routed")
 add_distributed_cases(pencil 4 "8,8,11;8,8,6" "scatter_async;all_to_all_routed")
 add_distributed_cases(pencil 9 "12,12,10" "scatter_async;all_to_all_routed")
 
 # sizes that must be rejected on every locality
-add_distributed_test(dist_reject_slab_nz_mismatch 2 --mode=slab --nx=8 --ny=8 --nz=6 --size_arg=8 --expect_throw=1 "--expect_msg=nz does not match")
-add_distributed_test(dist_reject_pencil_nz_mismatch 4 --mode=pencil --nx=8 --ny=8 --nz=6 --size_arg=8 --expect_throw=1 "--expect_msg=nz does not match")
-add_distributed_test(dist_reject_2d_ny_mismatch 2 --mode=2d --nx=8 --ny=6 --size_arg=9 --expect_throw=1 "--expect_msg=ny does not match")
-add_distributed_test(dist_reject_pencil_not_square 2 --mode=pencil --nx=8 --ny=8 --nz=6 --expect_throw=1 "--expect_msg=square number")
-add_distributed_test(dist_reject_pencil_unequal_x 4 --mode=pencil --nx=8 --ny=8 --nz=6 --uneven_x=1 --expect_throw=1 "--expect_msg=same shape")
-add_distributed_test(dist_reject_pencil_small_z 4 --mode=pencil --nx=8 --ny=8 --nz=1 --expect_throw=1 "--expect_msg=smaller than the number of")
-add_distributed_test(dist_reject_slab_y 4 --mode=slab --nx=8 --ny=3 --nz=6 --expect_throw=1 "--expect_msg=smaller than the number of")
-add_distributed_test(dist_reject_2d_small_y 4 --mode=2d --nx=8 --ny=2 --nz=0 --expect_throw=1 "--expect_msg=smaller than the number of")
-add_distributed_test(dist_reject_slab_unequal_x 2 --mode=slab --nx=8 --ny=8 --nz=6 --uneven_x=1 --expect_throw=1 "--expect_msg=same shape")
-add_distributed_test(dist_reject_2d_unequal_x 2 --mode=2d --nx=8 --ny=6 --uneven_x=1 --expect_throw=1 "--expect_msg=same shape")
+add_distributed_test(
+  dist_reject_slab_nz_mismatch
+  2
+  --mode=slab
+  --nx=8
+  --ny=8
+  --nz=6
+  --size_arg=8
+  --expect_throw=1
+  "--expect_msg=nz does not match")
+add_distributed_test(
+  dist_reject_pencil_nz_mismatch
+  4
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=6
+  --size_arg=8
+  --expect_throw=1
+  "--expect_msg=nz does not match")
+add_distributed_test(
+  dist_reject_2d_ny_mismatch
+  2
+  --mode=2d
+  --nx=8
+  --ny=6
+  --size_arg=9
+  --expect_throw=1
+  "--expect_msg=ny does not match")
+add_distributed_test(
+  dist_reject_pencil_not_square
+  2
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=6
+  --expect_throw=1
+  "--expect_msg=square number")
+add_distributed_test(
+  dist_reject_pencil_unequal_x
+  4
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=6
+  --uneven_x=1
+  --expect_throw=1
+  "--expect_msg=same shape")
+add_distributed_test(
+  dist_reject_pencil_small_z
+  4
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=1
+  --expect_throw=1
+  "--expect_msg=smaller than the number of")
+add_distributed_test(
+  dist_reject_slab_y
+  4
+  --mode=slab
+  --nx=8
+  --ny=3
+  --nz=6
+  --expect_throw=1
+  "--expect_msg=smaller than the number of")
+add_distributed_test(
+  dist_reject_2d_small_y
+  4
+  --mode=2d
+  --nx=8
+  --ny=2
+  --nz=0
+  --expect_throw=1
+  "--expect_msg=smaller than the number of")
+add_distributed_test(
+  dist_reject_slab_unequal_x
+  2
+  --mode=slab
+  --nx=8
+  --ny=8
+  --nz=6
+  --uneven_x=1
+  --expect_throw=1
+  "--expect_msg=same shape")
+add_distributed_test(
+  dist_reject_2d_unequal_x
+  2
+  --mode=2d
+  --nx=8
+  --ny=6
+  --uneven_x=1
+  --expect_throw=1
+  "--expect_msg=same shape")
 
 # shared memory loop, one locality, including odd nz
 foreach(case "6,5,8" "6,5,9" "4,7,7" "5,6,10")
@@ -261,8 +367,14 @@ foreach(case "6,5,8" "6,5,9" "4,7,7" "5,6,10")
   list(GET dims 1 ny)
   list(GET dims 2 nz)
   foreach(variant par seq naive sync)
-    add_distributed_test(dist_shared_${variant}_${nx}x${ny}x${nz} 1 --mode=shared --run=${variant} --nx=${nx} --ny=${ny}
-                         --nz=${nz})
+    add_distributed_test(
+      dist_shared_${variant}_${nx}x${ny}x${nz}
+      1
+      --mode=shared
+      --run=${variant}
+      --nx=${nx}
+      --ny=${ny}
+      --nz=${nz})
   endforeach()
 endforeach()
 foreach(case "6,8" "5,9" "7,10" "20,37")
@@ -270,7 +382,8 @@ foreach(case "6,8" "5,9" "7,10" "20,37")
   list(GET dims 0 nx)
   list(GET dims 1 ny)
   foreach(variant par seq naive sync opt)
-    add_distributed_test(dist_shared2d_${variant}_${nx}x${ny} 1 --mode=shared2d --run=${variant} --nx=${nx} --ny=${ny})
+    add_distributed_test(dist_shared2d_${variant}_${nx}x${ny} 1 --mode=shared2d
+                         --run=${variant} --nx=${nx} --ny=${ny})
   endforeach()
 endforeach()
 
