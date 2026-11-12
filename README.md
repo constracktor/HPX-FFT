@@ -1,29 +1,55 @@
 # HPX-FFT: Multidimensional Distributed FFTs leveraging Asynchronous Tasks and Communication Abstractions
 
-HPX-FFT is an open-source library for FFT computation. Leveraging the asynchronous many-task runtime HPX, we aim to combine the performance of asynchronous parallelism in C++ and a powerfull communication abstraction based on an Active Global Adress Space with support for industry standard FFT backends such as FFTW3.
+HPX-FFT is an open-source library for FFT computation. Leveraging the asynchronous many-task runtime HPX, we aim to combine the performance of asynchronous parallelism in C++ and a powerful communication abstraction based on an Active Global Address Space with support for industry standard FFT backends such as FFTW3.
+
+HPX-FFT computes 2D and 3D real-to-complex FFTs of even and odd sizes:
+- Shared memory: a loop-based variant (`loop`) and task-based variants (`naive`, `sync`, `opt` and `agas` in 2D;
+  `naive` and `sync` in 3D).
+- Distributed memory: 2D with `loop` and `agas`, 3D with slab and pencil decomposition.
+
+The one-dimensional FFTs use an FFTW backend; FFTW and P3DFFT++ serve as reference implementations.
 
 ## Dependencies
 
 HPX-FFT depends on [HPX](https://hpx-docs.stellar-group.org/latest/html/index.html) for asynchronous task-based parallelization. Further one-dimensional FFTs are computed via an [FFTW](https://www.fftw.org/) backend.
+The library is built with C++20.
 
-As a reference implementation [P3DFFT++](https://p3dfft.readthedocs.io/en/latest/p3dfft++_documentation.html) is used. 
+As a reference implementation [P3DFFT++](https://p3dfft.readthedocs.io/en/latest/p3dfft++_documentation.html) is used.
 
 ### Install dependencies
 
-All dependencies can be installed using [Spack](https://github.com/spack/spack).
-For HPX we recommend: `spack install hpx@1.11.0 networking={tcp/mpi/lci/all} max_cpu_count=256`
-For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
-For P3DFFT++ we recommend `spack install p3dfft3@develop +fftw +mpi`
-The requirements can be also installed using the provided spack environments. 
-The spack-repo directory add support for installing HPX with the LCI or all parcelports at once.
+All dependencies can be installed using [Spack](https://github.com/spack/spack) (1.x).
+`spack-repo/setup_spack.sh` (run it from inside `spack-repo/`) clones Spack v1.1.1 into `$HOME/spack`, finds compilers
+and externals, and adds the HPX recipe in `spack-repo/spack_repo/hpxfft` that is used by the CI.
+
+- For HPX we recommend: `spack install hpxfft.hpx@2.0.0 cxxstd=20 networking=tcp max_cpu_count=256`
+  (HPX 2.0 requires `cxxstd=20`). `networking` takes any combination of `tcp`, `mpi` and `lci`, or `all`
+  for all three, e.g. `networking=tcp,mpi`.
+- For FFTW we recommend `spack install fftw@3.3.10 +mpi +openmp`
+- For P3DFFT++ we recommend `spack install p3dfft3@develop +fftw +mpi`
+
+The distributed tests need the TCP parcelport (`tcp`, `all` or a combination with `tcp`), because the test launcher
+starts the localities over TCP. With an MPI-only HPX every multi-locality test aborts with
+"Could not find usable bootstrap parcelport".
+
+The requirements can be also installed using the provided spack environments in `spack-repo/environments`, e.g.
+`spack env create hpxfft_x86_buran spack-repo/environments/hpxfft_x86_buran.yaml`. `hpxfft_ci.yaml` is the CI
+environment (HPX 2.0.0, TCP). The machine environments (`hpxfft_x86_buran`, `hpxfft_x86_epyc`, `hpxfft_arm_ookami`)
+still pin HPX 1.11.0 with GCC 14.2.0 and use `networking=all` (buran) or `networking=mpi` (epyc, ookami); the latter
+cannot run the distributed tests.
 
 ## How to Compile HPX-FFT
 
-We provide a simple compilation script for HPX-FFT. The script assumes an gcc compiler version 14.2.0. However, it can be easily tailored towards specific needs.
+We provide simple compilation scripts. On known machines (ipvs-epyc1, buran and ookami; `compile_tests.sh` only
+knows ipvs-epyc1) they load GCC 14.2.0 and activate the matching spack environment if it exists; elsewhere they use
+the compiler and packages of the current environment. They can be easily tailored towards specific needs.
 
-## How to Compile Examples:
+- `compile.sh`: builds the library in `build/` and installs it to `install/`.
+- `compile_hpxfft_examples.sh`: builds the HPX-FFT examples in `examples/hpxfft/build` against `install/`.
+- `compile_fftw_examples.sh`: builds the FFTW and P3DFFT++ reference examples in `examples/fftw/build`.
+- `compile_tests.sh`: builds the tests in `test/build`.
 
-HPX-FFT comes with several examples for HPX-FFT itself as well as for a FFTW reference. The examples can be compiled with the respective compilation scripts.
+Submitted with `sbatch`, the scripts write their logs to `output/`.
 
 ## Problem Sizes
 
