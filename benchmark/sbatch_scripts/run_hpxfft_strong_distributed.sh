@@ -27,7 +27,7 @@ OPTIONS=""
 COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((2**POW_START - 1))] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2 --run=$6"
-if [[ "$EXECUTABLE" == *"3d"* ]]; then
+if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"
 fi
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"

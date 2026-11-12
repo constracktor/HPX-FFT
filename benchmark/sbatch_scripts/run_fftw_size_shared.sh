@@ -25,7 +25,7 @@ LOOP=$6
 COMMAND="srun -N 1 -n 1 -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="$((2**POW_START)) $((2**POW_START)) $2"
-if [[ "$EXECUTABLE" == *"3d"* ]]; then
+if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="$((2**POW_START)) $((2**POW_START)) $((2**POW_START-2)) $2"
 fi
 # Problem size scaling loop from 2^pow_start to 2^pow_stop
@@ -37,7 +37,7 @@ done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
     ARGUMENTS="$i $i $2"
-    if [[ "$EXECUTABLE" == *"3d"* ]]; then
+    if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
         ARGUMENTS="$i $i $i $2"
     fi
     for (( j=0; j<$LOOP; j=j+1 ))

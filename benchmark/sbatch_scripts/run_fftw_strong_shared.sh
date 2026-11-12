@@ -25,7 +25,7 @@ LOOP=$6
 COMMAND="srun -N 1 -n 1 -c $((2**POW_START))"
 EXECUTABLE=$1
 ARGUMENTS="$BASE_SIZE $BASE_SIZE $2"
-if [[ "$EXECUTABLE" == *"3d"* ]]; then
+if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="$BASE_SIZE $BASE_SIZE $((BASE_SIZE-2)) $2"
 fi
 # Strong scaling loop from 2^pow_start to 2^pow_stop cores

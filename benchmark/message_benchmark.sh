@@ -10,8 +10,10 @@ EXAMPLES_DIR=$TOP_DIR/examples
 
 # HPX-FFT implementations
 HPXFFT_EXECUTABLES=(
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_2d"
+    # the 2D agas component needs ny / 2 + 1 divisible by the number of localities, which the sizes below
+    # (powers of two) never are on more than one locality
+    # "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas_2d"
 )
 
 # Get current hostname

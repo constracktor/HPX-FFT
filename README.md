@@ -219,9 +219,9 @@ and write the runtimes to `<shared|distributed|message>_benchmark_on_<partition>
   (1, 4, 9, 16 nodes) against FFTW MPI and P3DFFT++, weak scaling of slab against FFTW MPI; `<run>` is passed as
   `--run`.
 - `message_3D_benchmark.sh <run> tcp/mpi/lci`: message size scaling of the slab example on two nodes.
-- `shared_benchmark.sh`, `distributed_benchmark.sh`, `message_benchmark.sh`: the 2D counterparts (same arguments).
-  They still use the old executable names without the `_2d` suffix (e.g. `hpxfft_shared_loop`, `fftw_omp`) and
-  need to be updated before use.
+- `shared_benchmark.sh`, `distributed_benchmark.sh`, `message_benchmark.sh`: the 2D counterparts (same arguments)
+  with the `*_2d` examples. The distributed and message scripts skip `hpxfft_distributed_agas_2d`: the 2D agas
+  component needs `ny / 2 + 1` divisible by the number of localities, which their power-of-two sizes never are.
 
 ## The Team
 

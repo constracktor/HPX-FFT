@@ -23,7 +23,7 @@ OPTIONS=""
 COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-01] -N 2 -n 2 -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan="estimate" --run=$4"
-if [[ "$EXECUTABLE" == *"3d"* ]]; then
+if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan="estimate" --run=$4"
 fi
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
@@ -39,7 +39,7 @@ for (( i=2; i<=2**$POW_STOP; i=i*2 ))
 do
     SIZE=$((i*BASE_SIZE))
     ARGUMENTS="--nx=$SIZE --ny=$SIZE --plan="estimate" --run=$4"
-    if [[ "$EXECUTABLE" == *"3d"* ]]; then
+    if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
         ARGUMENTS="--nx=$SIZE --ny=$SIZE --nz=$((SIZE-2)) --plan="estimate" --run=$4"
     fi
     for (( j=0; j<$LOOP; j=j+1 ))
