@@ -181,6 +181,13 @@ void hpxfft::fft2D::distributed::loop::transpose_x_to_y(const std::size_t tile, 
 // 2D FFT algorithm
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r2c()
 {
+    // initialize + one transform per object: the transform moves the data and buffers out of the object
+    if (!ready_)
+    {
+        throw std::logic_error("fft_2d_r2c of the 2D loop needs a preceding initialize: every initialize allows one "
+                               "transform, which moves the data out of the object");
+    }
+    ready_ = false;
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -343,6 +350,8 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
                                                   const std::string PLAN_FLAG,
                                                   const std::size_t ny)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
     hpxfft::util::check_comm_flag(
         COMM_FLAG, { "scatter", "scatter_hierarchical", "all_to_all", "all_to_all_routed" }, "the 2D loop");
@@ -435,6 +444,8 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
                     hpx::collectives::root_site_arg(i),
                     hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
             }
+            // allow one transform
+            ready_ = true;
             return;
         }
         communicators_.resize(num_localities_);
@@ -481,6 +492,8 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
         // unreachable: the flag was checked at the start of initialize
         throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
+    // allow one transform
+    ready_ = true;
 }
 
 // helpers

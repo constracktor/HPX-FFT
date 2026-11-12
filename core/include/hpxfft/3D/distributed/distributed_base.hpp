@@ -28,6 +28,8 @@ struct base
     // nz: number of real values per row in z; 0 derives it from the row length as 2 * (n_z / 2 - 1)
     virtual void initialize(
         vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz = 0) = 0;
+    // One transform per initialize: the result is moved out of the object (with the communication buffers), so
+    // calling it again without a new initialize throws std::logic_error.
     virtual vector_3d fft_3d_r2c() = 0;
 
     real get_measurement(std::string name);
@@ -56,6 +58,19 @@ struct base
     virtual void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) = 0;
 
   protected:
+    // initialize + one transform per object: the transform moves the data and the communication buffers out of the
+    // object, so a second call without a new initialize (or a call without any) throws std::logic_error
+    void begin_transform(const char *name)
+    {
+        if (!ready_)
+        {
+            throw std::logic_error(std::string(name)
+                                   + " needs a preceding initialize: every initialize allows one transform, which "
+                                     "moves the data out of the object");
+        }
+        ready_ = false;
+    }
+
     // Throw std::invalid_argument on every locality if the run flag is not supported (call before any collective).
     static void check_comm_flag(const std::string &flag, const char *name)
     {
@@ -119,6 +134,8 @@ struct base
     std::vector<hpx::collectives::communicator> communicators_;
     // run variants
     bool scatter_sync_ = true;
+    // set by a successful initialize, cleared by the transform
+    bool ready_ = false;
     bool transposed_out_ = false;
     // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
     // selects the reference implementation that routes the data through a root site

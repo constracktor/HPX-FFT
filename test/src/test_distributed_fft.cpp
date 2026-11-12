@@ -44,8 +44,9 @@ struct params
     std::string mode, run;
     std::size_t nx, ny, nz;
     bool transposed, expect_throw, uneven_x;
-    std::string expect_msg;  // with --expect_throw: text the error message must contain
-    long size_arg = -1;      // size passed to initialize instead of nz / ny (-1: the true size)
+    bool call_twice = false;  // transform a second time without initialize: must throw std::logic_error
+    std::string expect_msg;   // with --expect_throw: text the error message must contain
+    long size_arg = -1;       // size passed to initialize instead of nz / ny (-1: the true size)
 };
 
 void report(const params &p, std::size_t me, bool ok, const std::string &what);
@@ -79,6 +80,37 @@ void report(const params &p, std::size_t me, bool ok, const std::string &what)
                 int(p.transposed),
                 what.c_str());
     std::fflush(stdout);
+}
+
+// result of the second transform with --call_twice (ok and nothing to add without it)
+struct second_call
+{
+    bool ok = true;
+    std::string what;
+};
+
+// with --call_twice: the transform called again without a new initialize must throw std::logic_error (on every
+// locality: the check is local, before any communication)
+template <typename Transform>
+second_call call_again(const params &p, Transform &&transform)
+{
+    second_call r;
+    if (!p.call_twice)
+    {
+        return r;
+    }
+    try
+    {
+        transform();
+        r.ok = false;
+        r.what = " second_call=accepted";
+    }
+    catch (const std::logic_error &e)
+    {
+        r.ok = std::string(e.what()).find("needs a preceding initialize") != std::string::npos;
+        r.what = std::string(" second_call=") + (r.ok ? "rejected" : "wrong_error: ") + (r.ok ? "" : e.what());
+    }
+    return r;
 }
 
 // running maximum of the errors; a NaN error counts as infinite (std::max would silently drop it)
@@ -202,6 +234,7 @@ void run_3d(const params &p, bool pencil)
     }
     hpx::distributed::barrier(barrier_name("test_init")).wait();
     hpxfft::fft3D::distributed::vector_3d out = pencil ? pen->fft_3d_r2c() : slab->fft_3d_r2c();
+    const second_call again = call_again(p, [&] { return pencil ? pen->fft_3d_r2c() : slab->fft_3d_r2c(); });
 
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
@@ -249,7 +282,7 @@ void run_3d(const params &p, bool pencil)
             [&](auto i, auto j, auto k) { return ref.at(k, (me / P) * nyl + i, zo[pz] + j); },
             what);
     }
-    report(p, me, ok, what);
+    report(p, me, ok && again.ok, what + again.what);
 }
 
 // shared memory 3D variants (single locality, natural layout); --run picks the variant
@@ -372,8 +405,12 @@ void run_shared_2d(const params &p)
 }
 
 // compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference
-void check_agas_2d(
-    const params &p, std::size_t me, std::size_t x0, std::size_t nxl, hpxfft::fft2D::distributed::vector_2d &out)
+void check_agas_2d(const params &p,
+                   std::size_t me,
+                   std::size_t x0,
+                   std::size_t nxl,
+                   hpxfft::fft2D::distributed::vector_2d &out,
+                   const second_call &again = {})
 {
     const std::size_t dcy = p.ny / 2 + 1;
     reference::rfft2 ref(p.nx, p.ny);
@@ -395,7 +432,7 @@ void check_agas_2d(
             worst = worse(worst, std::abs(reference::cplx(out(i, 2 * j), out(i, 2 * j + 1)) - ref.at(x0 + i, j)));
         }
     }
-    report(p, me, worst / scale < 1e-10, "max_rel_err=" + std::to_string(worst / scale));
+    report(p, me, worst / scale < 1e-10 && again.ok, "max_rel_err=" + std::to_string(worst / scale) + again.what);
 }
 
 // 2D distributed agas component: ny must be even (the component derives ny from the row length). The shared agas
@@ -433,7 +470,8 @@ void run_agas_2d(const params &p)
     }
     hpx::distributed::barrier(barrier_name("test_init")).wait();
     hpxfft::fft2D::distributed::vector_2d out = f.fft_2d_r2c().get();
-    check_agas_2d(p, me, me * nxl, nxl, out);
+    const second_call again = call_again(p, [&] { return f.fft_2d_r2c().get(); });
+    check_agas_2d(p, me, me * nxl, nxl, out, again);
 }
 
 // helpers of the shared classes: write_plans_to_file (also the error path) and get_measurement
@@ -572,7 +610,7 @@ bool initialize_2d(hpxfft::fft2D::distributed::loop &f, const params &p)
 }
 
 // compare the result of the 2D loop with the reference
-void check_2d(const params &p, hpxfft::fft2D::distributed::vector_2d &out)
+void check_2d(const params &p, hpxfft::fft2D::distributed::vector_2d &out, const second_call &again = {})
 {
     const std::size_t me = hpx::get_locality_id();
     const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
@@ -610,7 +648,7 @@ void check_2d(const params &p, hpxfft::fft2D::distributed::vector_2d &out)
         what = "max_rel_err=" + std::to_string(worst / scale);
         ok = worst / scale < 1e-10;
     }
-    report(p, me, ok, what);
+    report(p, me, ok && again.ok, what + again.what);
 }
 
 void run_2d(const params &p)
@@ -630,7 +668,8 @@ void run_2d(const params &p)
     }
     hpx::distributed::barrier(barrier_name("test_init")).wait();
     auto out = f.fft_2d_r2c();
-    check_2d(p, out);
+    const second_call again = call_again(p, [&] { return f.fft_2d_r2c(); });
+    check_2d(p, out, again);
 }
 
 // several objects in one process: their communicators must not collide. A slab is run and destroyed, then a second
@@ -735,6 +774,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     p.transposed = vm["transposed"].as<bool>();
     p.expect_throw = vm["expect_throw"].as<bool>();
     p.uneven_x = vm["uneven_x"].as<bool>();
+    p.call_twice = vm["call_twice"].as<bool>();
     p.size_arg = vm["size_arg"].as<long>();
     p.expect_msg = vm["expect_msg"].as<std::string>();
     try
@@ -792,8 +832,9 @@ int main(int argc, char *argv[])
         "run", value<std::string>()->default_value("scatter"), "communication run flag")(
         "nx", value<std::size_t>()->default_value(8))("ny", value<std::size_t>()->default_value(8))(
         "nz", value<std::size_t>()->default_value(6))("transposed", value<bool>()->default_value(false))(
-        "expect_throw", value<bool>()->default_value(false))("uneven_x", value<bool>()->default_value(false))(
-        "size_arg", value<long>()->default_value(-1))("expect_msg", value<std::string>()->default_value(""));
+        "expect_throw", value<bool>()->default_value(false))("call_twice", value<bool>()->default_value(false))(
+        "uneven_x", value<bool>()->default_value(false))("size_arg", value<long>()->default_value(-1))(
+        "expect_msg", value<std::string>()->default_value(""));
     hpx::init_params ip;
     ip.desc_cmdline = d;
     ip.cfg = { "hpx.run_hpx_main!=1" };

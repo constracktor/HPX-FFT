@@ -57,6 +57,11 @@ The size of the real input is `nx x ny x nz` (3D) or `nx x ny` (2D); even and od
 
 Distributed runs split the input into equal blocks of rows in x (slab and 2D) or blocks in x and y (pencil, on a square number of localities). Every locality passes its block; the blocks must have the same shape on all localities, which is checked during initialization. The dimensions that are redistributed during the computation (y for slab and 2D, z for pencil) are split into blocks of `n / L` entries, where the first `n % L` blocks hold one more, so no divisibility is required. With `set_transposed_output(true)` the result stays in this distribution; `local_y_count()` and `local_y_offset()` (slab, 2D) or `local_z_count()` and `local_z_offset()` (pencil) give the block of the locality. The sizes must provide at least one entry per locality in the redistributed dimension (`ny` for slab, `ny / 2 + 1` for 2D, `nz / 2 + 1` for pencil).
 
+Every object computes one transform per `initialize`: the transform moves the data out of the object and returns it
+as the result. To transform new data, call `initialize` again (with the new block) before the next transform. The
+distributed classes (2D `loop` and `agas`, slab, pencil) throw `std::logic_error` if the transform is called again
+without a new `initialize`; for the shared classes a second call is not supported either.
+
 ## Tests
 
 Build the library (`compile.sh`) and the tests (`compile_tests.sh`), then run `ctest` in `test/build`:

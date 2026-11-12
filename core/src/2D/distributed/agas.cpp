@@ -150,6 +150,13 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
 // 2D FFT algorithm
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::fft_2d_r2c()
 {
+    // initialize + one transform per object: the transform moves the data and buffers out of the object
+    if (!ready_)
+    {
+        throw std::logic_error("fft_2d_r2c of the 2D agas class needs a preceding initialize: every initialize allows "
+                               "one transform, which moves the data out of the object");
+    }
+    ready_ = false;
     // first dimension
     for (std::size_t i = 0; i < n_x_local_; ++i)
     {
@@ -304,6 +311,8 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
 void hpxfft::fft2D::distributed::agas_server::initialize(
     hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
     hpxfft::util::check_comm_flag(COMM_FLAG, { "scatter", "all_to_all" }, "the 2D agas class");
     // unique communicator names of this object (taken at the same point on every locality)
@@ -412,4 +421,6 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
     {
         trans_x_to_y_futures_[i].resize(num_localities_);
     }
+    // allow one transform
+    ready_ = true;
 }

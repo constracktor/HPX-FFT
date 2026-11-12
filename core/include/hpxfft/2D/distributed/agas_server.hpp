@@ -24,6 +24,8 @@ struct agas_server : hpx::components::component_base<agas_server>
 
     void initialize(vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG);
 
+    // One transform per initialize (see the 2D loop): a second call without a new initialize throws
+    // std::logic_error.
     vector_2d fft_2d_r2c();
 
   private:
@@ -88,6 +90,8 @@ struct agas_server : hpx::components::component_base<agas_server>
     vector_comm communication_vec_;
     // locality information
     std::size_t this_locality_, num_localities_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
     // communicators
     std::string COMM_FLAG_;
     // owns the basename strings passed (as const char *) to create_communicator

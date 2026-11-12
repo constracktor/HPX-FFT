@@ -29,6 +29,8 @@ struct loop
     void initialize(
         vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
+    // One transform per initialize: the result is moved out of the object (with the communication buffers), so
+    // calling it again without a new initialize throws std::logic_error.
     vector_2d fft_2d_r2c();
 
     // Skip the final transpose: the result stays in the layout (y_local, x)
@@ -101,6 +103,8 @@ struct loop
     // locality information
     std::size_t this_locality_, num_localities_;
     bool transposed_out_ = false;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
     // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
     // selects the reference implementation that routes the data through a root site
     bool routed_ = false;

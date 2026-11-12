@@ -237,6 +237,26 @@ add_distributed_cases(2d 4 "12,10,0" "scatter;all_to_all")
 add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
 # all localities export FFTW wisdom to the same file at once, then import it
 add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
+# a second transform without a new initialize throws on every locality
+add_distributed_test(
+  dist_twice_slab_L2
+  2
+  --mode=slab
+  --nx=8
+  --ny=8
+  --nz=6
+  --call_twice=1)
+add_distributed_test(
+  dist_twice_pencil_L4
+  4
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=6
+  --call_twice=1)
+add_distributed_test(dist_twice_2d_L2 2 --mode=2d --nx=8 --ny=6 --call_twice=1)
+add_distributed_test(dist_twice_agas2d_L2 2 --mode=agas2d --nx=8 --ny=10
+                     --call_twice=1)
 # several FFT objects in one process, one after the other and alive at the same
 # time: their communicator names must not collide
 foreach(l 2 4)

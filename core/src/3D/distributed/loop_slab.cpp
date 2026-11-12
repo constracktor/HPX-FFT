@@ -7,6 +7,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
     // reject an unsupported run flag before any collective operation
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     check_comm_flag(COMM_FLAG, "the slab decomposition");
     // unique communicator names of this object (taken at the same point on every locality)
     const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/slab/");
@@ -93,6 +95,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
                     hpx::collectives::root_site_arg(i),
                     hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
             }
+            // allow one transform
+            ready_ = true;
             return;
         }
         communicators_.resize(num_localities_);
@@ -136,6 +140,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         // unreachable: the flag was checked at the start of initialize
         throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
+    // allow one transform
+    ready_ = true;
 }
 
 // scatter communitcation (flat or hierarchical communicators): the locality `root` sends one block to every locality
@@ -342,6 +348,7 @@ void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_
 // 3D FFT algorithm
 hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::fft_3d_r2c()
 {
+    begin_transform("fft_3d_r2c");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
