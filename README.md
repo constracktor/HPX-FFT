@@ -59,7 +59,25 @@ Distributed runs split the input into equal blocks of rows in x (slab and 2D) or
 
 ## Tests
 
-`ctest` runs the distributed tests on 1 to 9 localities of the local machine (`test/run_localities.sh`) and compares the result with a naive DFT. The tests use the default HPX ports and must not run concurrently.
+Build the library (`compile.sh`) and the tests (`compile_tests.sh`), then run `ctest` in `test/build`:
+- `test_*`: Catch2 unit tests of the shared and distributed variants, the AGAS components, the vector types, the
+  utilities and FFTW wisdom.
+- `dist_*`: correctness tests that start 1 to 16 localities on the local machine (`test/run_localities.sh`, two
+  threads each) and compare the result with a naive DFT reference. They cover slab (1-4 localities), pencil
+  (1, 4, 9 and 16) and 2D (1-4) with all run flags, the shared variants on one locality (`dist_shared*`), the AGAS
+  components (`dist_agas2d_*`), wisdom export and import on four localities (`dist_wisdom_L4`) and sizes that must
+  be rejected on every locality (`dist_reject_*`).
+
+Most distributed tests are named `dist_<mode>_L<n>_<nx>x<ny>x<nz>_<flag>_t<0|1>`: mode `slab`, `pencil` or `2d`
+(`nz` is 0), `n` localities, the run flag, and whether the result stays transposed (`t1`). They use the default HPX
+ports, so ctest serializes them with a resource lock; every locality is killed after 180 s (ctest timeout 200 s).
+```
+ctest                   # all tests
+ctest -E '^dist_' -j 4  # unit tests only
+ctest -R '^dist_'       # distributed tests only
+ctest -R '^dist_pencil_L9'
+```
+The CI runs the two groups as separate steps.
 
 ## How to Run Examples
 
