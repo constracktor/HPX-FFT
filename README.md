@@ -69,6 +69,28 @@ or
 srun --mpi=pmix -p $6 -N 2 -n $6 -c $5 ./examples/hpxfft/build/hpxfft_distributed_loop_3d_slab --nx=$1 --ny=$1 --nz=$1 --plan=$2 --header=$3 --run=$4 --hpx:ini=hpx.parcel.mpi.enable=1 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0
 ```
 
+### FFTW wisdom
+
+Planning with `measure`, `patient` or `exhaustive` can take long. FFTW wisdom stores what the planner learned, so a
+later run with the same sizes and flags plans almost instantly and picks the same algorithms.
+All HPX-FFT examples accept `--wisdom_file=<path>`: the file is imported (if it exists) before the first plan and
+written after the run. Without the option nothing changes.
+```
+./hpxfft_shared_loop_3d --nx=256 --ny=256 --nz=256 --plan=patient --wisdom_file=wisdom/loop_3d.wis
+```
+In code, use `hpxfft/util/fftw_wisdom.hpp`:
+- `bool hpxfft::util::import_wisdom(const std::string &path)` merges the file into the wisdom of this process and
+  returns false if it is missing or invalid (it never throws for a missing file).
+- `void hpxfft::util::export_wisdom(const std::string &path)` creates the parent directory, writes to a temporary
+  file and renames it atomically; it throws `std::runtime_error` on failure.
+
+Import before calling `initialize` and export while the FFT object is still alive: HPX-FFT objects call
+`fftw_cleanup()` on destruction, which discards the wisdom. Both calls share a lock with the planning in HPX-FFT, as
+the FFTW planner is not thread-safe. Wisdom is per process, so every locality imports for itself. Several
+localities may export to the same file safely, but the last writer wins; use one file per locality (e.g. with the
+locality id in the name) to keep all of them. The distributed examples export from locality 0 only. Wisdom is only
+valid for the FFTW build and machine type it was created on.
+
 ### FFTW
 
 Shared examples:
