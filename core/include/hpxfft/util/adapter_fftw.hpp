@@ -70,6 +70,14 @@ struct r2c_1d
 
     void print_plan(FILE *stream);
 
+    r2c_1d() = default;
+
+    // owns an FFTW plan: not copyable (a copy would destroy the plan twice), movable (the source is left unplanned)
+    r2c_1d(const r2c_1d &) = delete;
+    r2c_1d &operator=(const r2c_1d &) = delete;
+    r2c_1d(r2c_1d &&other) noexcept;
+    r2c_1d &operator=(r2c_1d &&other) noexcept;
+
     ~r2c_1d();
 
   private:
@@ -87,6 +95,14 @@ struct c2c_1d
     void flops(double *add, double *mul, double *fma);
 
     void print_plan(FILE *stream);
+
+    c2c_1d() = default;
+
+    // owns an FFTW plan: not copyable (a copy would destroy the plan twice), movable (the source is left unplanned)
+    c2c_1d(const c2c_1d &) = delete;
+    c2c_1d &operator=(const c2c_1d &) = delete;
+    c2c_1d(c2c_1d &&other) noexcept;
+    c2c_1d &operator=(c2c_1d &&other) noexcept;
 
     ~c2c_1d();
 

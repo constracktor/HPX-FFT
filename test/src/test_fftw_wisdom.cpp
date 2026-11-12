@@ -2,9 +2,12 @@
 #include "hpxfft/util/fftw_wisdom.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <type_traits>
 #include <unistd.h>
+#include <utility>
 
 namespace
 {
@@ -135,4 +138,121 @@ TEST_CASE("export_wisdom reports a path that cannot be written", "[util][wisdom]
     }
 
     std::filesystem::remove_all(base);
+}
+
+// the adapters own an FFTW plan: copying would destroy it twice
+static_assert(!std::is_copy_constructible_v<hpxfft::util::fftw_adapter::r2c_1d>);
+static_assert(!std::is_copy_assignable_v<hpxfft::util::fftw_adapter::r2c_1d>);
+static_assert(!std::is_copy_constructible_v<hpxfft::util::fftw_adapter::c2c_1d>);
+static_assert(!std::is_copy_assignable_v<hpxfft::util::fftw_adapter::c2c_1d>);
+static_assert(std::is_nothrow_move_constructible_v<hpxfft::util::fftw_adapter::r2c_1d>);
+static_assert(std::is_nothrow_move_assignable_v<hpxfft::util::fftw_adapter::r2c_1d>);
+static_assert(std::is_nothrow_move_constructible_v<hpxfft::util::fftw_adapter::c2c_1d>);
+static_assert(std::is_nothrow_move_assignable_v<hpxfft::util::fftw_adapter::c2c_1d>);
+
+namespace
+{
+// forward c2c FFT of a unit impulse: every output value must be 1
+bool c2c_impulse_ok(hpxfft::util::fftw_adapter::c2c_1d &adapter, fftw_complex *buf, int size)
+{
+    for (int i = 0; i < size; ++i)
+    {
+        buf[i][0] = i == 0 ? 1.0 : 0.0;
+        buf[i][1] = 0.0;
+    }
+    adapter.execute(buf, buf);
+    for (int i = 0; i < size; ++i)
+    {
+        if (std::abs(buf[i][0] - 1.0) > 1e-12 || std::abs(buf[i][1]) > 1e-12)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// r2c FFT of a unit impulse: every one of the size / 2 + 1 output values must be 1
+bool r2c_impulse_ok(hpxfft::util::fftw_adapter::r2c_1d &adapter, double *in, fftw_complex *out, int size)
+{
+    for (int i = 0; i < size; ++i)
+    {
+        in[i] = i == 0 ? 1.0 : 0.0;
+    }
+    adapter.execute(in, out);
+    for (int i = 0; i < size / 2 + 1; ++i)
+    {
+        if (std::abs(out[i][0] - 1.0) > 1e-12 || std::abs(out[i][1]) > 1e-12)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+}  // namespace
+
+TEST_CASE("fftw adapters can be moved", "[util][adapter]")
+{
+    fftw_complex *buf = fftw_alloc_complex(n);
+    double *in = fftw_alloc_real(n);
+    fftw_complex *out = fftw_alloc_complex(n / 2 + 1);
+    {
+        hpxfft::util::fftw_adapter::c2c_1d a;
+        a.plan(n, "estimate", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        // move construction takes the plan over
+        hpxfft::util::fftw_adapter::c2c_1d b(std::move(a));
+        REQUIRE(c2c_impulse_ok(b, buf, n));
+        // move assignment onto a planned adapter frees its plan and takes the other one
+        hpxfft::util::fftw_adapter::c2c_1d c;
+        c.plan(n / 2, "estimate", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        c = std::move(b);
+        REQUIRE(c2c_impulse_ok(c, buf, n));
+        // assigning a fresh adapter (as the initialize functions do) leaves it unplanned
+        c = hpxfft::util::fftw_adapter::c2c_1d();
+        // a, b and c are destroyed here: each plan must be destroyed exactly once
+    }
+    {
+        hpxfft::util::fftw_adapter::r2c_1d a;
+        a.plan(n, "estimate", in, out);
+        hpxfft::util::fftw_adapter::r2c_1d b(std::move(a));
+        REQUIRE(r2c_impulse_ok(b, in, out, n));
+        hpxfft::util::fftw_adapter::r2c_1d c;
+        c.plan(n / 2, "estimate", in, out);
+        c = std::move(b);
+        REQUIRE(r2c_impulse_ok(c, in, out, n));
+        c = hpxfft::util::fftw_adapter::r2c_1d();
+    }
+    fftw_free(out);
+    fftw_free(in);
+    fftw_free(buf);
+}
+
+TEST_CASE("fftw adapters can be planned again", "[util][adapter]")
+{
+    fftw_complex *buf = fftw_alloc_complex(n);
+    double *in = fftw_alloc_real(n);
+    fftw_complex *out = fftw_alloc_complex(n / 2 + 1);
+    {
+        hpxfft::util::fftw_adapter::c2c_1d adapter;
+        adapter.plan(n / 2, "estimate", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        REQUIRE(c2c_impulse_ok(adapter, buf, n / 2));
+        // the second plan replaces (and frees) the first one; it must use the new size
+        adapter.plan(n, "estimate", buf, buf, hpxfft::util::fftw_adapter::direction::forward);
+        REQUIRE(c2c_impulse_ok(adapter, buf, n));
+        // an invalid flag throws and keeps the current plan usable
+        REQUIRE_THROWS_AS(adapter.plan(n, "bogus", buf, buf, hpxfft::util::fftw_adapter::direction::forward),
+                          std::invalid_argument);
+        REQUIRE(c2c_impulse_ok(adapter, buf, n));
+    }
+    {
+        hpxfft::util::fftw_adapter::r2c_1d adapter;
+        adapter.plan(n / 2, "estimate", in, out);
+        REQUIRE(r2c_impulse_ok(adapter, in, out, n / 2));
+        adapter.plan(n, "estimate", in, out);
+        REQUIRE(r2c_impulse_ok(adapter, in, out, n));
+        REQUIRE_THROWS_AS(adapter.plan(n, "bogus", in, out), std::invalid_argument);
+        REQUIRE(r2c_impulse_ok(adapter, in, out, n));
+    }
+    fftw_free(out);
+    fftw_free(in);
+    fftw_free(buf);
 }
