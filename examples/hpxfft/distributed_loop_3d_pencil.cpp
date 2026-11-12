@@ -1,5 +1,6 @@
 #include "hpxfft/3D/distributed/loop.hpp"  // for hpxfft::fft3D::distributed::loop, hpxfft::fft3D::distributed::vector_3d
 #include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/fftw_wisdom.hpp"     // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
@@ -14,6 +15,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t localities_per_dir = static_cast<std::size_t>(std::sqrt((double) num_localities));
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
+    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     bool transposed_out = vm["transposed_out"].as<bool>();
@@ -63,6 +65,11 @@ int hpx_main(hpx::program_options::variables_map &vm)
     }
 
     // Computation
+    // optional: import saved planner knowledge before the first plan
+    if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     hpx::distributed::barrier("starting Barrier").wait();
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag, dim_r_z);
@@ -156,6 +163,12 @@ int hpx_main(hpx::program_options::variables_map &vm)
         runtime_file.close();
     }
 
+    // export the planner knowledge; only locality 0 writes, the plans of all localities have the same sizes
+    if (this_locality == 0 && !wisdom_file.empty())
+    {
+        hpxfft::util::export_wisdom(wisdom_file);
+    }
+
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
     return hpx::finalize();
@@ -172,6 +185,9 @@ int main(int argc, char *argv[])
         "ny", value<std::size_t>()->default_value(8), "Total y dimension")(
         "nz", value<std::size_t>()->default_value(8), "Total z dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
+        "wisdom_file",
+        value<std::string>()->default_value(""),
+        "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run",
         value<std::string>()->default_value("scatter"),
         "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, scatter_hierarchical")(

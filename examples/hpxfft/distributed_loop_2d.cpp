@@ -1,5 +1,6 @@
 #include "hpxfft/2D/distributed/loop.hpp"  // for hpxfft::fft2D::distributed::loop, hpxfft::fft2D::distributed::vector_2d
 #include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/fftw_wisdom.hpp"     // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_2d.hpp"  // for hpxfft::util::print_vector_2d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
@@ -13,6 +14,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t num_localities = hpx::get_num_localities(hpx::launch::sync);
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
+    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     bool transposed_out = vm["transposed_out"].as<bool>();
@@ -41,6 +43,11 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::fft2D::distributed::loop fft_computer;
     fft_computer.set_transposed_output(transposed_out);
     fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
+    // optional: import saved planner knowledge before the first plan
+    if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     auto start_total = t.now();
     fft_computer.initialize(std::move(values_vec), run_flag, plan_flag, dim_r_y);
     auto stop_init = t.now();
@@ -115,6 +122,12 @@ int hpx_main(hpx::program_options::variables_map &vm)
         runtime_file.close();
     }
 
+    // export the planner knowledge; only locality 0 writes, the plans of all localities have the same sizes
+    if (this_locality == 0 && !wisdom_file.empty())
+    {
+        hpxfft::util::export_wisdom(wisdom_file);
+    }
+
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
     return hpx::finalize();
@@ -130,6 +143,9 @@ int main(int argc, char *argv[])
         "nx", value<std::size_t>()->default_value(8), "Total x dimension")(
         "ny", value<std::size_t>()->default_value(14), "Total y dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
+        "wisdom_file",
+        value<std::string>()->default_value(""),
+        "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run",
         value<std::string>()->default_value("scatter"),
         "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_hierarchical")(
