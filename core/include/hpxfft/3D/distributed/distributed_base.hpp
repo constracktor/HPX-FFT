@@ -24,6 +24,9 @@ struct base
 
   public:
     base() = default;
+    // polymorphic base (slab, pencil): deleting through a base pointer must run the derived destructor. Like before,
+    // objects are neither copyable nor movable (the FFTW cleanup guard is not).
+    virtual ~base() = default;
 
     // nz: number of real values per row in z; 0 derives it from the row length as 2 * (n_z / 2 - 1)
     virtual void initialize(
