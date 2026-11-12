@@ -359,6 +359,55 @@ add_distributed_test(
   --uneven_x=1
   --expect_throw=1
   "--expect_msg=same shape")
+# run flags that must be rejected on every locality (a locality that does not
+# throw would hang in the next collective and hit the timeout)
+add_distributed_test(
+  dist_reject_slab_unknown_flag
+  2
+  --mode=slab
+  --nx=8
+  --ny=8
+  --nz=6
+  --run=bogus
+  --expect_throw=1
+  "--expect_msg=Unsupported communication flag 'bogus' for the slab")
+add_distributed_test(
+  dist_reject_pencil_unknown_flag
+  4
+  --mode=pencil
+  --nx=8
+  --ny=8
+  --nz=6
+  --run=bogus
+  --expect_throw=1
+  "--expect_msg=Unsupported communication flag 'bogus' for the pencil")
+add_distributed_test(
+  dist_reject_2d_unknown_flag
+  2
+  --mode=2d
+  --nx=8
+  --ny=6
+  --run=bogus
+  --expect_throw=1
+  "--expect_msg=Unsupported communication flag 'bogus' for the 2D loop")
+add_distributed_test(
+  dist_reject_2d_scatter_async
+  2
+  --mode=2d
+  --nx=8
+  --ny=6
+  --run=scatter_async
+  --expect_throw=1
+  "--expect_msg=Unsupported communication flag 'scatter_async' for the 2D loop")
+add_distributed_test(
+  dist_reject_agas2d_scatter_async
+  2
+  --mode=agas2d
+  --nx=8
+  --ny=10
+  --run=scatter_async
+  --expect_throw=1
+  "--expect_msg=Unsupported communication flag 'scatter_async' for the 2D agas")
 
 # shared memory loop, one locality, including odd nz
 foreach(case "6,5,8" "6,5,9" "4,7,7" "5,6,10")

@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/distributed/loop.hpp"
 
+#include "../../../include/hpxfft/util/comm_flag.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
 #include <algorithm>
 #include <hpx/hpx_init.hpp>
@@ -224,8 +225,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::loop::fft_2d_r
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     auto start_first_trans = t_.now();
     hpx::experimental::for_loop(
@@ -342,6 +342,9 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
                                                   const std::string PLAN_FLAG,
                                                   const std::size_t ny)
 {
+    // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
+    hpxfft::util::check_comm_flag(
+        COMM_FLAG, { "scatter", "scatter_hierarchical", "all_to_all", "all_to_all_routed" }, "the 2D loop");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
@@ -472,8 +475,8 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
     }
     else
     {
-        std::cout << "Specify communication scheme: scatter, all_to_all, all_to_all_routed or scatter_hierarchical\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
 }
 

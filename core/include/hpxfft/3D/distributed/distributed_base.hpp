@@ -5,6 +5,7 @@
 #include "../../util/adapter_fftw.hpp"
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
+#include "../../util/comm_flag.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
@@ -55,6 +56,13 @@ struct base
     virtual void permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i) = 0;
 
   protected:
+    // Throw std::invalid_argument on every locality if the run flag is not supported (call before any collective).
+    static void check_comm_flag(const std::string &flag, const char *name)
+    {
+        hpxfft::util::check_comm_flag(
+            flag, { "scatter", "scatter_async", "scatter_hierarchical", "all_to_all", "all_to_all_routed" }, name);
+    }
+
     // Map the run flag onto COMM_FLAG_ ("scatter" or "all_to_all") and the variant flags below. num_sites is the
     // number of localities taking part in one exchange.
     void parse_comm_flag(const std::string &flag, std::size_t num_sites)

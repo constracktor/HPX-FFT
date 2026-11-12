@@ -5,6 +5,8 @@
 void hpxfft::fft3D::distributed::loop::pencil::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
+    // reject an unsupported run flag before any collective operation
+    check_comm_flag(COMM_FLAG, "the pencil decomposition");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // the global size is derived from the local block: all blocks must have the same shape
@@ -163,8 +165,8 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
 }
 
@@ -507,9 +509,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::pencil::
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
-        return values_vec_;
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     generation_countery_++;
     auto start_first_permute = t_.now();

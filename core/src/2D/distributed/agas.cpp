@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/distributed/agas.hpp"
 
+#include "../../../include/hpxfft/util/comm_flag.hpp"
 #include <hpx/hpx_init.hpp>
 #include <hpx/modules/components.hpp>
 
@@ -215,8 +216,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     // second dimension
     for (std::size_t i = 0; i < n_y_local_; ++i)
@@ -303,6 +303,8 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
 void hpxfft::fft2D::distributed::agas_server::initialize(
     hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
 {
+    // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
+    hpxfft::util::check_comm_flag(COMM_FLAG, { "scatter", "all_to_all" }, "the 2D agas class");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // locality information
@@ -389,8 +391,8 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
     }
     else
     {
-        std::cout << "Specify communication scheme: scatter or all_to_all\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
     // resize futures
     r2c_futures_.resize(n_x_local_);

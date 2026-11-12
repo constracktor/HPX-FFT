@@ -5,6 +5,8 @@
 void hpxfft::fft3D::distributed::loop::slab::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
+    // reject an unsupported run flag before any collective operation
+    check_comm_flag(COMM_FLAG, "the slab decomposition");
     this_locality_ = hpx::get_locality_id();
     // move data into own structure
     values_vec_ = std::move(values_vec);
@@ -128,8 +130,8 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
 }
 
@@ -418,8 +420,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     auto start_second_permute = t_.now();
     // the received y rows replace the input: reuse its buffer when the size is the same, otherwise allocate
