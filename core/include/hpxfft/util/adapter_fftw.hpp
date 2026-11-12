@@ -2,6 +2,7 @@
 #define fftw_adapter_H_INCLUDED
 
 #include <fftw3.h>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
@@ -18,6 +19,11 @@ enum class plan_flag {
 };
 
 void cleanup();
+
+// The FFTW planner is not thread-safe (only fftw_execute is): every planner call of this library (planning,
+// destroying plans, cleanup, wisdom import/export) holds this mutex. Lock it as well when calling such FFTW
+// functions directly while HPX-FFT objects may be planning on other threads.
+std::mutex &planner_mutex();
 
 // Calls fftw_cleanup() on destruction. Place it as the first data member of a class that owns plans.
 struct cleanup_guard
@@ -63,7 +69,7 @@ struct r2c_1d
 
     void print_plan(FILE *stream);
 
-    ~r2c_1d() { fftw_destroy_plan(plan_r2c_1d_); }
+    ~r2c_1d();
 
   private:
     // null until planned: an adapter that never planned (initialize threw) must be destructible
@@ -81,7 +87,7 @@ struct c2c_1d
 
     void print_plan(FILE *stream);
 
-    ~c2c_1d() { fftw_destroy_plan(plan_c2c_1d_); }
+    ~c2c_1d();
 
   private:
     fftw_plan plan_c2c_1d_ = nullptr;
