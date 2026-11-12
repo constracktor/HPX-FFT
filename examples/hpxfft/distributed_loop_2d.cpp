@@ -42,7 +42,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::fft2D::distributed::loop fft_computer;
     fft_computer.set_transposed_output(transposed_out);
-    fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
+    fft_computer.set_hierarchical_parameters(
+        vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
     // optional: import saved planner knowledge before the first plan
     if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
     {
@@ -106,9 +107,16 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
         if (print_header)
         {
-            runtime_file << "n_threads;n_x;n_y;plan;comm_flag;total;initialization;" << "fft_2d_total;" << "first_fftw;"
-                         << "first_split;" << "first_comm;" << "first_trans;" << "second_fftw;" << "second_split;"
-                         << "second_comm;" << "second_trans;\n";
+            runtime_file << "n_threads;n_x;n_y;plan;comm_flag;total;initialization;"
+                         << "fft_2d_total;"
+                         << "first_fftw;"
+                         << "first_split;"
+                         << "first_comm;"
+                         << "first_trans;"
+                         << "second_fftw;"
+                         << "second_split;"
+                         << "second_comm;"
+                         << "second_trans;\n";
         }
         runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                      << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"

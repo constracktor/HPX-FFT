@@ -1,6 +1,6 @@
 #include "hpxfft/2D/shared/naive.hpp"       // for hpxfft::fft2D::shared::naive, hpxfft::fft2D::shared::vector_2d
 #include "hpxfft/util/create_dir.hpp"       // for hpxfft::util::create_parent_dir
-#include "hpxfft/util/fftw_wisdom.hpp"     // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
+#include "hpxfft/util/fftw_wisdom.hpp"      // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_2d.hpp"  // for hpxfft::util::print_vector_2d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
@@ -81,7 +81,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     if (print_header)
     {
-        runtime_file << "n_threads;n_x;n_y;plan;total;initialization;" << "fft_2d_total;\n";
+        runtime_file << "n_threads;n_x;n_y;plan;total;initialization;"
+                     << "fft_2d_total;\n";
     }
     runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";" << total
                  << ";" << init << ";" << fft2d << ";\n";

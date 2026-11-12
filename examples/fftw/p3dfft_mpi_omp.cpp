@@ -150,10 +150,11 @@ int main(int argc, char *argv[])
         // Postprocessing
         if (rank == 0)
         {
-            std::cout << "P3DFFT++ 3D R2C with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
-                      << "\n OpenMP threads = " << n_threads << "\n proc grid      = " << p1 << " x " << p2
-                      << "\n plan_r2c       = " << runtimes["plan_p3dfft_r2c"] << "\n init_r2c       = "
-                      << runtimes["init_p3dfft_r2c"] << "\n p3dfft_3d_r2c  = " << runtimes["p3dfft_r2c"] << std::endl;
+            std::cout << "P3DFFT++ 3D R2C with MPI + OpenMP:"
+                      << "\n MPI ranks      = " << n_ranks << "\n OpenMP threads = " << n_threads
+                      << "\n proc grid      = " << p1 << " x " << p2 << "\n plan_r2c       = "
+                      << runtimes["plan_p3dfft_r2c"] << "\n init_r2c       = " << runtimes["init_p3dfft_r2c"]
+                      << "\n p3dfft_3d_r2c  = " << runtimes["p3dfft_r2c"] << std::endl;
 
             std::ofstream runtime_file;
             runtime_file.open("runtimes/runtimes_p3dfft_mpi_omp_3d.txt", std::ios_base::app);

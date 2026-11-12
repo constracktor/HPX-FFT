@@ -44,7 +44,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
         hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::slab fft_computer;
     fft_computer.set_transposed_output(transposed_out);
-    fft_computer.set_hierarchical_parameters(vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
+    fft_computer.set_hierarchical_parameters(
+        vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -135,8 +136,16 @@ int hpx_main(hpx::program_options::variables_map &vm)
         if (print_header)
         {
             runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;comm_flag;decomposition;total;initialization;"
-                         << "fft_3d_total;" << "first_fftw;" << "first_permute;" << "second_fftw;" << "first_split;"
-                         << "first_comm;" << "second_permute;" << "third_fftw;" << "second_split;" << "second_comm;"
+                         << "fft_3d_total;"
+                         << "first_fftw;"
+                         << "first_permute;"
+                         << "second_fftw;"
+                         << "first_split;"
+                         << "first_comm;"
+                         << "second_permute;"
+                         << "third_fftw;"
+                         << "second_split;"
+                         << "second_comm;"
                          << "third_permute\n";
         }
         runtime_file << num_localities << ";" << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";"
@@ -180,8 +189,8 @@ int main(int argc, char *argv[])
         "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run",
         value<std::string>()->default_value("scatter"),
-        "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, scatter_hierarchical")(
-        "header", value<bool>()->default_value(0), "Write runtime file header")(
+        "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, "
+        "scatter_hierarchical")("header", value<bool>()->default_value(0), "Write runtime file header")(
         "transposed_out",
         value<bool>()->default_value(0),
         "Skip the final transpose and keep the result in y-z-x layout (default: false)")(
