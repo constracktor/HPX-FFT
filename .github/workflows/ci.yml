@@ -76,7 +76,7 @@ jobs:
         rm -rf build
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PWD/../install -DHPX_DIR=$(spack location -i hpx)
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -DHPX_DIR=$(spack location -i hpx)
         make -j 2
         make install
         cd ..
@@ -88,7 +88,8 @@ jobs:
         rm -rf test/build
         mkdir test/build
         cd test/build
-        cmake .. -DCMAKE_BUILD_TYPE=Release  -DHPXFFT_DIR=../install/lib/cmake/HPXFFT
+        # the library is installed to lib or lib64 (GNUInstallDirs): use the directory of its package config
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DHPXFFT_DIR=$(find $GITHUB_WORKSPACE/install -name HPXFFTConfig.cmake -printf '%h' -quit)
         make -j 2
         cd ../..
 
