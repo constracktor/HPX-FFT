@@ -16,5 +16,5 @@ source $HOME/spack/share/spack/setup-env.sh
 spack compiler find
 spack external find
 
-# Add GPRat spack-repo to spack
+# Add the HPX-FFT spack-repo (HPX recipe) to spack
 spack repo add $spack_repo_dir/spack_repo/hpxfft

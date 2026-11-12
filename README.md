@@ -41,9 +41,11 @@ all of them can run the distributed tests.
 
 ## How to Compile HPX-FFT
 
-We provide simple compilation scripts. On known machines (ipvs-epyc1, buran and ookami; `compile_tests.sh` only
-knows ipvs-epyc1) they load GCC 14.2.0 and activate the matching spack environment if it exists; elsewhere they use
-the compiler and packages of the current environment. They can be easily tailored towards specific needs.
+We provide simple compilation scripts. On known machines (ipvs-epyc1, buran and ookami) they load GCC 14.2.0 and
+activate the matching spack environment if it exists; elsewhere they use the compiler and packages of the current
+environment. They can be easily tailored towards specific needs. `compile_tests.sh` and `compile_hpxfft_examples.sh`
+use the installed library in `install/lib` (ipvs-epyc1) or `install/lib64` (buran, ookami); elsewhere
+`compile_tests.sh` uses the directory of the installed `HPXFFTConfig.cmake`.
 
 - `compile.sh`: builds the library in `build/` and installs it to `install/`.
 - `compile_hpxfft_examples.sh`: builds the HPX-FFT examples in `examples/hpxfft/build` against `install/`.
@@ -222,6 +224,10 @@ and write the runtimes to `<shared|distributed|message>_benchmark_on_<partition>
 - `shared_benchmark.sh`, `distributed_benchmark.sh`, `message_benchmark.sh`: the 2D counterparts (same arguments)
   with the `*_2d` examples. The distributed and message scripts skip `hpxfft_distributed_agas_2d`: the 2D agas
   component needs `ny / 2 + 1` divisible by the number of localities, which their power-of-two sizes never are.
+
+## License
+
+HPX-FFT is distributed under the Boost Software License, Version 1.0 (see [LICENSE](LICENSE)).
 
 ## The Team
 
