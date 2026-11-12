@@ -24,12 +24,6 @@ std::mutex &hpxfft::util::fftw_adapter::planner_mutex()
     return mutex;
 }
 
-void hpxfft::util::fftw_adapter::cleanup()
-{
-    std::lock_guard<std::mutex> lock(planner_mutex());
-    fftw_cleanup();
-}
-
 namespace
 {
 // number of live cleanup_guard objects; guarded by planner_mutex()

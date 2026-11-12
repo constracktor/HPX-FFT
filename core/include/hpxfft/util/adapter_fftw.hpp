@@ -18,9 +18,6 @@ enum class plan_flag {
     exhaustive = FFTW_EXHAUSTIVE
 };
 
-// Calls fftw_cleanup() unconditionally (invalidates all plans and discards the wisdom of this process).
-void cleanup();
-
 // The FFTW planner is not thread-safe (only fftw_execute is): every planner call of this library (planning,
 // destroying plans, cleanup, wisdom import/export) holds this mutex. Lock it as well when calling such FFTW
 // functions directly while HPX-FFT objects may be planning on other threads.
