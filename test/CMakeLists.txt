@@ -486,6 +486,23 @@ foreach(variant par seq naive sync opt)
     --call_twice=1)
 endforeach()
 
+# the shared agas component (even ny) in the same program as the distributed one
+foreach(case "6,8" "7,10")
+  string(REPLACE "," ";" dims ${case})
+  list(GET dims 0 nx)
+  list(GET dims 1 ny)
+  add_distributed_test(dist_shared2d_agas_${nx}x${ny} 1 --mode=shared2d
+                       --run=agas --nx=${nx} --ny=${ny})
+endforeach()
+add_distributed_test(
+  dist_twice_shared2d_agas
+  1
+  --mode=shared2d
+  --run=agas
+  --nx=7
+  --ny=10
+  --call_twice=1)
+
 add_executable(test_create_dir src/test_create_dir.cpp)
 target_link_libraries(
   test_create_dir

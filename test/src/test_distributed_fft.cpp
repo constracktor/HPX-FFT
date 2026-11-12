@@ -3,6 +3,7 @@
 // naive DFT reference. With --expect_throw the case passes only if initialize rejects the input on every locality.
 #include "hpxfft/2D/distributed/agas.hpp"
 #include "hpxfft/2D/distributed/loop.hpp"
+#include "hpxfft/2D/shared/agas.hpp"
 #include "hpxfft/2D/shared/loop.hpp"
 #include "hpxfft/2D/shared/naive.hpp"
 #include "hpxfft/2D/shared/opt.hpp"
@@ -360,6 +361,20 @@ void run_shared(const params &p)
     report(p, 0, ok && again.ok, what + again.what);
 }
 
+// the shared agas component behind the interface of the other shared 2D classes (ny must be even: the component
+// derives it from the row length); it lives in the same program as the distributed agas component
+struct shared_agas_adapter
+{
+    hpxfft::fft2D::shared::agas f;
+
+    void initialize(hpxfft::fft2D::shared::vector_2d v, const std::string &plan, std::size_t)
+    {
+        f.initialize(std::move(v), plan).get();
+    }
+
+    hpxfft::fft2D::shared::vector_2d fft_2d_r2c() { return f.fft_2d_r2c().get(); }
+};
+
 // shared memory 2D variants (single locality); --run picks the variant
 void run_shared_2d(const params &p)
 {
@@ -392,6 +407,14 @@ void run_shared_2d(const params &p)
     else if (p.run == "opt")
     {
         again = run_shared_variant<hpxfft::fft2D::shared::opt>(p, p.ny, make, r2c, r2c, out);
+    }
+    else if (p.run == "agas")
+    {
+        if (p.ny % 2 != 0)
+        {
+            throw std::invalid_argument("the shared agas variant needs an even ny");
+        }
+        again = run_shared_variant<shared_agas_adapter>(p, p.ny, make, r2c, r2c, out);
     }
     else if (p.run == "par")
     {
@@ -464,8 +487,7 @@ void check_agas_2d(const params &p,
     report(p, me, worst / scale < 1e-10 && again.ok, "max_rel_err=" + std::to_string(worst / scale) + again.what);
 }
 
-// 2D distributed agas component: ny must be even (the component derives ny from the row length). The shared agas
-// component cannot be used in the same program: both define a global fft_2d_r2c_action (see test_shared_agas).
+// 2D distributed agas component: ny must be even (the component derives ny from the row length)
 void run_agas_2d(const params &p)
 {
     const std::size_t me = hpx::get_locality_id();

@@ -8,16 +8,16 @@
 
 // HPX_REGISTER_COMPONENT() exposes the component creation
 // through hpx::new_<>().
-typedef hpx::components::component<hpxfft::fft2D::distributed::agas_server> agas_server_type;
-HPX_REGISTER_COMPONENT(agas_server_type, agas_server)
+typedef hpx::components::component<hpxfft::fft2D::distributed::agas_server> distributed_agas_server_type;
+HPX_REGISTER_COMPONENT(distributed_agas_server_type, hpxfft_fft2D_distributed_agas_server)
 
 // HPX_REGISTER_ACTION() exposes the component member function for remote
 // invocation.
-// typedef hpxfft::fft2D::distributed::agas_server::fft_2d_r2c_action fft_2d_r2c_action;
-HPX_REGISTER_ACTION(fft_2d_r2c_action)
+HPX_REGISTER_ACTION(hpxfft::fft2D::distributed::agas_server::fft_2d_r2c_action,
+                    hpxfft_fft2D_distributed_agas_fft_2d_r2c_action)
 
-// typedef hpxfft::fft2D::distributed::agas_server::initialize_action initialize_action;
-HPX_REGISTER_ACTION(initialize_action)
+HPX_REGISTER_ACTION(hpxfft::fft2D::distributed::agas_server::initialize_action,
+                    hpxfft_fft2D_distributed_agas_initialize_action)
 
 // FFT backend
 void hpxfft::fft2D::distributed::agas_server::fft_1d_r2c_inplace(const std::size_t i)

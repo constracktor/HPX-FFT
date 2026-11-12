@@ -5,6 +5,8 @@
 #include "../../util/adapter_fftw.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
+#include <hpx/include/actions.hpp>
+#include <hpx/include/components.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
 
 typedef double real;
@@ -25,6 +27,10 @@ struct agas_server : hpx::components::component_base<agas_server>
     // One transform per initialize: the result is moved out of the object, so calling the transform again without a
     // new initialize throws std::logic_error.
     vector_2d fft_2d_r2c();
+
+    // actions of the public member functions (registered as hpxfft_fft2D_shared_agas_*)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, initialize, initialize_action)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, fft_2d_r2c, fft_2d_r2c_action)
 
   private:
     // FFT backend
@@ -61,8 +67,9 @@ struct agas_server : hpx::components::component_base<agas_server>
 
 }  // namespace hpxfft::fft2D::shared
 
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::shared::agas_server, fft_2d_r2c, fft_2d_r2c_action)
-
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::shared::agas_server, initialize, initialize_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::shared::agas_server::initialize_action,
+                                hpxfft_fft2D_shared_agas_initialize_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::shared::agas_server::fft_2d_r2c_action,
+                                hpxfft_fft2D_shared_agas_fft_2d_r2c_action)
 
 #endif  // hpxfft_shared_agas_server_H_INCLUDED
