@@ -124,17 +124,15 @@ int main(int argc, char *argv[])
     fftw_flops(plan_r2c_2d, &add, &mul, &fma);
     const double plan_flops = add + mul + fma;
     // print runtimes
-    std::cout << "FFTW 2D with OpenMP shared:"
-              << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
-              << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = " << plan_flops
-              << std::endl;
+    std::cout << "FFTW 2D with OpenMP shared:" << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = "
+              << runtimes["plan_fftw_r2c"] << "\n fftw_2d_r2c    = " << runtimes["total_fftw_r2c"]
+              << "\n plan flops     = " << plan_flops << std::endl;
     // store runtime and plan info
     std::ofstream runtime_file;
     runtime_file.open("runtimes/runtimes_fftw_omp.txt", std::ios_base::app);
     if (print_header)
     {
-        runtime_file << "n_threads;n_x;n_y;plan;"
-                     << "planning;fftw_2d_r2c;plan_flops;\n";
+        runtime_file << "n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n";
     }
     runtime_file << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                  << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
@@ -143,8 +141,7 @@ int main(int argc, char *argv[])
     // store plan info
     std::ofstream plan_info_file;
     plan_info_file.open("plans/plan_fftw_omp.txt", std::ios_base::app);
-    plan_info_file << "n_threads;n_x;n_y;plan;"
-                   << "planning;fftw_2d_r2c;plan_flops;\n"
+    plan_info_file << "n_threads;n_x;n_y;plan;" << "planning;fftw_2d_r2c;plan_flops;\n"
                    << n_threads << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                    << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";" << plan_flops << ";\n";
     plan_info_file.close();

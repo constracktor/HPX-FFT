@@ -106,14 +106,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     if (print_header)
     {
-        runtime_file << "n_threads;n_x;n_y;plan;run_flag;total;initialization;"
-                     << "fft_2d_total;"
-                     << "first_fftw;"
-                     << "first_trans;"
-                     << "second_fftw;"
-                     << "second_trans;"
-                     << "plan_time;"
-                     << "plan_flops;\n";
+        runtime_file << "n_threads;n_x;n_y;plan;run_flag;total;initialization;" << "fft_2d_total;" << "first_fftw;"
+                     << "first_trans;" << "second_fftw;" << "second_trans;" << "plan_time;" << "plan_flops;\n";
     }
     runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                  << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"
@@ -128,20 +122,14 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::util::create_parent_dir(plan_file_path);
     std::ofstream plan_info_file;
     plan_info_file.open(plan_file_path, std::ios_base::app);
-    plan_info_file
-        << "n_threads;n_x;n_y;plan;run_flag;total;initialization;"
-        << "fft_2d_total;"
-        << "first_fftw;"
-        << "first_trans;"
-        << "second_fftw;"
-        << "second_trans;"
-        << "plan_time;"
-        << "plan_flops;\n"
-        << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";" << run_flag << ";"
-        << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"
-        << fft_computer.get_measurement("first_fftw") << ";" << fft_computer.get_measurement("first_trans") << ";"
-        << fft_computer.get_measurement("second_fftw") << ";" << fft_computer.get_measurement("second_trans") << ";"
-        << fft_computer.get_measurement("plan") << ";" << fft_computer.get_measurement("plan_flops") << ";\n";
+    plan_info_file << "n_threads;n_x;n_y;plan;run_flag;total;initialization;" << "fft_2d_total;" << "first_fftw;"
+                   << "first_trans;" << "second_fftw;" << "second_trans;" << "plan_time;" << "plan_flops;\n"
+                   << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
+                   << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"
+                   << fft_computer.get_measurement("first_fftw") << ";" << fft_computer.get_measurement("first_trans")
+                   << ";" << fft_computer.get_measurement("second_fftw") << ";"
+                   << fft_computer.get_measurement("second_trans") << ";" << fft_computer.get_measurement("plan") << ";"
+                   << fft_computer.get_measurement("plan_flops") << ";\n";
     plan_info_file.close();
     // store plan
     fft_computer.write_plans_to_file(plan_file_path);

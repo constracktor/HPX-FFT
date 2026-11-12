@@ -130,17 +130,16 @@ int main(int argc, char *argv[])
             plan_flops = 0;
         }
         // print runtimes
-        std::cout << "FFTW 3D with MPI + OpenMP:"
-                  << "\n MPI ranks      = " << n_ranks << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = "
-                  << runtimes["plan_fftw_r2c"] << "\n fftw_3d_r2c    = " << runtimes["total_fftw_r2c"]
-                  << "\n plan flops     = " << plan_flops << std::endl;
+        std::cout << "FFTW 3D with MPI + OpenMP:" << "\n MPI ranks      = " << n_ranks
+                  << "\n OpenMP threads = " << n_threads << "\n plan_r2c       = " << runtimes["plan_fftw_r2c"]
+                  << "\n fftw_3d_r2c    = " << runtimes["total_fftw_r2c"] << "\n plan flops     = " << plan_flops
+                  << std::endl;
         // store runtime and plan info
         std::ofstream runtime_file;
         runtime_file.open("runtimes/runtimes_mpi_omp_3d.txt", std::ios_base::app);
         if (print_header)
         {
-            runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;"
-                         << "planning;fftw_3d_r2c;plan_flops;\n";
+            runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;" << "planning;fftw_3d_r2c;plan_flops;\n";
         }
         runtime_file << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";"
                      << plan_flag << ";" << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";"
@@ -150,8 +149,7 @@ int main(int argc, char *argv[])
         // store plan info
         std::ofstream plan_info_file;
         plan_info_file.open("plans/plan_mpi_omp_3d.txt", std::ios_base::app);
-        plan_info_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;"
-                       << "planning;fftw_3d_r2c;plan_flops;\n"
+        plan_info_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;" << "planning;fftw_3d_r2c;plan_flops;\n"
                        << n_ranks << ";" << n_threads << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";"
                        << plan_flag << ";" << runtimes["plan_fftw_r2c"] << ";" << runtimes["total_fftw_r2c"] << ";"
                        << plan_flops << ";\n";

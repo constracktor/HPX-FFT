@@ -82,8 +82,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     if (print_header)
     {
-        runtime_file << "n_threads;n_x;n_y;plan;total;initialization;"
-                     << "fft_2d_total;\n";
+        runtime_file << "n_threads;n_x;n_y;plan;total;initialization;" << "fft_2d_total;\n";
     }
     runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";" << total
                  << ";" << init << ";" << fft2d << ";\n";

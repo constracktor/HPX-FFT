@@ -114,16 +114,9 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     if (print_header)
     {
-        runtime_file << "n_threads;n_x;n_y;n_z;plan;run_flag;total;initialization;"
-                     << "fft_3d_total;"
-                     << "first_fftw;"
-                     << "first_permute;"
-                     << "second_fftw;"
-                     << "second_permute;"
-                     << "third_fftw;"
-                     << "third_permute;"
-                     << "plan_time;"
-                     << "plan_flops;\n";
+        runtime_file << "n_threads;n_x;n_y;n_z;plan;run_flag;total;initialization;" << "fft_3d_total;" << "first_fftw;"
+                     << "first_permute;" << "second_fftw;" << "second_permute;" << "third_fftw;" << "third_permute;"
+                     << "plan_time;" << "plan_flops;\n";
     }
     runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";" << plan_flag
                  << ";" << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total")
@@ -141,15 +134,8 @@ int hpx_main(hpx::program_options::variables_map &vm)
     std::ofstream plan_info_file;
     plan_info_file.open(plan_file_path, std::ios_base::app);
     plan_info_file
-        << "n_threads;n_x;n_y;n_z;plan;run_flag;total;initialization;"
-        << "fft_3d_total;"
-        << "first_fftw;"
-        << "first_permute;"
-        << "second_fftw;"
-        << "second_permute;"
-        << "third_fftw;"
-        << "third_permute;"
-        << "plan_time;"
+        << "n_threads;n_x;n_y;n_z;plan;run_flag;total;initialization;" << "fft_3d_total;" << "first_fftw;"
+        << "first_permute;" << "second_fftw;" << "second_permute;" << "third_fftw;" << "third_permute;" << "plan_time;"
         << "plan_flops;\n"
         << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z << ";" << plan_flag << ";"
         << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"

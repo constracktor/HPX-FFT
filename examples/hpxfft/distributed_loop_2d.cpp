@@ -107,16 +107,9 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
         if (print_header)
         {
-            runtime_file << "n_threads;n_x;n_y;plan;comm_flag;total;initialization;"
-                         << "fft_2d_total;"
-                         << "first_fftw;"
-                         << "first_split;"
-                         << "first_comm;"
-                         << "first_trans;"
-                         << "second_fftw;"
-                         << "second_split;"
-                         << "second_comm;"
-                         << "second_trans;\n";
+            runtime_file << "n_threads;n_x;n_y;plan;comm_flag;total;initialization;" << "fft_2d_total;" << "first_fftw;"
+                         << "first_split;" << "first_comm;" << "first_trans;" << "second_fftw;" << "second_split;"
+                         << "second_comm;" << "second_trans;\n";
         }
         runtime_file << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_r_y << ";" << plan_flag << ";"
                      << run_flag << ";" << total << ";" << init << ";" << fft_computer.get_measurement("total") << ";"
