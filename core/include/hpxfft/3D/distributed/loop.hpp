@@ -2,12 +2,10 @@
 #ifndef hpxfft_distributed_loop_3D_H_INCLUDED
 #define hpxfft_distributed_loop_3D_H_INCLUDED
 
-#include "../../util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include "../../util/real.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include "distributed_base.hpp"
 #include <cmath>
-#include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
 #include <optional>
 

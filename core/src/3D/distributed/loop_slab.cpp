@@ -2,6 +2,7 @@
 #include "../../../include/hpxfft/util/comm_basename.hpp"
 #include "../../../include/hpxfft/util/real_length.hpp"
 #include <algorithm>
+#include <hpx/runtime_distributed.hpp>  // for hpx::get_locality_id, hpx::get_num_localities
 
 void hpxfft::fft3D::distributed::loop::slab::initialize(
     vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
