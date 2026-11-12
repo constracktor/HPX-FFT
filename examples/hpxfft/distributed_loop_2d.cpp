@@ -25,7 +25,17 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_r_y = vm["ny"].as<std::size_t>();  // N_Y;
     const std::size_t dim_c_y = dim_r_y / 2 + 1;
     // division parameter
+    // every locality passes an equal block of nx / L rows; y (redistributed) needs no divisibility
     const std::size_t n_x_local = dim_c_x / num_localities;
+    if (n_x_local * num_localities != dim_c_x)
+    {
+        if (this_locality == 0)
+        {
+            std::cout << "nx (" << dim_c_x << ") must be divisible by the number of localities (" << num_localities
+                      << "), ending program" << std::endl;
+        }
+        return hpx::finalize();
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization

@@ -26,15 +26,15 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_r_z = vm["nz"].as<std::size_t>();
     const std::size_t dim_c_z = dim_r_z / 2 + 1;
     // division parameter
-    std::size_t n_x_local = dim_c_x / num_localities;
-    ;
-    std::size_t n_y_local = dim_c_y / num_localities;
-    ;
-    if (n_y_local * num_localities != dim_c_y || n_x_local * num_localities != dim_c_x)
+    // every locality passes an equal block of nx / L rows in x; y (redistributed) needs no divisibility
+    const std::size_t n_x_local = dim_c_x / num_localities;
+    if (n_x_local * num_localities != dim_c_x)
     {
-        std::cout << "Matrix dimensions are not divisible by number of localities, ending program" << std::endl;
-        std::cout << "dim_c_x: " << dim_c_x << " n_x_local*num_localities: " << n_x_local * num_localities
-                  << "dim_c_y: " << dim_c_y << " n_y_local*num_localities: " << n_y_local * num_localities << std::endl;
+        if (this_locality == 0)
+        {
+            std::cout << "nx (" << dim_c_x << ") must be divisible by the number of localities (" << num_localities
+                      << "), ending program" << std::endl;
+        }
         return hpx::finalize();
     }
 

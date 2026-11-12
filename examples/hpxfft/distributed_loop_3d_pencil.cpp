@@ -27,13 +27,18 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_r_z = vm["nz"].as<std::size_t>();
     const std::size_t dim_c_z = dim_r_z / 2 + 1;
     // division parameter
-    std::size_t n_x_local = dim_c_x / localities_per_dir;
-    std::size_t n_y_local = dim_c_y / localities_per_dir;
-
-    if (n_y_local * localities_per_dir != dim_c_y || n_x_local * localities_per_dir != dim_c_x)
+    // P x P localities, every one passes an equal block of nx / P x ny / P; z (redistributed) needs no divisibility
+    const std::size_t n_x_local = dim_c_x / localities_per_dir;
+    const std::size_t n_y_local = dim_c_y / localities_per_dir;
+    if (localities_per_dir * localities_per_dir != num_localities || n_x_local * localities_per_dir != dim_c_x
+        || n_y_local * localities_per_dir != dim_c_y)
     {
-        std::cout << "Matrix dimensions are not divisible by number of localities per dimension, ending program"
-                  << std::endl;
+        if (this_locality == 0)
+        {
+            std::cout << "The pencil decomposition needs a square number of localities P x P (" << num_localities
+                      << " given) and nx (" << dim_c_x << ") and ny (" << dim_c_y << ") divisible by P, ending program"
+                      << std::endl;
+        }
         return hpx::finalize();
     }
 
