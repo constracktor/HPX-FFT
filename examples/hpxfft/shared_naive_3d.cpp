@@ -4,7 +4,8 @@
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
-#include <numeric>  // for std::iota
+#include <iostream>  // for std::cout
+#include <numeric>   // for std::iota
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {

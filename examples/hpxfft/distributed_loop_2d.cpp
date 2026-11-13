@@ -5,8 +5,9 @@
 #include <chrono>                           // for std::chrono::seconds
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
-#include <numeric>  // for std::iota
-#include <thread>   // for std::this_thread::sleep_for
+#include <iostream>  // for std::cout
+#include <numeric>   // for std::iota
+#include <thread>    // for std::this_thread::sleep_for
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {
