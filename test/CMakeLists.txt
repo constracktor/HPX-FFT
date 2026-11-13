@@ -480,8 +480,9 @@ foreach(variant par seq naive sync opt)
     --call_twice=1)
 endforeach()
 
-# the shared agas component (even ny) in the same program as the distributed one
-foreach(case "6,8" "7,10")
+# the shared agas component (even and odd ny) in the same program as the
+# distributed one
+foreach(case "6,8" "7,10" "5,9" "20,37")
   string(REPLACE "," ";" dims ${case})
   list(GET dims 0 nx)
   list(GET dims 1 ny)
@@ -496,6 +497,18 @@ add_distributed_test(
   --nx=7
   --ny=10
   --call_twice=1)
+# an odd ny that does not match the row length (2 * (ny / 2 + 1) values) of the
+# data is rejected: ny = 7 needs rows of 8 values, the rows of ny = 8 have 10
+add_distributed_test(
+  dist_reject_shared2d_agas_odd_ny
+  1
+  --mode=shared2d
+  --run=agas
+  --nx=6
+  --ny=8
+  --size_arg=7
+  --expect_throw=1
+  "--expect_msg=ny does not match")
 
 add_executable(test_create_dir src/test_create_dir.cpp)
 target_link_libraries(

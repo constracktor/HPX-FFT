@@ -291,10 +291,28 @@ void run_3d(const params &p, bool pencil)
 }
 
 // with --call_twice: the second transform (`second`, the other entry point for par / seq) must throw, and a new
-// initialize must allow a transform again; `out` is then the result of that transform
+// initialize must allow a transform again; `out` is then the result of that transform. With --expect_throw only
+// initialize runs, its rejection is reported and the result is empty (nothing to compare).
 template <typename Fft, typename Make, typename First, typename Second, typename Vec>
-second_call run_shared_variant(const params &p, std::size_t n, Make &&make, First &&first, Second &&second, Vec &out)
+std::optional<second_call>
+run_shared_variant(const params &p, std::size_t n, Make &&make, First &&first, Second &&second, Vec &out)
 {
+    if (p.expect_throw)
+    {
+        bool initialized = true;
+        try
+        {
+            Fft f;
+            f.initialize(make(), "estimate", n);
+        }
+        catch (const std::exception &e)
+        {
+            g_error = e.what();
+            initialized = false;
+        }
+        report_rejection(p, 0, initialized);
+        return std::nullopt;
+    }
     Fft f;
     f.initialize(make(), "estimate", n);
     out = first(f);
@@ -330,26 +348,32 @@ void run_shared(const params &p)
     auto par = [](auto &f) { return f.fft_3d_r2c_par(); };
     auto seq = [](auto &f) { return f.fft_3d_r2c_seq(); };
     hpxfft::fft3D::distributed::vector_3d out;
-    second_call again;
+    // size passed to initialize: the true size unless --size_arg is given
+    const std::size_t n = p.size_arg >= 0 ? std::size_t(p.size_arg) : p.nz;
+    std::optional<second_call> again;
     if (p.run == "naive")
     {
-        again = run_shared_variant<hpxfft::fft3D::shared::naive>(p, p.nz, make, r2c, r2c, out);
+        again = run_shared_variant<hpxfft::fft3D::shared::naive>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "sync")
     {
-        again = run_shared_variant<hpxfft::fft3D::shared::sync>(p, p.nz, make, r2c, r2c, out);
+        again = run_shared_variant<hpxfft::fft3D::shared::sync>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "par")
     {
-        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, p.nz, make, par, seq, out);
+        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, n, make, par, seq, out);
     }
     else if (p.run == "seq")
     {
-        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, p.nz, make, seq, par, out);
+        again = run_shared_variant<hpxfft::fft3D::shared::loop>(p, n, make, seq, par, out);
     }
     else
     {
         throw std::invalid_argument("unknown shared variant " + p.run);
+    }
+    if (!again)
+    {
+        return;  // --expect_throw: the rejection is reported
     }
     reference::rfft3 ref(p.nx, p.ny, p.nz);
     double scale = 0.0;
@@ -360,18 +384,18 @@ void run_shared(const params &p)
     std::string what;
     const bool ok =
         compare_block(out, p.nx, p.ny, dcz, scale, [&](auto i, auto j, auto k) { return ref.at(i, j, k); }, what);
-    report(p, 0, ok && again.ok, what + again.what);
+    report(p, 0, ok && again->ok, what + again->what);
 }
 
-// the shared agas component behind the interface of the other shared 2D classes (ny must be even: the component
-// derives it from the row length); it lives in the same program as the distributed agas component
+// the shared agas component behind the interface of the other shared 2D classes (even and odd ny); it lives in the
+// same program as the distributed agas component
 struct shared_agas_adapter
 {
     hpxfft::fft2D::shared::agas f;
 
-    void initialize(hpxfft::fft2D::shared::vector_2d v, const std::string &plan, std::size_t)
+    void initialize(hpxfft::fft2D::shared::vector_2d v, const std::string &plan, std::size_t ny)
     {
-        f.initialize(std::move(v), plan).get();
+        f.initialize(std::move(v), plan, ny).get();
     }
 
     hpxfft::fft2D::shared::vector_2d fft_2d_r2c() { return f.fft_2d_r2c().get(); }
@@ -397,38 +421,40 @@ void run_shared_2d(const params &p)
     auto par = [](auto &f) { return f.fft_2d_r2c_par(); };
     auto seq = [](auto &f) { return f.fft_2d_r2c_seq(); };
     hpxfft::fft2D::distributed::vector_2d out;
-    second_call again;
+    // size passed to initialize: the true size unless --size_arg is given
+    const std::size_t n = p.size_arg >= 0 ? std::size_t(p.size_arg) : p.ny;
+    std::optional<second_call> again;
     if (p.run == "naive")
     {
-        again = run_shared_variant<hpxfft::fft2D::shared::naive>(p, p.ny, make, r2c, r2c, out);
+        again = run_shared_variant<hpxfft::fft2D::shared::naive>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "sync")
     {
-        again = run_shared_variant<hpxfft::fft2D::shared::sync>(p, p.ny, make, r2c, r2c, out);
+        again = run_shared_variant<hpxfft::fft2D::shared::sync>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "opt")
     {
-        again = run_shared_variant<hpxfft::fft2D::shared::opt>(p, p.ny, make, r2c, r2c, out);
+        again = run_shared_variant<hpxfft::fft2D::shared::opt>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "agas")
     {
-        if (p.ny % 2 != 0)
-        {
-            throw std::invalid_argument("the shared agas variant needs an even ny");
-        }
-        again = run_shared_variant<shared_agas_adapter>(p, p.ny, make, r2c, r2c, out);
+        again = run_shared_variant<shared_agas_adapter>(p, n, make, r2c, r2c, out);
     }
     else if (p.run == "par")
     {
-        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, p.ny, make, par, seq, out);
+        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, n, make, par, seq, out);
     }
     else if (p.run == "seq")
     {
-        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, p.ny, make, seq, par, out);
+        again = run_shared_variant<hpxfft::fft2D::shared::loop>(p, n, make, seq, par, out);
     }
     else
     {
         throw std::invalid_argument("unknown shared variant " + p.run);
+    }
+    if (!again)
+    {
+        return;  // --expect_throw: the rejection is reported
     }
     reference::rfft2 ref(p.nx, p.ny);
     double scale = 0.0;
@@ -455,7 +481,7 @@ void run_shared_2d(const params &p)
     {
         what = "shape mismatch";
     }
-    report(p, 0, ok && again.ok, what + again.what);
+    report(p, 0, ok && again->ok, what + again->what);
 }
 
 // compare the natural-order result (rows x0 .. x0 + rows, all dcy frequencies) of a 2D agas variant with the reference

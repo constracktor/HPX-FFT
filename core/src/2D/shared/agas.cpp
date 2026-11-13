@@ -1,5 +1,6 @@
 #include "../../../include/hpxfft/2D/shared/agas.hpp"
 
+#include "../../../include/hpxfft/util/real_length.hpp"
 #include "../../../include/hpxfft/util/transform_guard.hpp"
 #include <hpx/modules/components.hpp>
 
@@ -88,8 +89,8 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::agas_server::fft_2d_r2c(
 }
 
 // initialization
-void hpxfft::fft2D::shared::agas_server::initialize(hpxfft::fft2D::shared::vector_2d values_vec,
-                                                    const std::string PLAN_FLAG)
+void hpxfft::fft2D::shared::agas_server::initialize(
+    hpxfft::fft2D::shared::vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny)
 {
     // a failed initialize leaves the object without a transform to run
     ready_ = false;
@@ -98,7 +99,9 @@ void hpxfft::fft2D::shared::agas_server::initialize(hpxfft::fft2D::shared::vecto
     // parameters
     dim_c_x_ = values_vec_.n_row();
     dim_c_y_ = values_vec_.n_col() / 2;
-    dim_r_y_ = 2 * dim_c_y_ - 2;
+    // ny / 2 + 1 must match the complex values of a row; an odd ny must be passed: its rows (2 * (ny / 2 + 1)
+    // doubles) are as long as those of ny - 1, which is derived without it
+    dim_r_y_ = hpxfft::util::real_length(dim_c_y_, ny, "ny");
     // resize transposed data structure
     trans_values_vec_ = std::move(hpxfft::fft2D::shared::vector_2d(dim_c_y_, 2 * dim_c_x_));
     // create FFTW plans

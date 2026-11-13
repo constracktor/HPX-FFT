@@ -28,6 +28,13 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_c_x = vm["nx"].as<std::size_t>();  // N_X;
     const std::size_t dim_r_y = vm["ny"].as<std::size_t>();  // N_Y;
     const std::size_t dim_c_y = dim_r_y / 2 + 1;
+    // even and odd ny are supported (ny is passed to initialize), a transform needs at least one value per row
+    if (dim_r_y == 0)
+    {
+        std::cout << "The 2D shared agas component needs ny >= 1 (ny = " << dim_r_y << " given), ending program"
+                  << std::endl;
+        return hpx::finalize();
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
@@ -49,7 +56,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
         std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
     }
     auto start_total = t.now();
-    hpx::future<void> future_initialize = fft_computer.initialize(std::move(values_vec), plan_flag);
+    hpx::future<void> future_initialize = fft_computer.initialize(std::move(values_vec), plan_flag, dim_r_y);
     future_initialize.get();
     auto stop_init = t.now();
     hpx::future<hpxfft::fft2D::shared::vector_2d> future_result = fft_computer.fft_2d_r2c();

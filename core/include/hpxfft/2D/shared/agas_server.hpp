@@ -21,7 +21,9 @@ struct agas_server : hpx::components::component_base<agas_server>
   public:
     agas_server() = default;
 
-    void initialize(vector_2d values_vec, const std::string PLAN_FLAG);
+    // ny: number of real values per row (even or odd); 0 derives the even length 2 * (n_col / 2 - 1) from the row
+    // length. Throws std::invalid_argument if ny / 2 + 1 does not match the n_col / 2 complex values of a row.
+    void initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
     // One transform per initialize: the result is moved out of the object, so calling the transform again without a
     // new initialize throws std::logic_error.
