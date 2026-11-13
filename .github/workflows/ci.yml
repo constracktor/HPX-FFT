@@ -10,9 +10,26 @@ on:
 
 jobs:
   test:
+    name: test (${{ matrix.variant }})
+
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-24.04]
+        include:
+        - variant: release
+          os: ubuntu-24.04
+          build_type: Release
+          cxx_flags: ""
+        # compiler warnings of the library and the tests (not an error)
+        - variant: warnings
+          os: ubuntu-24.04
+          build_type: Debug
+          cxx_flags: "-Wall -Wextra"
+        # AddressSanitizer and UndefinedBehaviorSanitizer
+        - variant: sanitize
+          os: ubuntu-24.04
+          build_type: RelWithDebInfo
+          cxx_flags: "-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -O1 -g"
 
     runs-on: ${{ matrix.os }}
 
@@ -65,7 +82,7 @@ jobs:
         rm -rf build
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -DHPX_DIR=$(spack location -i hpx)
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_SHARED_LINKER_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -DHPX_DIR=$(spack location -i hpx)
         make -j 2
         make install
         cd ..
@@ -81,22 +98,39 @@ jobs:
         mkdir test/build
         cd test/build
         # the library is installed to lib or lib64 (GNUInstallDirs): use the directory of its package config
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DHPXFFT_DIR=$(find $GITHUB_WORKSPACE/install -name HPXFFTConfig.cmake -printf '%h' -quit)
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.cxx_flags }}" -DHPXFFT_DIR=$(find $GITHUB_WORKSPACE/install -name HPXFFTConfig.cmake -printf '%h' -quit)
         make -j 2
         cd ../..
 
     - name: Test sequential
+      if: matrix.variant != 'sanitize'
       working-directory: test/build
       run: |
         ctest --output-on-failure --no-tests=ignore -j 2 -E '^dist_'
 
     # HPX ignores HPX_LOCALITIES: the dist_ tests start their own localities (test/run_localities.sh)
     - name: Test distributed
+      if: matrix.variant != 'sanitize'
       working-directory: test/build
       run: |
         ctest --output-on-failure --no-tests=ignore -R '^dist_'
       
+    # HPX switches stacks, so stack-use-after-return detection is off. Leak detection is only
+    # enabled for the tests that do not start HPX runtimes of their own.
+    # test_shared_agas is excluded: its throwing action triggers a report inside HPX itself.
+    - name: Test sanitizers
+      if: matrix.variant == 'sanitize'
+      working-directory: test/build
+      env:
+        UBSAN_OPTIONS: print_stacktrace=1
+      run: |
+        ASAN_OPTIONS=detect_leaks=0:detect_stack_use_after_return=0 \
+          ctest --output-on-failure --timeout 300 -R '^(test_util_helpers|test_create_dir|test_fftw_wisdom|dist_wisdom_L4|dist_slab_L2_12x12x10_scatter_t0|dist_pencil_L4_8x8x6_scatter_t0|dist_2d_L4_8x9x0_scatter_t0|dist_reuse|dist_twice|dist_reject_slab_y)'
+        ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=0 \
+          ctest --output-on-failure --timeout 300 -R '^(test_util_helpers|test_create_dir|test_fftw_wisdom)$'
+
     - name: Upload
+      if: matrix.variant == 'release'
       uses: actions/upload-artifact@v4
       with:
         name: install-${{ matrix.os }}
@@ -109,4 +143,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: spack -e . buildcache push --base-image ubuntu:24.04 --update-index local-buildcache
       # The owner must match the namespace in /spack-repo/environments/ci_env_settings.yaml.tpl
-      if: ${{ !cancelled() && github.repository_owner == 'constracktor' && github.event_name != 'pull_request' }}
+      if: ${{ !cancelled() && matrix.variant == 'release' && github.repository_owner == 'constracktor' && github.event_name != 'pull_request' }}
