@@ -2,9 +2,11 @@
 #include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
 #include "hpxfft/util/fftw_wisdom.hpp"     // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
+#include <chrono>                           // for std::chrono::seconds
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
 #include <numeric>  // for std::iota
+#include <thread>   // for std::this_thread::sleep_for
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {
@@ -66,7 +68,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     if (print_result)
     {
-        sleep(this_locality + 1);
+        std::this_thread::sleep_for(std::chrono::seconds(this_locality + 1));
         print_vector_3d(values_vec);
     }
 
@@ -87,7 +89,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // optional: print results
     if (print_result)
     {
-        sleep(this_locality + 1);
+        std::this_thread::sleep_for(std::chrono::seconds(this_locality + 1));
         print_vector_3d(values_vec);
     }
     ////////////////////////////////////////////////////////////////
