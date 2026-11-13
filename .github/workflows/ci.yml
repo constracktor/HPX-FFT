@@ -117,8 +117,8 @@ jobs:
       
     # HPX switches stacks, so stack-use-after-return detection is off. Leak detection is only
     # enabled for the tests that do not start HPX runtimes of their own.
-    # test_shared_agas and dist_twice_shared2d_agas are excluded: their throwing agas action
-    # triggers a stack report inside HPX itself (pinned_ptr destructor).
+    # The agas tests are excluded: an exception thrown on an HPX stack (the rejected second call)
+    # makes ASan report false positives inside HPX itself (pinned_ptr, promise_base::keep_alive).
     - name: Test sanitizers
       if: matrix.variant == 'sanitize'
       working-directory: test/build
@@ -126,7 +126,7 @@ jobs:
         UBSAN_OPTIONS: print_stacktrace=1
       run: |
         ASAN_OPTIONS=detect_leaks=0:detect_stack_use_after_return=0 \
-          ctest --output-on-failure --timeout 300 -E '^dist_twice_shared2d_agas$' -R '^(test_util_helpers|test_create_dir|test_fftw_wisdom|dist_wisdom_L4|dist_slab_L2_12x12x10_scatter_t0|dist_pencil_L4_8x8x6_scatter_t0|dist_2d_L4_8x9x0_scatter_t0|dist_reuse|dist_twice|dist_reject_slab_y)'
+          ctest --output-on-failure --timeout 300 -E 'agas' -R '^(test_util_helpers|test_create_dir|test_fftw_wisdom|dist_wisdom_L4|dist_slab_L2_12x12x10_scatter_t0|dist_pencil_L4_8x8x6_scatter_t0|dist_2d_L4_8x9x0_scatter_t0|dist_reuse|dist_twice|dist_reject_slab_y)'
         ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=0 \
           ctest --output-on-failure --timeout 300 -R '^(test_util_helpers|test_create_dir|test_fftw_wisdom)$'
 
