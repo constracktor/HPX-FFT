@@ -3,15 +3,20 @@
 */*/*.DS_Store
 
 build*
-install*
+# install directories (not cmake/install-config.cmake)
+install*/
 plans
 runtimes
-shared_benchmark*
-distributed_benchmark*
-message_benchmark* 
+# result directories of the benchmark/*_benchmark.sh scripts (run from the repository root)
+/shared_benchmark_on_*/
+/distributed_benchmark_on_*/
+/message_benchmark_on_*/
 output*
 
 compile_fftw_examples_local.sh
 compile_hpxfft_examples_local.sh
 compile_local.sh
 compile_tests_local.sh
+
+__pycache__/
+*.pyc

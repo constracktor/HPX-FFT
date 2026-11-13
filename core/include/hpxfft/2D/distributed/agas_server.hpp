@@ -3,12 +3,13 @@
 #define hpxfft_distributed_agas_server_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
+#include <hpx/include/actions.hpp>
+#include <hpx/include/components.hpp>
 #include <hpx/modules/collectives.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft2D::distributed
 {
@@ -24,9 +25,13 @@ struct agas_server : hpx::components::component_base<agas_server>
 
     void initialize(vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG);
 
+    // One transform per initialize (see the 2D loop): a second call without a new initialize throws
+    // std::logic_error.
     vector_2d fft_2d_r2c();
 
-    ~agas_server() { hpxfft::util::fftw_adapter::cleanup(); }
+    // actions of the public member functions (registered as hpxfft_fft2D_distributed_agas_*)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, initialize, initialize_action)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, fft_2d_r2c, fft_2d_r2c_action)
 
   private:
     // FFT backend
@@ -69,6 +74,8 @@ struct agas_server : hpx::components::component_base<agas_server>
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     std::size_t dim_c_y_part_, dim_c_x_part_;
     // 1D adapters
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
     hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
@@ -88,15 +95,19 @@ struct agas_server : hpx::components::component_base<agas_server>
     vector_comm communication_vec_;
     // locality information
     std::size_t this_locality_, num_localities_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
     // communicators
     std::string COMM_FLAG_;
-    std::vector<const char *> basenames_;
+    // owns the basename strings passed (as const char *) to create_communicator
+    std::vector<std::string> basename_storage_;
     std::vector<hpx::collectives::communicator> communicators_;
 };
 }  // namespace hpxfft::fft2D::distributed
 
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::distributed::agas_server, initialize, initialize_action)
-
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::distributed::agas_server, fft_2d_r2c, fft_2d_r2c_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::distributed::agas_server::initialize_action,
+                                hpxfft_fft2D_distributed_agas_initialize_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::distributed::agas_server::fft_2d_r2c_action,
+                                hpxfft_fft2D_distributed_agas_fft_2d_r2c_action)
 
 #endif  // hpxfft_distributed_agas_server_H_INCLUDED

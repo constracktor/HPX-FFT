@@ -1,5 +1,7 @@
 #include "../../../include/hpxfft/2D/shared/loop.hpp"
 
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 #include <hpx/parallel/algorithms/for_loop.hpp>
 
 // FFT backend
@@ -55,6 +57,7 @@ void hpxfft::fft2D::shared::loop::transpose_shared_x_to_y(const std::size_t inde
 // 2D FFT algorithm
 hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_par()
 {
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c_par of the 2D shared loop");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -114,6 +117,7 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_par()
 
 hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_seq()
 {
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c_seq of the 2D shared loop");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -123,7 +127,7 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_seq()
         fft_1d_r2c_inplace(i);
     }
     auto start_first_trans = t_.now();
-    for (std::size_t i = 0; i < dim_c_x_; ++i)
+    for (std::size_t i = 0; i < dim_c_y_; ++i)
     {
         // transpose from y-direction to x-direction
         transpose_shared_y_to_x(i);
@@ -155,14 +159,16 @@ hpxfft::fft2D::shared::vector_2d hpxfft::fft2D::shared::loop::fft_2d_r2c_seq()
 }
 
 // initialization
-void hpxfft::fft2D::shared::loop::initialize(vector_2d values_vec, const std::string PLAN_FLAG)
+void hpxfft::fft2D::shared::loop::initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     // move data into own data structure
     values_vec_ = std::move(values_vec);
     // parameters
     dim_c_x_ = values_vec_.n_row();
     dim_c_y_ = values_vec_.n_col() / 2;
-    dim_r_y_ = 2 * dim_c_y_ - 2;
+    dim_r_y_ = hpxfft::util::real_length(dim_c_y_, ny, "ny");
     // resize transposed data structure
     trans_values_vec_ = std::move(vector_2d(dim_c_y_, 2 * dim_c_x_));
     // create FFTW plans
@@ -186,10 +192,15 @@ void hpxfft::fft2D::shared::loop::initialize(vector_2d values_vec, const std::st
     double add_c2c, mul_c2c, fma_c2c;
     fft_c2c_adapter_.flops(&add_c2c, &mul_c2c, &fma_c2c);
     measurements_["plan_flops"] = dim_r_y_ * (add_r2c + mul_r2c + fma_r2c) + dim_c_x_ * (add_c2c + mul_c2c + fma_c2c);
+    // allow one transform
+    ready_ = true;
 }
 
 // helpers
-real hpxfft::fft2D::shared::loop::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::shared::loop::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}
 
 void hpxfft::fft2D::shared::loop::write_plans_to_file(std::string file_path)
 {

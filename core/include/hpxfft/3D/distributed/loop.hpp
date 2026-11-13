@@ -2,14 +2,12 @@
 #ifndef hpxfft_distributed_loop_3D_H_INCLUDED
 #define hpxfft_distributed_loop_3D_H_INCLUDED
 
-#include "../../util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
-#include "../../util/vector_3d.hpp"        // for hpxfft::util::vector_3d
+#include "../../util/real.hpp"
+#include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include "distributed_base.hpp"
 #include <cmath>
-#include <hpx/hpx_init.hpp>
 #include <hpx/parallel/algorithms/for_loop.hpp>
-
-typedef double real;
+#include <optional>
 
 namespace hpxfft::fft3D::distributed::loop
 {
@@ -20,7 +18,10 @@ struct slab : public base
   public:
     slab() = default;
 
-    void initialize(vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG) override;
+    void initialize(vector_3d values_vec,
+                    const std::string COMM_FLAG,
+                    const std::string PLAN_FLAG,
+                    const std::size_t nz = 0) override;
 
     vector_3d fft_3d_r2c() override;
 
@@ -42,7 +43,28 @@ struct slab : public base
     void communicate_all_to_all_vec();
     void communicate_all_to_all_permuted_vec();
 
-    bool scatter_sync_ = true;
+    hpx::future<std::vector<vector_3d>> all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation);
+    // scatter through one hierarchical communicator per root (communicator i is rooted at locality i); needs an HPX
+    // whose hierarchical communicators support a root site other than 0
+    std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
+    hpx::future<vector_3d> scatter_exchange(std::size_t root, std::vector<vector_3d> &&prep, std::size_t generation);
+    // block offsets of y: locality i holds the y rows [y_offsets_[i], y_offsets_[i + 1]) after the first exchange
+    std::vector<std::size_t> y_offsets_;
+
+  public:
+    // y rows held by this locality in the transposed output (set_transposed_output), and the first one; valid after a
+    // successful initialize (also after the transform), std::logic_error before
+    std::size_t local_y_count() const
+    {
+        require_initialized("local_y_count of the slab");
+        return n_y_local_;
+    }
+
+    std::size_t local_y_offset() const
+    {
+        require_initialized("local_y_offset of the slab");
+        return y_offsets_[this_locality_];
+    }
 };
 
 struct pencil : public base
@@ -50,9 +72,41 @@ struct pencil : public base
   public:
     pencil() = default;
 
-    void initialize(vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG) override;
+    void initialize(vector_3d values_vec,
+                    const std::string COMM_FLAG,
+                    const std::string PLAN_FLAG,
+                    const std::size_t nz = 0) override;
 
     vector_3d fft_3d_r2c() override;
+
+    // z frequencies (complex numbers) held by this locality in the transposed output (set_transposed_output), and the
+    // first one. Like the y getters below: valid after a successful initialize (also after the transform),
+    // std::logic_error before
+    std::size_t local_z_count() const
+    {
+        require_initialized("local_z_count of the pencil");
+        return n_z_local_;
+    }
+
+    std::size_t local_z_offset() const
+    {
+        require_initialized("local_z_offset of the pencil");
+        return z_offsets_[pos_dir_y_];
+    }
+
+    // y rows held by this locality in the transposed output (y_local, z_local, x), and the first one: the y block of
+    // its position in x direction (not the y block of its input)
+    std::size_t local_y_count() const
+    {
+        require_initialized("local_y_count of the pencil");
+        return n_y_local_;
+    }
+
+    std::size_t local_y_offset() const
+    {
+        require_initialized("local_y_offset of the pencil");
+        return pos_dir_x_ * n_y_local_;
+    }
 
   private:
     // permute (only local data)
@@ -82,11 +136,21 @@ struct pencil : public base
     std::size_t pos_dir_y_;
     std::size_t generation_counterx_;
     std::size_t generation_countery_;
+    // block offsets of z: the localities with position i in y direction hold the z frequencies
+    // [z_offsets_[i], z_offsets_[i + 1]) after the first exchange
+    std::vector<std::size_t> z_offsets_;
 
     vector_comm values_prep2_;
     vector_comm permuted_values_prep2_;
 
-    bool scatter_sync_ = true;
+    // all_to_all of the group (0: x direction, 1: y direction)
+    hpx::future<std::vector<vector_3d>>
+    all_to_all_exchange(std::size_t group, std::vector<vector_3d> &&prep, std::size_t generation);
+    // scatter through one hierarchical communicator per root (slot 2 i: x direction, 2 i + 1: y direction); needs an
+    // HPX whose hierarchical communicators support a root site other than 0
+    std::vector<std::optional<hpx::collectives::hierarchical_communicator>> hierarchical_scatter_communicators_;
+    hpx::future<vector_3d> scatter_exchange(
+        std::size_t slot, std::size_t root, std::size_t site, std::vector<vector_3d> &&prep, std::size_t generation);
 };
 
 }  // namespace hpxfft::fft3D::distributed::loop

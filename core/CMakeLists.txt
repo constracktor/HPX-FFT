@@ -11,15 +11,17 @@ set(SOURCE_FILES
     src/3D/shared/sync.cpp
     src/util/adapter_fftw.cpp
     src/util/create_dir.cpp
+    src/util/fftw_wisdom.cpp
     src/3D/distributed/loop_slab.cpp
     src/3D/distributed/loop_pencil.cpp)
 
 add_library(hpxfft STATIC ${SOURCE_FILES})
 
 # Add them as PRIVATE sources here so they show up in project files Can't use
-# PUBLIC etc., see: https://stackoverflow.com/a/62465051
-file(GLOB_RECURSE header_files CONFIGURE_DEPENDS include/hpxfft/shared/*.hpp
-     include/hpxfft/distributed/*.hpp)
+# PUBLIC etc., see: https://stackoverflow.com/a/62465051. The headers are
+# installed by install(DIRECTORY) below; this list (2D/, 3D/, util/) only serves
+# the IDE.
+file(GLOB_RECURSE header_files CONFIGURE_DEPENDS include/hpxfft/*.hpp)
 target_sources(hpxfft PRIVATE ${header_files})
 
 # Link HPX

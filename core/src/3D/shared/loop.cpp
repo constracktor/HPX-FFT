@@ -1,12 +1,17 @@
 #include "../../../include/hpxfft/3D/shared/loop.hpp"
 
-void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::string PLAN_FLAG)
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
+
+void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
     values_vec_ = std::move(values_vec);
     dim_c_x_ = values_vec_.n_x();
     dim_c_y_ = values_vec_.n_y();
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = 2 * dim_c_z_ - 2;
+    dim_r_z_ = hpxfft::util::real_length(dim_c_z_, nz, "nz");
     // resize transposed data structure
     permuted_vec_ = vector_3d(dim_c_x_, dim_c_z_, 2 * dim_c_y_);
     auto start_plan = t_.now();
@@ -39,10 +44,13 @@ void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::st
     fftw_c2c_adapter_dir_x_.flops(&add_x, &mul_x, &fma_x);
     measurements_["plan_flops"] =
         dim_r_z_ * (add_z + mul_z + fma_z) + dim_c_y_ * (add_y + mul_y + fma_y) + dim_c_x_ * (add_x + mul_x + fma_x);
+    // allow one transform
+    ready_ = true;
 }
 
 hpxfft::fft3D::shared::vector_3d hpxfft::fft3D::shared::loop::fft_3d_r2c_par()
 {
+    hpxfft::util::begin_transform(ready_, "fft_3d_r2c_par of the 3D shared loop");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -136,6 +144,7 @@ hpxfft::fft3D::shared::vector_3d hpxfft::fft3D::shared::loop::fft_3d_r2c_par()
 
 hpxfft::fft3D::shared::vector_3d hpxfft::fft3D::shared::loop::fft_3d_r2c_seq()
 {
+    hpxfft::util::begin_transform(ready_, "fft_3d_r2c_seq of the 3D shared loop");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();

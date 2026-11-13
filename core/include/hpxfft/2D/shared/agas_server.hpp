@@ -3,11 +3,12 @@
 #define hpxfft_shared_agas_server_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
+#include <hpx/include/actions.hpp>
+#include <hpx/include/components.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft2D::shared
 {
@@ -20,11 +21,17 @@ struct agas_server : hpx::components::component_base<agas_server>
   public:
     agas_server() = default;
 
-    void initialize(vector_2d values_vec, const std::string PLAN_FLAG);
+    // ny: number of real values per row (even or odd); 0 derives the even length 2 * (n_col / 2 - 1) from the row
+    // length. Throws std::invalid_argument if ny / 2 + 1 does not match the n_col / 2 complex values of a row.
+    void initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
+    // One transform per initialize: the result is moved out of the object, so calling the transform again without a
+    // new initialize throws std::logic_error.
     vector_2d fft_2d_r2c();
 
-    ~agas_server() { hpxfft::util::fftw_adapter::cleanup(); }
+    // actions of the public member functions (registered as hpxfft_fft2D_shared_agas_*)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, initialize, initialize_action)
+    HPX_DEFINE_COMPONENT_ACTION(agas_server, fft_2d_r2c, fft_2d_r2c_action)
 
   private:
     // FFT backend
@@ -43,6 +50,8 @@ struct agas_server : hpx::components::component_base<agas_server>
     // parameters
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     // 1D adapters
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
     hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
@@ -53,12 +62,15 @@ struct agas_server : hpx::components::component_base<agas_server>
     vector_future trans_y_to_x_futures_;
     vector_future c2c_futures_;
     vector_future trans_x_to_y_futures_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
 };
 
 }  // namespace hpxfft::fft2D::shared
 
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::shared::agas_server, fft_2d_r2c, fft_2d_r2c_action)
-
-HPX_DEFINE_COMPONENT_ACTION(hpxfft::fft2D::shared::agas_server, initialize, initialize_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::shared::agas_server::initialize_action,
+                                hpxfft_fft2D_shared_agas_initialize_action)
+HPX_REGISTER_ACTION_DECLARATION(hpxfft::fft2D::shared::agas_server::fft_2d_r2c_action,
+                                hpxfft_fft2D_shared_agas_fft_2d_r2c_action)
 
 #endif  // hpxfft_shared_agas_server_H_INCLUDED

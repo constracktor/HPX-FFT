@@ -1,9 +1,13 @@
 #include "hpxfft/3D/distributed/loop.hpp"  // for hpxfft::fft3D::distributed::loop, hpxfft::fft3D::distributed::vector_3d
 #include "hpxfft/util/create_dir.hpp"      // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/fftw_wisdom.hpp"     // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
+#include <chrono>                           // for std::chrono::seconds
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
-#include <numeric>  // for std::iota
+#include <iostream>  // for std::cout
+#include <numeric>   // for std::iota
+#include <thread>    // for std::this_thread::sleep_for
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {
@@ -14,8 +18,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t localities_per_dir = static_cast<std::size_t>(std::sqrt((double) num_localities));
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
+    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
+    bool transposed_out = vm["transposed_out"].as<bool>();
     // time measurement
     auto t = hpx::chrono::high_resolution_timer();
     // FFT dimension parameters
@@ -24,13 +30,18 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t dim_r_z = vm["nz"].as<std::size_t>();
     const std::size_t dim_c_z = dim_r_z / 2 + 1;
     // division parameter
-    std::size_t n_x_local = dim_c_x / localities_per_dir;
-    std::size_t n_y_local = dim_c_y / localities_per_dir;
-
-    if (n_y_local * localities_per_dir != dim_c_y || n_x_local * localities_per_dir != dim_c_x)
+    // P x P localities, every one passes an equal block of nx / P x ny / P; z (redistributed) needs no divisibility
+    const std::size_t n_x_local = dim_c_x / localities_per_dir;
+    const std::size_t n_y_local = dim_c_y / localities_per_dir;
+    if (localities_per_dir * localities_per_dir != num_localities || n_x_local * localities_per_dir != dim_c_x
+        || n_y_local * localities_per_dir != dim_c_y)
     {
-        std::cout << "Matrix dimensions are not divisible by number of localities per dimension, ending program"
-                  << std::endl;
+        if (this_locality == 0)
+        {
+            std::cout << "The pencil decomposition needs a square number of localities P x P (" << num_localities
+                      << " given) and nx (" << dim_c_x << ") and ny (" << dim_c_y << ") divisible by P, ending program"
+                      << std::endl;
+        }
         return hpx::finalize();
     }
 
@@ -39,6 +50,9 @@ int hpx_main(hpx::program_options::variables_map &vm)
     hpxfft::fft3D::distributed::vector_3d values_vec =
         hpxfft::fft3D::distributed::vector_3d(n_x_local, n_y_local, 2 * dim_c_z);
     hpxfft::fft3D::distributed::loop::pencil fft_computer;
+    fft_computer.set_transposed_output(transposed_out);
+    fft_computer.set_hierarchical_parameters(
+        vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
 
     for (std::size_t i = 0; i < n_x_local; ++i)
     {
@@ -55,14 +69,19 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     if (print_result)
     {
-        sleep(this_locality + 1);
+        std::this_thread::sleep_for(std::chrono::seconds(this_locality + 1));
         print_vector_3d(values_vec);
     }
 
     // Computation
+    // optional: import saved planner knowledge before the first plan
+    if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     hpx::distributed::barrier("starting Barrier").wait();
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), run_flag, plan_flag);
+    fft_computer.initialize(std::move(values_vec), run_flag, plan_flag, dim_r_z);
     hpx::distributed::barrier("initialize Barrier").wait();
     auto stop_init = t.now();
     values_vec = fft_computer.fft_3d_r2c();
@@ -71,7 +90,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // optional: print results
     if (print_result)
     {
-        sleep(this_locality + 1);
+        std::this_thread::sleep_for(std::chrono::seconds(this_locality + 1));
         print_vector_3d(values_vec);
     }
     ////////////////////////////////////////////////////////////////
@@ -153,6 +172,12 @@ int hpx_main(hpx::program_options::variables_map &vm)
         runtime_file.close();
     }
 
+    // export the planner knowledge; only locality 0 writes, the plans of all localities have the same sizes
+    if (this_locality == 0 && !wisdom_file.empty())
+    {
+        hpxfft::util::export_wisdom(wisdom_file);
+    }
+
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
     return hpx::finalize();
@@ -169,10 +194,22 @@ int main(int argc, char *argv[])
         "ny", value<std::size_t>()->default_value(8), "Total y dimension")(
         "nz", value<std::size_t>()->default_value(8), "Total z dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
+        "wisdom_file",
+        value<std::string>()->default_value(""),
+        "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run",
         value<std::string>()->default_value("scatter"),
-        "Choose 2d FFT algorithm communication: scatter or all_to_all")(
-        "header", value<bool>()->default_value(0), "Write runtime file header");
+        "Communication: scatter (default), all_to_all (direct exchange), all_to_all_routed, scatter_async, "
+        "scatter_hierarchical")("header", value<bool>()->default_value(0), "Write runtime file header")(
+        "transposed_out",
+        value<bool>()->default_value(0),
+        "Skip the final exchanges and keep the result in y-z-x layout (default: false)")(
+        "hier_arity",
+        value<std::size_t>()->default_value(2),
+        "Children per node of the hierarchical communicators (run=scatter_hierarchical)")(
+        "hier_threshold",
+        value<std::size_t>()->default_value(16),
+        "Localities per group below which the hierarchical communicators are flat; 0 forces a tree");
 
     // Initialize and run HPX, this example requires to run hpx_main on all
     // localities

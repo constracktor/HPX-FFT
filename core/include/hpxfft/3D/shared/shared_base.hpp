@@ -3,10 +3,10 @@
 #define hpxfft_shared_base_3D_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
+#include "../../util/real.hpp"
 #include "../../util/vector_3d.hpp"              // for hpxfft::util::vector_3d
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft3D::shared
 {
@@ -17,9 +17,7 @@ struct base
   public:
     base() = default;
 
-    real get_measurement(std::string name);
-
-    ~base() { hpxfft::util::fftw_adapter::cleanup(); }
+    real get_measurement(const std::string &name) const;
 
   protected:
     // FFT backend
@@ -35,6 +33,8 @@ struct base
   protected:
     // prarameters
     std::size_t dim_r_z_, dim_c_z_, dim_c_y_, dim_c_x_;
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     // IMPORTANT: declare r2c adapter before c2c so r2c destructor is called after c2c
     hpxfft::util::fftw_adapter::r2c_1d fftw_r2c_adapter_dir_z_;
     hpxfft::util::fftw_adapter::c2c_1d fftw_c2c_adapter_dir_y_;
@@ -45,9 +45,14 @@ struct base
     // time measurement
     hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
     std::map<std::string, real> measurements_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
 };
 
-inline real hpxfft::fft3D::shared::base::get_measurement(std::string name) { return measurements_[name]; }
+inline real hpxfft::fft3D::shared::base::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}
 
 inline void hpxfft::fft3D::shared::base::fft_1d_r2c_inplace(const std::size_t i, const std::size_t j)
 {

@@ -1,20 +1,23 @@
 #include "../../../include/hpxfft/2D/distributed/agas.hpp"
 
+#include "../../../include/hpxfft/util/comm_basename.hpp"
+#include "../../../include/hpxfft/util/comm_flag.hpp"
+#include "../../../include/hpxfft/util/transform_guard.hpp"
 #include <hpx/hpx_init.hpp>
 #include <hpx/modules/components.hpp>
 
 // HPX_REGISTER_COMPONENT() exposes the component creation
 // through hpx::new_<>().
-typedef hpx::components::component<hpxfft::fft2D::distributed::agas_server> agas_server_type;
-HPX_REGISTER_COMPONENT(agas_server_type, agas_server)
+typedef hpx::components::component<hpxfft::fft2D::distributed::agas_server> distributed_agas_server_type;
+HPX_REGISTER_COMPONENT(distributed_agas_server_type, hpxfft_fft2D_distributed_agas_server)
 
 // HPX_REGISTER_ACTION() exposes the component member function for remote
 // invocation.
-// typedef hpxfft::fft2D::distributed::agas_server::fft_2d_r2c_action fft_2d_r2c_action;
-HPX_REGISTER_ACTION(fft_2d_r2c_action)
+HPX_REGISTER_ACTION(hpxfft::fft2D::distributed::agas_server::fft_2d_r2c_action,
+                    hpxfft_fft2D_distributed_agas_fft_2d_r2c_action)
 
-// typedef hpxfft::fft2D::distributed::agas_server::initialize_action initialize_action;
-HPX_REGISTER_ACTION(initialize_action)
+HPX_REGISTER_ACTION(hpxfft::fft2D::distributed::agas_server::initialize_action,
+                    hpxfft_fft2D_distributed_agas_initialize_action)
 
 // FFT backend
 void hpxfft::fft2D::distributed::agas_server::fft_1d_r2c_inplace(const std::size_t i)
@@ -108,16 +111,16 @@ void hpxfft::fft2D::distributed::agas_server::transpose_y_to_x(const std::size_t
     std::size_t index_in;
     std::size_t index_out;
     const std::size_t offset_in = 2 * k;
-    const std::size_t offset_out = 2 * i;
+    // the rows (x) of locality i form the block starting at x = i * dim_input
     const std::size_t factor_in = dim_c_y_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / factor_in;
+    const std::size_t offset_out = 2 * i * dim_input;
 
     for (std::size_t j = 0; j < dim_input; ++j)
     {
         // compute indices once use twice
         index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
+        index_out = 2 * j + offset_out;
         // transpose
         trans_values_vec_(k, index_out) = communication_vec_[i][index_in];
         trans_values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
@@ -128,9 +131,9 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
 {
     std::size_t index_in;
     std::size_t index_out;
-    const std::size_t offset_out = 2 * i;
+    // the rows (y) of locality i form the block starting at y = i * n_y_local_
+    const std::size_t offset_out = 2 * i * n_y_local_;
     const std::size_t factor_in = dim_c_x_part_;
-    const std::size_t factor_out = 2 * num_localities_;
     const std::size_t dim_input = communication_vec_[i].size() / dim_c_y_part_;
 
     for (std::size_t k = 0; k < dim_input; ++k)
@@ -138,7 +141,7 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
         // compute indices once use twice
         std::size_t offset_in = 2 * k;
         index_in = factor_in * j + offset_in;
-        index_out = factor_out * j + offset_out;
+        index_out = 2 * j + offset_out;
         // transpose
         values_vec_(k, index_out) = communication_vec_[i][index_in];
         values_vec_(k, index_out + 1) = communication_vec_[i][index_in + 1];
@@ -148,6 +151,8 @@ void hpxfft::fft2D::distributed::agas_server::transpose_x_to_y(const std::size_t
 // 2D FFT algorithm
 hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::fft_2d_r2c()
 {
+    // initialize + one transform per object: the transform moves the data and buffers out of the object
+    hpxfft::util::begin_transform(ready_, "fft_2d_r2c of the 2D agas class");
     // first dimension
     for (std::size_t i = 0; i < n_x_local_; ++i)
     {
@@ -215,8 +220,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     // second dimension
     for (std::size_t i = 0; i < n_y_local_; ++i)
@@ -278,7 +282,7 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
                 return hpx::async(communicate_all_to_all_trans_vec_action(), get_id());
             });
         // tranpose from x-direction to y-direction
-        for (std::size_t k = 0; k < n_x_local_; ++k)
+        for (std::size_t k = 0; k < n_y_local_; ++k)
         {
             for (std::size_t i = 0; i < num_localities_; ++i)
             {
@@ -303,6 +307,12 @@ hpxfft::fft2D::distributed::vector_2d hpxfft::fft2D::distributed::agas_server::f
 void hpxfft::fft2D::distributed::agas_server::initialize(
     hpxfft::fft2D::distributed::vector_2d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
 {
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
+    // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
+    hpxfft::util::check_comm_flag(COMM_FLAG, { "scatter", "all_to_all" }, "the 2D agas class");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/agas2d/");
     // move data into own structure
     values_vec_ = std::move(values_vec);
     // locality information
@@ -313,6 +323,11 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_y_ = values_vec_.n_col() / 2;
     dim_r_y_ = 2 * dim_c_y_ - 2;
+    if (dim_c_y_ % num_localities_ != 0)
+    {
+        throw std::invalid_argument(
+            "Number of complex values in y (ny / 2 + 1) must be divisible by the number of localities");
+    }
     n_y_local_ = dim_c_y_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
@@ -344,15 +359,29 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         communication_vec_.resize(num_localities_);
         communication_futures_.resize(num_localities_);
         // setup communicators
-        basenames_.resize(num_localities_);
+        basename_storage_.resize(num_localities_);
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basenames_[i] = std::move(std::to_string(i).c_str());
+            basename_storage_[i] = basename_prefix + std::to_string(i);
+            // Host the communicator on the locality that scatters through it
+            // (root_site = i). With the default root site (0) every scatter is
+            // staged on locality 0 first: the data crosses the network twice
+            // and locality 0 becomes a hub for all of them.
             communicators_[i] = std::move(hpx::collectives::create_communicator(
-                basenames_[i],
+                basename_storage_[i].c_str(),
                 hpx::collectives::num_sites_arg(num_localities_),
-                hpx::collectives::this_site_arg(this_locality_)));
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(i)));
+        }
+        // The communicators are futures: on HPX master, scatter_to/scatter_from read num_sites from the
+        // communicator's info, which is only attached once the communicator has been created/found. Make sure all
+        // communicators are ready before they are used (otherwise num_sites is unset and scatter_to fails with
+        // "the number of values to scatter must be equal to the number of participating sites").
+        for (auto &communicator : communicators_)
+        {
+            communicator.wait();
         }
     }
     else if (COMM_FLAG_ == "all_to_all")
@@ -360,18 +389,18 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
         communication_vec_.resize(1);
         communication_futures_.resize(1);
         // setup communicators
-        basenames_.resize(1);
+        basename_storage_.resize(1);
         communicators_.resize(1);
-        basenames_[0] = std::move(std::to_string(0).c_str());
+        basename_storage_[0] = basename_prefix + "0";
         communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basenames_[0],
+            basename_storage_[0].c_str(),
             hpx::collectives::num_sites_arg(num_localities_),
             hpx::collectives::this_site_arg(this_locality_)));
     }
     else
     {
-        std::cout << "Specify communication scheme: scatter or all_to_all\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
     // resize futures
     r2c_futures_.resize(n_x_local_);
@@ -388,4 +417,6 @@ void hpxfft::fft2D::distributed::agas_server::initialize(
     {
         trans_x_to_y_futures_[i].resize(num_localities_);
     }
+    // allow one transform
+    ready_ = true;
 }

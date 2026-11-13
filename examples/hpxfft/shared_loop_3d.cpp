@@ -1,9 +1,11 @@
 #include "hpxfft/3D/shared/loop.hpp"        // for hpxfft::fft3D::shared::loop, hpxfft::fft3D::shared::vector_3d
 #include "hpxfft/util/create_dir.hpp"       // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/fftw_wisdom.hpp"      // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
-#include <numeric>  // for std::iota
+#include <iostream>  // for std::cout
+#include <numeric>   // for std::iota
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {
@@ -19,6 +21,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Parameters and Data structures
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
+    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     // time measurement
@@ -46,8 +49,13 @@ int hpx_main(hpx::program_options::variables_map &vm)
     ////////////////////////////////////////////////////////////////
     // Computation
     hpxfft::fft3D::shared::loop fft_computer;
+    // optional: import saved planner knowledge before the first plan
+    if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), plan_flag);
+    fft_computer.initialize(std::move(values_vec), plan_flag, dim_r_z);
     auto stop_init = t.now();
     if (run_flag == "seq")
     {
@@ -140,6 +148,12 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // store plan
     fft_computer.write_plans_to_file(plan_file_path);
 
+    // export the planner knowledge while the plans are alive (fftw_cleanup discards it)
+    if (!wisdom_file.empty())
+    {
+        hpxfft::util::export_wisdom(wisdom_file);
+    }
+
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
     return hpx::finalize();
@@ -156,6 +170,9 @@ int main(int argc, char *argv[])
         "ny", value<std::size_t>()->default_value(14), "Total y dimension")(
         "nz", value<std::size_t>()->default_value(16), "Total z dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
+        "wisdom_file",
+        value<std::string>()->default_value(""),
+        "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run", value<std::string>()->default_value("par"), "Choose 2d FFT algorithm: par or seq")(
         "header", value<bool>()->default_value(0), "Write runtime file header");
 

@@ -9,20 +9,20 @@ EXAMPLES_DIR=$TOP_DIR/examples
 
 # HPX-FFT implementations
 HPXFFT_EXECUTABLES=(
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_naive"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_opt"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_sync"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_loop"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop" 
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_agas"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_naive_2d"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_opt_2d"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_sync_2d"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_loop_2d"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_2d" 
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_shared_agas_2d"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas_2d"
 )
 # FFTW implementations
 FFTW_EXECUTABLES=(
-    "$EXAMPLES_DIR/fftw/build/fftw_omp"
-    "$EXAMPLES_DIR/fftw/build/fftw_threads"
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads"
+    "$EXAMPLES_DIR/fftw/build/fftw_omp_2d"
+    "$EXAMPLES_DIR/fftw/build/fftw_threads_2d"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp_2d"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads_2d"
 )
 
 # Get current hostname

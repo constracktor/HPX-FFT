@@ -1,28 +1,44 @@
 #include "../../../include/hpxfft/3D/distributed/loop.hpp"
+#include "../../../include/hpxfft/util/comm_basename.hpp"
+#include "../../../include/hpxfft/util/real_length.hpp"
+#include <algorithm>
+#include <hpx/runtime_distributed.hpp>  // for hpx::get_locality_id, hpx::get_num_localities
 
 void hpxfft::fft3D::distributed::loop::slab::initialize(
-    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG)
+    vector_3d values_vec, const std::string COMM_FLAG, const std::string PLAN_FLAG, const std::size_t nz)
 {
+    // reject an unsupported run flag before any collective operation
+    // a failed initialize leaves the object without a transform to run
+    ready_ = false;
+    initialized_ = false;
+    check_comm_flag(COMM_FLAG, "the slab decomposition");
+    // unique communicator names of this object (taken at the same point on every locality)
+    const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/slab/");
     this_locality_ = hpx::get_locality_id();
     // move data into own structure
     values_vec_ = std::move(values_vec);
+    // the global size is derived from the local block: all blocks must have the same shape
+    hpxfft::util::check_equal_local_shape({ values_vec_.n_x(), values_vec_.n_y(), values_vec_.n_z() });
     // locality information
     num_localities_ = hpx::get_num_localities(hpx::launch::sync);
     // parameters
     n_x_local_ = values_vec_.n_x();
-    n_y_local_ = values_vec_.n_y() / num_localities_;
+    // y is split into blocks of n_y / L elements; the first n_y % L localities hold one more
+    y_offsets_ = hpxfft::util::block_offsets(values_vec_.n_y(), num_localities_);
+    n_y_local_ = y_offsets_[this_locality_ + 1] - y_offsets_[this_locality_];
     n_z_local_ = values_vec_.n_z() / (2 * num_localities_);
     dim_c_y_ = values_vec_.n_y();
     dim_c_z_ = values_vec_.n_z() / 2;
-    dim_r_z_ = 2 * dim_c_z_ - 2;
+    dim_r_z_ = hpxfft::util::real_length(dim_c_z_, nz, "nz");
     dim_c_x_ = n_x_local_ * num_localities_;
     dim_c_z_part_ = 2 * dim_c_z_ / num_localities_;
     dim_c_y_part_ = 2 * dim_c_y_ / num_localities_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
 
-    if (values_vec_.n_y() % num_localities_ != 0 || values_vec_.n_z() % num_localities_ != 0)
+    // z is never distributed in the slab decomposition; y only has to provide at least one row per locality
+    if (values_vec_.n_y() < num_localities_)
     {
-        throw std::invalid_argument("Dimensions of the 3D Matrix are not divisable by number of localities");
+        throw std::invalid_argument("Dimension y of the 3D Matrix is smaller than the number of localities");
     }
 
     // resize other data structures
@@ -31,8 +47,9 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     permuted_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
     {
-        permuted_values_prep_[i] = vector_3d(n_x_local_, dim_c_z_, 2 * n_y_local_);
-        values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_);
+        permuted_values_prep_[i] =
+            vector_3d(n_x_local_, dim_c_z_, 2 * (y_offsets_[i + 1] - y_offsets_[i]), vector_3d::uninitialized);
+        values_prep_[i] = vector_3d(n_y_local_, dim_c_z_, 2 * n_x_local_, vector_3d::uninitialized);
     }
     // create FFTW plans
     // r2c in z-direction
@@ -56,31 +73,54 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         reinterpret_cast<fftw_complex *>(permuted_vec_.slice_yz(0)),
         hpxfft::util::fftw_adapter::direction::forward);
     // communication specific initialization
-    if (COMM_FLAG == "scatter_async")
-    {
-        scatter_sync_ = false;
-        COMM_FLAG_ = "scatter";
-    }
-    else
-    {
-        COMM_FLAG_ = COMM_FLAG;
-    }
+    parse_comm_flag(COMM_FLAG, num_localities_);
     if (COMM_FLAG_ == "scatter")
     {
         communication_vec_.resize(num_localities_);
         communication_futures_.resize(num_localities_);
         // setup communicators
         basename_storage_.resize(num_localities_);
-        basenames_.resize(num_localities_);
+        if (hierarchical_scatter_)
+        {
+            // communicator i is rooted at locality i; below the flat fallback threshold each of them is a single
+            // flat communicator
+            hierarchical_scatter_communicators_.resize(num_localities_);
+            for (std::size_t i = 0; i < num_localities_; ++i)
+            {
+                basename_storage_[i] = basename_prefix + std::to_string(i);
+                hierarchical_scatter_communicators_[i].emplace(hpx::collectives::create_hierarchical_communicator(
+                    basename_storage_[i].c_str(),
+                    hpx::collectives::num_sites_arg(num_localities_),
+                    hpx::collectives::this_site_arg(this_locality_),
+                    hpx::collectives::arity_arg(hierarchical_arity_),
+                    hpx::collectives::generation_arg(),
+                    hpx::collectives::root_site_arg(i),
+                    hpx::collectives::flat_fallback_threshold_arg(hierarchical_flat_threshold_)));
+            }
+            // allow one transform
+            ready_ = true;
+            initialized_ = true;
+            return;
+        }
         communicators_.resize(num_localities_);
         for (std::size_t i = 0; i < num_localities_; ++i)
         {
-            basename_storage_[i] = std::to_string(i);
-            basenames_[i] = basename_storage_[i].c_str();
+            basename_storage_[i] = basename_prefix + std::to_string(i);
+            // Host the communicator on the locality that scatters through it
+            // (root_site = i); with the default root site (0) every scatter
+            // is staged on locality 0 first.
             communicators_[i] = std::move(hpx::collectives::create_communicator(
-                basenames_[i],
+                basename_storage_[i].c_str(),
                 hpx::collectives::num_sites_arg(num_localities_),
-                hpx::collectives::this_site_arg(this_locality_)));
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::generation_arg(),
+                hpx::collectives::root_site_arg(i)));
+        }
+        // The communicators are futures: scatter_to/scatter_from read num_sites from the communicator's info, which
+        // is only attached once it has been created/found. Wait for all of them before use.
+        for (auto &communicator : communicators_)
+        {
+            communicator.wait();
         }
     }
     else if (COMM_FLAG_ == "all_to_all")
@@ -88,84 +128,132 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
         communication_vec_.resize(1);
         // setup communicators
         basename_storage_.resize(1);
-        basenames_.resize(1);
         communicators_.resize(1);
-        basename_storage_[0] = std::to_string(0);
-        basenames_[0] = basename_storage_[0].c_str();
-        communicators_[0] = std::move(hpx::collectives::create_communicator(
-            basenames_[0],
-            hpx::collectives::num_sites_arg(num_localities_),
-            hpx::collectives::this_site_arg(this_locality_)));
+        basename_storage_[0] = basename_prefix + "0";
+        if (routed_)
+        {
+            communicators_[0] = std::move(hpx::collectives::create_communicator(
+                basename_storage_[0].c_str(),
+                hpx::collectives::num_sites_arg(num_localities_),
+                hpx::collectives::this_site_arg(this_locality_)));
+        }
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        // unreachable: the flag was checked at the start of initialize
+        throw std::logic_error("Unsupported communication flag " + COMM_FLAG);
     }
+    // allow one transform
+    ready_ = true;
+    initialized_ = true;
 }
 
-// scatter communitcation
-void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_vec(const std::size_t i)
+// scatter communitcation (flat or hierarchical communicators): the locality `root` sends one block to every locality
+hpx::future<hpxfft::fft3D::distributed::vector_3d> hpxfft::fft3D::distributed::loop::slab::scatter_exchange(
+    const std::size_t root, std::vector<vector_3d> &&prep, std::size_t generation)
 {
-    if (this_locality_ != i)
+    if (hierarchical_scatter_)
+    {
+        auto &communicator = *hierarchical_scatter_communicators_[root];
+        if (this_locality_ != root)
+        {
+            // receive from the root
+            return hpx::collectives::scatter_from<vector_3d>(
+                communicator,
+                hpx::collectives::this_site_arg(this_locality_),
+                hpx::collectives::generation_arg(generation));
+        }
+        // send from this locality (the root of the communicator)
+        return hpx::collectives::scatter_to(
+            communicator,
+            std::move(prep),
+            hpx::collectives::this_site_arg(this_locality_),
+            hpx::collectives::generation_arg(generation));
+    }
+    if (this_locality_ != root)
     {
         // receive from other locality
-        communication_futures_[i] =
-            hpx::collectives::scatter_from<vector_3d>(communicators_[i], hpx::collectives::generation_arg(2));
+        return hpx::collectives::scatter_from<vector_3d>(
+            communicators_[root], hpx::collectives::generation_arg(generation));
     }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[i], std::move(values_prep_), hpx::collectives::generation_arg(2));
-    }
+    // send from this locality
+    return hpx::collectives::scatter_to(
+        communicators_[root], std::move(prep), hpx::collectives::generation_arg(generation));
+}
+
+void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_vec(const std::size_t i)
+{
+    communication_futures_[i] = scatter_exchange(i, std::move(values_prep_), 2);
 }
 
 void hpxfft::fft3D::distributed::loop::slab::communicate_scatter_permuted_vec(const std::size_t i)
 {
-    if (this_locality_ != i)
-    {
-        // receive from other locality
-        communication_futures_[i] =
-            hpx::collectives::scatter_from<vector_3d>(communicators_[i], hpx::collectives::generation_arg(1));
-    }
-    else
-    {
-        // send from this locality
-        communication_futures_[i] = hpx::collectives::scatter_to(
-            communicators_[i], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1));
-    }
+    communication_futures_[i] = scatter_exchange(i, std::move(permuted_values_prep_), 1);
 }
 
-// all to all communication
+// all to all communication: direct exchange between the localities, or (reference) routed through a root site
+hpx::future<std::vector<hpxfft::fft3D::distributed::vector_3d>>
+hpxfft::fft3D::distributed::loop::slab::all_to_all_exchange(std::vector<vector_3d> &&prep, std::size_t generation)
+{
+    if (routed_)
+    {
+        return hpx::collectives::all_to_all(
+            communicators_[0], std::move(prep), hpx::collectives::generation_arg(generation));
+    }
+    // all_to_all by name with a threshold of 0 selects the direct exchange also for rows of dynamic size; it needs an
+    // explicit generation and at least three sites (otherwise HPX routes the data)
+    return hpx::collectives::all_to_all(
+        basename_storage_[0].c_str(),
+        std::move(prep),
+        hpx::collectives::num_sites_arg(num_localities_),
+        hpx::collectives::this_site_arg(this_locality_),
+        hpx::collectives::generation_arg(generation),
+        hpx::collectives::root_site_arg(0),
+        hpx::collectives::pairwise_threshold_arg(0));
+}
+
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_vec()
 {
-    communication_vec_ =
-        hpx::collectives::all_to_all(communicators_[0], std::move(values_prep_), hpx::collectives::generation_arg(2))
-            .get();
+    communication_vec_ = all_to_all_exchange(std::move(values_prep_), 2).get();
 }
 
 void hpxfft::fft3D::distributed::loop::slab::communicate_all_to_all_permuted_vec()
 {
-    communication_vec_ = hpx::collectives::all_to_all(
-                             communicators_[0], std::move(permuted_values_prep_), hpx::collectives::generation_arg(1))
-                             .get();
+    communication_vec_ = all_to_all_exchange(std::move(permuted_values_prep_), 1).get();
 }
+
+namespace
+{
+// Tile edge (in complex numbers) of the blocked transposes below: a tile of 16 x 16 complex numbers stays in L1 cache,
+// so neither the strided reads nor the strided writes of a transpose thrash the cache.
+constexpr std::size_t TILE = 16;
+}  // namespace
 
 // permute data for FFT in y-direction (only local data)
 void hpxfft::fft3D::distributed::loop::slab::permute_distributed_x_z_y(const std::size_t slice_x, const std::size_t i)
 {
-    const std::size_t n_x = values_vec_.n_x();
     const std::size_t n_y = values_vec_.n_y();
     const std::size_t n_z = values_vec_.n_z();
     const std::size_t n_z_c = n_z / 2;
+    const double *src = values_vec_.slice_yz(slice_x);
+    double *dst = permuted_vec_.slice_yz(slice_x);
+    const std::size_t dst_row = permuted_vec_.n_z();
 
-    for (std::size_t index_y = 0; index_y < n_y; ++index_y)
+    // blocked transpose of the (y, z) matrix of complex numbers
+    for (std::size_t yb = 0; yb < n_y; yb += TILE)
     {
-        for (std::size_t index_z = 0; index_z < n_z_c; ++index_z)
+        const std::size_t ye = std::min(yb + TILE, n_y);
+        for (std::size_t zb = 0; zb < n_z_c; zb += TILE)
         {
-            permuted_vec_(slice_x, index_z, 2 * index_y) = values_vec_(slice_x, index_y, 2 * index_z);
-            permuted_vec_(slice_x, index_z, 2 * index_y + 1) = values_vec_(slice_x, index_y, 2 * index_z + 1);
+            const std::size_t ze = std::min(zb + TILE, n_z_c);
+            for (std::size_t y = yb; y < ye; ++y)
+            {
+                for (std::size_t z = zb; z < ze; ++z)
+                {
+                    dst[z * dst_row + 2 * y] = src[y * n_z + 2 * z];
+                    dst[z * dst_row + 2 * y + 1] = src[y * n_z + 2 * z + 1];
+                }
+            }
         }
     }
 }
@@ -175,59 +263,88 @@ void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_y_x(const std
 {
     const std::size_t part = values_vec_.n_z() / num_localities_;
     const std::size_t offset = part * i;
-    for (std::size_t index_z = 0; index_z < values_vec_.n_x(); index_z++)
+    const std::size_t n_0 = values_vec_.n_x();  // local y
+    const std::size_t n_1 = part / 2;           // x of the source locality
+    const vector_3d &comm = communication_vec_[i];
+    const double *src = comm.data();
+    const std::size_t src_k = comm.n_z();
+    const std::size_t src_x = comm.n_y() * src_k;
+    double *dst = values_vec_.data();
+    const std::size_t dst_k = values_vec_.n_z();
+    const std::size_t dst_y = values_vec_.n_y() * dst_k;
+
+    for (std::size_t zb = 0; zb < n_0; zb += TILE)
     {
-        for (std::size_t index_x = 0; index_x < part / 2; index_x++)
+        const std::size_t ze = std::min(zb + TILE, n_0);
+        for (std::size_t xb = 0; xb < n_1; xb += TILE)
         {
-            values_vec_(index_z, slice_y, offset + 2 * index_x) = communication_vec_[i](index_x, slice_y, 2 * index_z);
-            values_vec_(index_z, slice_y, offset + 2 * index_x + 1) =
-                communication_vec_[i](index_x, slice_y, 2 * index_z + 1);
+            const std::size_t xe = std::min(xb + TILE, n_1);
+            for (std::size_t z = zb; z < ze; ++z)
+            {
+                for (std::size_t x = xb; x < xe; ++x)
+                {
+                    dst[z * dst_y + slice_y * dst_k + offset + 2 * x] = src[x * src_x + slice_y * src_k + 2 * z];
+                    dst[z * dst_y + slice_y * dst_k + offset + 2 * x + 1] =
+                        src[x * src_x + slice_y * src_k + 2 * z + 1];
+                }
+            }
         }
     }
 }
 
 void hpxfft::fft3D::distributed::loop::slab::permute_distributed_z_x_y(const std::size_t slice_x, const std::size_t i)
 {
-    const std::size_t part = permuted_vec_.n_y() / num_localities_;
-    const std::size_t offset = part * i;
-    for (std::size_t index_z = 0; index_z < permuted_vec_.n_x(); index_z++)
+    const std::size_t offset = y_offsets_[i];
+    const std::size_t n_0 = permuted_vec_.n_x();      // x
+    const std::size_t n_1 = permuted_vec_.n_z() / 2;  // z (complex)
+    const vector_3d &comm = communication_vec_[i];
+    const double *src = comm.data();
+    const std::size_t src_x = comm.n_y() * comm.n_z();
+    const std::size_t src_y = comm.n_z();
+    double *dst = permuted_vec_.data();
+    const std::size_t dst_x = permuted_vec_.n_y() * permuted_vec_.n_z();
+    const std::size_t dst_y = permuted_vec_.n_z();
+
+    for (std::size_t zb = 0; zb < n_0; zb += TILE)
     {
-        for (std::size_t index_y = 0; index_y < permuted_vec_.n_z() / 2; index_y++)
+        const std::size_t ze = std::min(zb + TILE, n_0);
+        for (std::size_t yb = 0; yb < n_1; yb += TILE)
         {
-            permuted_vec_(index_z, offset + slice_x, 2 * index_y) =
-                communication_vec_[i](slice_x, index_y, 2 * index_z);
-            permuted_vec_(index_z, offset + slice_x, 2 * index_y + 1) =
-                communication_vec_[i](slice_x, index_y, 2 * index_z + 1);
+            const std::size_t ye = std::min(yb + TILE, n_1);
+            for (std::size_t z = zb; z < ze; ++z)
+            {
+                for (std::size_t y = yb; y < ye; ++y)
+                {
+                    dst[z * dst_x + (offset + slice_x) * dst_y + 2 * y] = src[slice_x * src_x + y * src_y + 2 * z];
+                    dst[z * dst_x + (offset + slice_x) * dst_y + 2 * y + 1] =
+                        src[slice_x * src_x + y * src_y + 2 * z + 1];
+                }
+            }
         }
     }
 }
 
 void hpxfft::fft3D::distributed::loop::slab::split_vec(const std::size_t x, const std::size_t dummy)
 {
-    std::size_t part = values_vec_.n_z() / num_localities_;
+    const std::size_t part = values_vec_.n_z() / num_localities_;
     for (std::size_t j = 0; j < num_localities_; j++)
     {
         for (std::size_t y = 0; y < values_prep_[j].n_y(); ++y)
         {
-            for (std::size_t z = 0; z < part; z++)
-            {
-                values_prep_[j](x, y, z) = values_vec_(x, y, z + part * j);
-            }
+            // contiguous run in z: plain copy
+            std::copy_n(&values_vec_(x, y, part * j), part, &values_prep_[j](x, y, 0));
         }
     }
 }
 
 void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_t x, const std::size_t dummy)
 {
-    std::size_t part = permuted_vec_.n_z() / num_localities_;
     for (std::size_t j = 0; j < num_localities_; j++)
     {
+        const std::size_t part = 2 * (y_offsets_[j + 1] - y_offsets_[j]);
         for (std::size_t y = 0; y < permuted_vec_.n_y(); ++y)
         {
-            for (std::size_t z = 0; z < part; z++)
-            {
-                permuted_values_prep_[j](x, y, z) = permuted_vec_(x, y, z + part * j);
-            }
+            std::copy_n(&permuted_vec_(x, y, 2 * y_offsets_[j]), part, &permuted_values_prep_[j](x, y, 0));
         }
     }
 }
@@ -235,6 +352,7 @@ void hpxfft::fft3D::distributed::loop::slab::split_permuted_vec(const std::size_
 // 3D FFT algorithm
 hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::fft_3d_r2c()
 {
+    begin_transform("fft_3d_r2c");
     /////////////////////////////////////////////////////////////////
     // first dimension
     auto start_total = t_.now();
@@ -316,11 +434,18 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
     }
     else
     {
-        std::cout << "Communication scheme not specified during initialization\n";
-        hpx::finalize();
+        throw std::logic_error("Communication scheme not specified during initialization");
     }
     auto start_second_permute = t_.now();
-    values_vec_.rearrange(n_y_local_, dim_c_z_, 2 * dim_c_x_);
+    // the received y rows replace the input: reuse its buffer when the size is the same, otherwise allocate
+    if (n_y_local_ * dim_c_z_ * 2 * dim_c_x_ == values_vec_.n_x() * values_vec_.n_y() * values_vec_.n_z())
+    {
+        values_vec_.rearrange(n_y_local_, dim_c_z_, 2 * dim_c_x_);
+    }
+    else
+    {
+        values_vec_ = vector_3d(n_y_local_, dim_c_z_, 2 * dim_c_x_, vector_3d::uninitialized);
+    }
     // for every locality
     hpx::experimental::for_loop(
         hpx::execution::par,
@@ -360,6 +485,23 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             }
         });
     auto start_second_split = t_.now();
+    if (transposed_out_)
+    {
+        // result stays in y-z-x layout (y distributed): no final transpose
+        auto stop_total = t_.now();
+        measurements_["total"] = stop_total - start_total;
+        measurements_["first_fftw"] = start_first_permute - start_total;
+        measurements_["first_permute"] = start_second_fft - start_first_permute;
+        measurements_["second_fftw"] = start_first_split - start_second_fft;
+        measurements_["first_split"] = start_first_comm - start_first_split;
+        measurements_["first_comm"] = start_second_permute - start_first_comm;
+        measurements_["second_permute"] = start_third_fft - start_second_permute;
+        measurements_["third_fftw"] = start_second_split - start_third_fft;
+        measurements_["second_split"] = 0.0;
+        measurements_["second_comm"] = 0.0;
+        measurements_["third_permute"] = 0.0;
+        return std::move(values_vec_);
+    }
     // splitting matrix for final communication
     hpx::experimental::for_loop(
         hpx::execution::par,
@@ -409,7 +551,7 @@ hpxfft::fft3D::distributed::vector_3d hpxfft::fft3D::distributed::loop::slab::ff
             hpx::experimental::for_loop(
                 hpx::execution::par,
                 0,
-                n_y_local_,
+                communication_vec_[i].n_x(),  // y rows of locality i
                 [&](auto j)
                 {
                     // permute whole matrix y-z-x -> x-y-z

@@ -19,7 +19,7 @@ void print_vector_2d(const vector_2d<T> &input)
     {
         for (std::size_t j = 0; j < dim_y; ++j)
         {
-            real element = input(i, j);
+            T element = input(i, j);
             if (counter % 2 == 0)
             {
                 std::string msg = "({1} ";

@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# Benchmark script for shared memory 
+# Benchmark script for distributed memory
 # $1: FFTW planning flag (estimate/measure)
 # $2: Collective (scatter/all_to_all)
 # $3: HPX Parcelport (tcp/mpi/lci)
@@ -11,13 +11,15 @@ EXAMPLES_DIR=$TOP_DIR/examples
 
 # HPX-FFT implementations
 HPXFFT_EXECUTABLES=(
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_2d"
+    # the 2D agas component needs ny / 2 + 1 divisible by the number of localities, which the sizes below
+    # (powers of two) never are on more than one locality
+    # "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas_2d"
 )
 # FFTW implementations
 FFTW_EXECUTABLES=(
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp"
-    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_omp_2d"
+    "$EXAMPLES_DIR/fftw/build/fftw_mpi_threads_2d"
 )
 
 # Get current hostname
