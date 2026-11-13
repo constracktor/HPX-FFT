@@ -13,6 +13,7 @@
 #include "hpxfft/3D/shared/naive.hpp"
 #include "hpxfft/3D/shared/sync.hpp"
 #include "hpxfft/util/adapter_fftw.hpp"
+#include "hpxfft/util/check_shape.hpp"
 #include "hpxfft/util/fftw_wisdom.hpp"
 #include "reference_dft.hpp"
 #include <cmath>
@@ -20,6 +21,7 @@
 #include <filesystem>
 #include <hpx/hpx_init.hpp>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace
@@ -814,6 +816,64 @@ void run_wisdom(const params &p)
                + " files=" + std::to_string(leftovers));
 }
 
+// check_equal_local_shape called directly: equal shapes pass, and a difference on any single locality (first, middle,
+// last; in any dimension, in the rank, in the order of the dimensions) is rejected on EVERY locality, and the next
+// call with equal shapes works again. On one locality nothing is ever rejected.
+void run_shape(const params &p)
+{
+    using shape_t = std::vector<std::uint64_t>;
+    const std::size_t me = hpx::get_locality_id();
+    const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
+    std::size_t checks = 0;
+    std::string wrong;
+    auto expect = [&](const std::string &name, const shape_t &shape, bool rejected)
+    {
+        ++checks;
+        bool threw = false;
+        try
+        {
+            hpxfft::util::check_equal_local_shape(shape);
+        }
+        catch (const std::invalid_argument &)
+        {
+            threw = true;
+        }
+        if (threw != (rejected && nl > 1))
+        {
+            wrong += " " + name;
+        }
+    };
+    const shape_t base{ 4, 5, 6 };
+    expect("equal", base, false);
+    expect("equal_2d", { 7, 3 }, false);
+    for (std::size_t dim = 0; dim < 3; ++dim)
+    {
+        shape_t last = base;
+        if (me == nl - 1)
+        {
+            ++last[dim];
+        }
+        expect("last_dim" + std::to_string(dim), last, true);
+        shape_t first = base;
+        if (me == 0)
+        {
+            first[dim] += 2;
+        }
+        expect("first_dim" + std::to_string(dim), first, true);
+    }
+    shape_t middle = base;
+    if (nl > 2 && me == 1)
+    {
+        middle[1] = 7;
+    }
+    expect("middle", middle, nl > 2);
+    expect("rank", me == nl - 1 ? shape_t{ 4, 5 } : base, true);
+    expect("order", me == nl - 1 ? shape_t{ 6, 5, 4 } : base, true);
+    expect("all_different", { me, 5, 6 }, true);
+    expect("equal_again", base, false);
+    report(p, me, wrong.empty(), "checks=" + std::to_string(checks) + (wrong.empty() ? "" : " wrong:" + wrong));
+}
+
 int hpx_main(hpx::program_options::variables_map &vm)
 {
     params p;
@@ -857,6 +917,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
         else if (p.mode == "reuse")
         {
             run_reuse(p);
+        }
+        else if (p.mode == "shape")
+        {
+            run_shape(p);
         }
         else if (p.mode == "slab" || p.mode == "pencil")
         {

@@ -225,6 +225,12 @@ add_distributed_cases(2d 4 "12,10,0" "scatter;all_to_all")
 add_distributed_test(dist_shared_helpers 1 --mode=helpers --nx=6 --ny=8 --nz=8)
 # all localities export FFTW wisdom to the same file at once, then import it
 add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
+
+# check_equal_local_shape: equal shapes pass, a difference on any one locality
+# is rejected on all of them
+foreach(l 1 2 3 4)
+  add_distributed_test(dist_shape_L${l} ${l} --mode=shape)
+endforeach()
 # a second transform without a new initialize throws on every locality
 add_distributed_test(
   dist_twice_slab_L2
