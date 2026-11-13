@@ -237,6 +237,21 @@ foreach(l 1 4)
   add_distributed_test(dist_measurements_L${l} ${l} --mode=measurements --nx=8
                        --ny=8 --nz=6)
 endforeach()
+# getters of the local output block: throw before initialize and after a failed
+# one, valid after initialize and after the transform (uneven blocks; pencil on
+# 1 and 4 localities)
+foreach(l 1 2 3 4)
+  foreach(flag scatter all_to_all)
+    add_distributed_test(
+      dist_getters_L${l}_${flag}
+      ${l}
+      --mode=getters
+      --nx=12
+      --ny=10
+      --nz=9
+      --run=${flag})
+  endforeach()
+endforeach()
 # a second transform without a new initialize throws on every locality
 add_distributed_test(
   dist_twice_slab_L2

@@ -348,6 +348,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
 {
     // a failed initialize leaves the object without a transform to run
     ready_ = false;
+    initialized_ = false;
     // reject an unsupported run flag before any collective operation (the flag is the same on all localities)
     hpxfft::util::check_comm_flag(
         COMM_FLAG, { "scatter", "scatter_hierarchical", "all_to_all", "all_to_all_routed" }, "the 2D loop");
@@ -444,6 +445,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
             }
             // allow one transform
             ready_ = true;
+            initialized_ = true;
             return;
         }
         communicators_.resize(num_localities_);
@@ -492,6 +494,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
     }
     // allow one transform
     ready_ = true;
+    initialized_ = true;
 }
 
 // helpers

@@ -7,6 +7,7 @@
 #include "../../util/check_shape.hpp"
 #include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
+#include "../../util/transform_guard.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
 #include <hpx/modules/collectives.hpp>
@@ -49,10 +50,19 @@ struct loop
 
     real get_measurement(const std::string &name) const;
 
-    // y frequencies (complex numbers) held by this locality in the transposed output, and the first one
-    std::size_t local_y_count() const { return n_y_local_; }
+    // y frequencies (complex numbers) held by this locality in the transposed output, and the first one; valid after a
+    // successful initialize (also after the transform), std::logic_error before
+    std::size_t local_y_count() const
+    {
+        hpxfft::util::require_initialized(initialized_, "local_y_count of the 2D loop");
+        return n_y_local_;
+    }
 
-    std::size_t local_y_offset() const { return y_offsets_[this_locality_]; }
+    std::size_t local_y_offset() const
+    {
+        hpxfft::util::require_initialized(initialized_, "local_y_offset of the 2D loop");
+        return y_offsets_[this_locality_];
+    }
 
   private:
     // FFT backend
@@ -105,6 +115,9 @@ struct loop
     bool transposed_out_ = false;
     // set by a successful initialize, cleared by the transform (initialize + one transform per object)
     bool ready_ = false;
+    // set by a successful initialize, cleared at the start of initialize (not by the transform): the getters of the
+    // local output block are valid
+    bool initialized_ = false;
     // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
     // selects the reference implementation that routes the data through a root site
     bool routed_ = false;

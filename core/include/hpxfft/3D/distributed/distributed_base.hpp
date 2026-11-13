@@ -66,6 +66,9 @@ struct base
     // object, so a second call without a new initialize (or a call without any) throws std::logic_error
     void begin_transform(const char *name) { hpxfft::util::begin_transform(ready_, name); }
 
+    // the getters of the local output block throw std::logic_error before a successful initialize
+    void require_initialized(const char *name) const { hpxfft::util::require_initialized(initialized_, name); }
+
     // Throw std::invalid_argument on every locality if the run flag is not supported (call before any collective).
     static void check_comm_flag(const std::string &flag, const char *name)
     {
@@ -135,6 +138,9 @@ struct base
     bool scatter_sync_ = true;
     // set by a successful initialize, cleared by the transform
     bool ready_ = false;
+    // set by a successful initialize, cleared at the start of initialize (not by the transform): the getters of the
+    // local output block are valid
+    bool initialized_ = false;
     bool transposed_out_ = false;
     // all_to_all (run flag all_to_all) is a direct exchange between the localities; the run flag all_to_all_routed
     // selects the reference implementation that routes the data through a root site

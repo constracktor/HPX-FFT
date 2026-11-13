@@ -21,5 +21,17 @@ inline void begin_transform(bool &ready, const std::string &name)
     }
     ready = false;
 }
+
+// The getters of the local output block (local_y_count, local_y_offset, ...) read state that initialize sets. The
+// classes keep a second flag for them that initialize clears at its start and sets at its end; unlike the flag above,
+// the transform does not clear it (the getters describe the result of the transform). Throws std::logic_error if the
+// flag is not set (no initialize, or a failed one). `name` (the getter and the class) is used in the error message.
+inline void require_initialized(const bool initialized, const char *name)
+{
+    if (!initialized)
+    {
+        throw std::logic_error(std::string(name) + " needs a successful initialize: call initialize first");
+    }
+}
 }  // namespace hpxfft::util
 #endif  // hpxfft_util_transform_guard_H_INCLUDED

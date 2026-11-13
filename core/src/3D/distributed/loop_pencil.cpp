@@ -10,6 +10,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     // reject an unsupported run flag before any collective operation
     // a failed initialize leaves the object without a transform to run
     ready_ = false;
+    initialized_ = false;
     check_comm_flag(COMM_FLAG, "the pencil decomposition");
     // unique communicator names of this object (taken at the same point on every locality)
     const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/pencil/");
@@ -123,6 +124,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
             }
             // allow one transform
             ready_ = true;
+            initialized_ = true;
             return;
         }
         for (std::size_t i = 0; i < localities_per_dir_; ++i)
@@ -180,6 +182,7 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     }
     // allow one transform
     ready_ = true;
+    initialized_ = true;
 }
 
 // scatter communitcation

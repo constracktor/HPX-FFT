@@ -10,6 +10,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     // reject an unsupported run flag before any collective operation
     // a failed initialize leaves the object without a transform to run
     ready_ = false;
+    initialized_ = false;
     check_comm_flag(COMM_FLAG, "the slab decomposition");
     // unique communicator names of this object (taken at the same point on every locality)
     const std::string basename_prefix = hpxfft::util::unique_basename_prefix("hpxfft/slab/");
@@ -98,6 +99,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
             }
             // allow one transform
             ready_ = true;
+            initialized_ = true;
             return;
         }
         communicators_.resize(num_localities_);
@@ -143,6 +145,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     }
     // allow one transform
     ready_ = true;
+    initialized_ = true;
 }
 
 // scatter communitcation (flat or hierarchical communicators): the locality `root` sends one block to every locality

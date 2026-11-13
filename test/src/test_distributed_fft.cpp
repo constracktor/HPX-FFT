@@ -23,6 +23,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -1162,6 +1163,156 @@ void run_measurements(const params &p)
     report(p, me, wrong.empty(), wrong.empty() ? "measurements" : "wrong:" + wrong);
 }
 
+// getters of the local output block (slab, pencil, 2D loop) with the transposed output: they throw std::logic_error
+// before initialize and after a failed one, and give the block of this locality after initialize and after the
+// transform (where they describe the shape of the result)
+void run_getters(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
+    const std::size_t P = static_cast<std::size_t>(std::sqrt(double(nl)) + 0.5);
+    const std::size_t dcz = p.nz / 2 + 1;
+    const std::size_t dcy = p.ny / 2 + 1;
+    require_divisible(p.nx, nl, "nx");
+    std::string wrong;
+    // getter name -> expected value
+    using expectations = std::vector<std::pair<std::string, std::size_t>>;
+    auto check = [&](const std::string &cls, auto &f, const expectations &expected, const char *when)
+    {
+        for (const auto &[name, value] : expected)
+        {
+            const bool before = std::string(when) == "before_initialize" || std::string(when) == "after_failed";
+            try
+            {
+                std::size_t got = 0;
+                if (name == "local_y_count")
+                {
+                    got = f.local_y_count();
+                }
+                else if (name == "local_y_offset")
+                {
+                    got = f.local_y_offset();
+                }
+                else if constexpr (requires { f.local_z_count(); })
+                {
+                    got = name == "local_z_count" ? f.local_z_count() : f.local_z_offset();
+                }
+                if (before)
+                {
+                    wrong += " " + cls + ":" + name + "@" + when + "=accepted";
+                }
+                else if (got != value)
+                {
+                    wrong +=
+                        " " + cls + ":" + name + "@" + when + "=" + std::to_string(got) + "!=" + std::to_string(value);
+                }
+            }
+            catch (const std::logic_error &e)
+            {
+                if (!before || std::string(e.what()).find("call initialize first") == std::string::npos)
+                {
+                    wrong += " " + cls + ":" + name + "@" + when + "=threw:" + e.what();
+                }
+            }
+        }
+    };
+    // a run flag that every locality rejects before any collective: initialize fails, the getters throw again
+    auto fail_initialize = [&](auto &f, auto &&v, std::size_t n)
+    {
+        try
+        {
+            f.initialize(std::move(v), "bogus", "estimate", n);
+            wrong += " bogus_flag=accepted";
+        }
+        catch (const std::invalid_argument &)
+        { }
+    };
+    auto make3 = [&](std::size_t nxl, std::size_t nyl)
+    {
+        hpxfft::fft3D::distributed::vector_3d v(nxl, nyl, 2 * dcz);
+        for (std::size_t i = 0; i < nxl; ++i)
+        {
+            for (std::size_t j = 0; j < nyl; ++j)
+            {
+                for (std::size_t k = 0; k < 2 * dcz; ++k)
+                {
+                    v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+                }
+            }
+        }
+        return v;
+    };
+    {
+        const auto yo = hpxfft::util::block_offsets(p.ny, nl);
+        const expectations expected = { { "local_y_count", yo[me + 1] - yo[me] }, { "local_y_offset", yo[me] } };
+        hpxfft::fft3D::distributed::loop::slab f;
+        f.set_transposed_output(true);
+        check("slab", f, expected, "before_initialize");
+        f.initialize(make3(p.nx / nl, p.ny), p.run, "estimate", p.nz);
+        check("slab", f, expected, "after_initialize");
+        hpx::distributed::barrier(barrier_name("test_getters")).wait();
+        const auto out = f.fft_3d_r2c();
+        check("slab", f, expected, "after_transform");
+        if (out.n_x() != f.local_y_count() || out.n_y() != dcz || out.n_z() != 2 * p.nx)
+        {
+            wrong += " slab:result_shape";
+        }
+        fail_initialize(f, make3(p.nx / nl, p.ny), p.nz);
+        check("slab", f, expected, "after_failed");
+    }
+    if (P * P == nl)
+    {
+        require_divisible(p.nx, P, "nx");
+        require_divisible(p.ny, P, "ny");
+        const auto zo = hpxfft::util::block_offsets(dcz, P);
+        const std::size_t pz = me % P;
+        const std::size_t nyl = p.ny / P;
+        const expectations expected = { { "local_y_count", nyl },
+                                        { "local_y_offset", (me / P) * nyl },
+                                        { "local_z_count", zo[pz + 1] - zo[pz] },
+                                        { "local_z_offset", zo[pz] } };
+        hpxfft::fft3D::distributed::loop::pencil f;
+        f.set_transposed_output(true);
+        check("pencil", f, expected, "before_initialize");
+        f.initialize(make3(p.nx / P, nyl), p.run, "estimate", p.nz);
+        check("pencil", f, expected, "after_initialize");
+        hpx::distributed::barrier(barrier_name("test_getters")).wait();
+        const auto out = f.fft_3d_r2c();
+        check("pencil", f, expected, "after_transform");
+        if (out.n_x() != f.local_y_count() || out.n_y() != f.local_z_count() || out.n_z() != 2 * p.nx)
+        {
+            wrong += " pencil:result_shape";
+        }
+        fail_initialize(f, make3(p.nx / P, nyl), p.nz);
+        check("pencil", f, expected, "after_failed");
+    }
+    {
+        const auto yo = hpxfft::util::block_offsets(dcy, nl);
+        const expectations expected = { { "local_y_count", yo[me + 1] - yo[me] }, { "local_y_offset", yo[me] } };
+        params p2 = p;
+        p2.transposed = true;
+        p2.size_arg = -1;
+        hpxfft::fft2D::distributed::loop f;
+        check("2d_loop", f, expected, "before_initialize");
+        if (!initialize_2d(f, p2))
+        {
+            wrong += " 2d_loop:initialize_threw:" + g_error;
+        }
+        check("2d_loop", f, expected, "after_initialize");
+        hpx::distributed::barrier(barrier_name("test_getters")).wait();
+        const auto out = f.fft_2d_r2c();
+        check("2d_loop", f, expected, "after_transform");
+        if (out.n_row() != f.local_y_count() || out.n_col() != 2 * p.nx)
+        {
+            wrong += " 2d_loop:result_shape";
+        }
+        hpxfft::fft2D::distributed::vector_2d v(p.nx / nl, 2 * dcy);
+        fail_initialize(f, std::move(v), p.ny);
+        check("2d_loop", f, expected, "after_failed");
+    }
+    report(p, me, wrong.empty(), wrong.empty() ? "getters" : "wrong:" + wrong);
+}
+
 int hpx_main(hpx::program_options::variables_map &vm)
 {
     params p;
@@ -1213,6 +1364,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
         else if (p.mode == "measurements")
         {
             run_measurements(p);
+        }
+        else if (p.mode == "getters")
+        {
+            run_getters(p);
         }
         else if (p.mode == "slab" || p.mode == "pencil")
         {

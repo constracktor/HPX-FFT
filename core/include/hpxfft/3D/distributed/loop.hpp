@@ -52,10 +52,19 @@ struct slab : public base
     std::vector<std::size_t> y_offsets_;
 
   public:
-    // y rows held by this locality in the transposed output (set_transposed_output), and the first one
-    std::size_t local_y_count() const { return n_y_local_; }
+    // y rows held by this locality in the transposed output (set_transposed_output), and the first one; valid after a
+    // successful initialize (also after the transform), std::logic_error before
+    std::size_t local_y_count() const
+    {
+        require_initialized("local_y_count of the slab");
+        return n_y_local_;
+    }
 
-    std::size_t local_y_offset() const { return y_offsets_[this_locality_]; }
+    std::size_t local_y_offset() const
+    {
+        require_initialized("local_y_offset of the slab");
+        return y_offsets_[this_locality_];
+    }
 };
 
 struct pencil : public base
@@ -71,16 +80,33 @@ struct pencil : public base
     vector_3d fft_3d_r2c() override;
 
     // z frequencies (complex numbers) held by this locality in the transposed output (set_transposed_output), and the
-    // first one
-    std::size_t local_z_count() const { return n_z_local_; }
+    // first one. Like the y getters below: valid after a successful initialize (also after the transform),
+    // std::logic_error before
+    std::size_t local_z_count() const
+    {
+        require_initialized("local_z_count of the pencil");
+        return n_z_local_;
+    }
 
-    std::size_t local_z_offset() const { return z_offsets_[pos_dir_y_]; }
+    std::size_t local_z_offset() const
+    {
+        require_initialized("local_z_offset of the pencil");
+        return z_offsets_[pos_dir_y_];
+    }
 
     // y rows held by this locality in the transposed output (y_local, z_local, x), and the first one: the y block of
     // its position in x direction (not the y block of its input)
-    std::size_t local_y_count() const { return n_y_local_; }
+    std::size_t local_y_count() const
+    {
+        require_initialized("local_y_count of the pencil");
+        return n_y_local_;
+    }
 
-    std::size_t local_y_offset() const { return pos_dir_x_ * n_y_local_; }
+    std::size_t local_y_offset() const
+    {
+        require_initialized("local_y_offset of the pencil");
+        return pos_dir_x_ * n_y_local_;
+    }
 
   private:
     // permute (only local data)
