@@ -197,7 +197,10 @@ void hpxfft::fft2D::shared::loop::initialize(vector_2d values_vec, const std::st
 }
 
 // helpers
-hpxfft::real hpxfft::fft2D::shared::loop::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::shared::loop::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}
 
 void hpxfft::fft2D::shared::loop::write_plans_to_file(std::string file_path)
 {

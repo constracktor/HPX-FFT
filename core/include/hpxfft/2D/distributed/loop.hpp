@@ -5,6 +5,7 @@
 #include "../../util/adapter_fftw.hpp"
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
@@ -46,7 +47,7 @@ struct loop
         hierarchical_flat_threshold_ = flat_fallback_threshold;
     }
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
     // y frequencies (complex numbers) held by this locality in the transposed output, and the first one
     std::size_t local_y_count() const { return n_y_local_; }

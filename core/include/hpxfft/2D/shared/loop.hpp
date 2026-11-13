@@ -3,6 +3,7 @@
 #define hpxfft_shared_loop_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"              // for hpxfft::util::vector_2d
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
@@ -25,7 +26,7 @@ struct loop
 
     vector_2d fft_2d_r2c_seq();
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
     void write_plans_to_file(std::string file_path);
 

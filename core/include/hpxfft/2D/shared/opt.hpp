@@ -3,6 +3,7 @@
 #define hpxfft_shared_opt_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"  // for hpxfft::util::vector_2d
 #include <hpx/future.hpp>
@@ -26,7 +27,7 @@ struct opt
     // new initialize throws std::logic_error.
     vector_2d fft_2d_r2c();
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
   private:
     // FFT backend

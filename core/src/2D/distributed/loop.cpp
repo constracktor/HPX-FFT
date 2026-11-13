@@ -495,4 +495,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
 }
 
 // helpers
-hpxfft::real hpxfft::fft2D::distributed::loop::get_measurement(std::string name) { return measurements_[name]; }
+hpxfft::real hpxfft::fft2D::distributed::loop::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}

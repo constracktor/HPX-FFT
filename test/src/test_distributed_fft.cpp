@@ -23,6 +23,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -900,6 +901,267 @@ void run_shape(const params &p)
     report(p, me, wrong.empty(), "checks=" + std::to_string(checks) + (wrong.empty() ? "" : " wrong:" + wrong));
 }
 
+// get_measurement of one class: an unknown name throws std::out_of_range (before initialize, before the transform for
+// the timings of the transform, a misspelled name, twice: the first lookup must not add it), and the names recorded by
+// initialize (`after_init`) and by the transform (`after_transform`) can be read. Problems are appended to `wrong`.
+template <typename Fft, typename Init, typename Transform>
+void check_measurements(const std::string &cls,
+                        Fft &f,
+                        Init &&init,
+                        Transform &&transform,
+                        const std::vector<std::string> &after_init,
+                        const std::vector<std::string> &after_transform,
+                        std::string &wrong)
+{
+    auto expect_unknown = [&](const std::string &key, const char *when)
+    {
+        try
+        {
+            f.get_measurement(key);
+            wrong += " " + cls + ":" + key + "@" + when + "=accepted";
+        }
+        catch (const std::out_of_range &e)
+        {
+            if (std::string(e.what()).find("Unknown measurement '" + key + "'") == std::string::npos)
+            {
+                wrong += " " + cls + ":" + key + "@" + when + "=wrong_message:" + e.what();
+            }
+        }
+    };
+    auto expect_known = [&](const std::vector<std::string> &keys, const char *when)
+    {
+        for (const std::string &key : keys)
+        {
+            try
+            {
+                if (!(f.get_measurement(key) >= 0.0))
+                {
+                    wrong += " " + cls + ":" + key + "@" + when + "=negative";
+                }
+            }
+            catch (const std::exception &e)
+            {
+                wrong += " " + cls + ":" + key + "@" + when + "=threw:" + e.what();
+            }
+        }
+    };
+    expect_unknown("total", "before_initialize");
+    init();
+    expect_known(after_init, "after_initialize");
+    expect_unknown("total", "after_initialize");
+    transform();
+    expect_known(after_init, "after_transform");
+    expect_known(after_transform, "after_transform");
+    expect_unknown("totl", "after_transform");
+    expect_unknown("totl", "after_transform_again");
+    expect_unknown("", "after_transform");
+}
+
+// get_measurement of every class that has one: the shared classes (on every locality) and the distributed ones
+void run_measurements(const params &p)
+{
+    const std::size_t me = hpx::get_locality_id();
+    const std::size_t nl = hpx::get_num_localities(hpx::launch::sync);
+    const std::size_t P = static_cast<std::size_t>(std::sqrt(double(nl)) + 0.5);
+    const std::size_t dcz = p.nz / 2 + 1;
+    const std::size_t dcy = p.ny / 2 + 1;
+    require_divisible(p.nx, nl, "nx");
+    require_divisible(p.ny, P, "ny");
+    auto make3 = [&](std::size_t nxl, std::size_t nyl)
+    {
+        hpxfft::fft3D::distributed::vector_3d v(nxl, nyl, 2 * dcz);
+        for (std::size_t i = 0; i < nxl; ++i)
+        {
+            for (std::size_t j = 0; j < nyl; ++j)
+            {
+                for (std::size_t k = 0; k < 2 * dcz; ++k)
+                {
+                    v(i, j, k) = k < p.nz ? reference::input_value(i, j, k) : kPad;
+                }
+            }
+        }
+        return v;
+    };
+    auto make2 = [&](std::size_t nxl)
+    {
+        hpxfft::fft2D::distributed::vector_2d v(nxl, 2 * dcy);
+        for (std::size_t i = 0; i < nxl; ++i)
+        {
+            for (std::size_t j = 0; j < 2 * dcy; ++j)
+            {
+                v(i, j) = j < p.ny ? reference::input_value(i, j, 0) : kPad;
+            }
+        }
+        return v;
+    };
+    const std::vector<std::string> plan_keys = { "plan", "plan_flops" };
+    const std::vector<std::string> shared_3d_keys = { "total",          "first_fftw", "first_permute", "second_fftw",
+                                                      "second_permute", "third_fftw", "third_permute" };
+    const std::vector<std::string> shared_2d_keys = {
+        "total", "first_fftw", "first_trans", "second_fftw", "second_trans"
+    };
+    std::string wrong;
+    {
+        hpxfft::fft3D::shared::loop f;
+        check_measurements(
+            "shared3d_loop",
+            f,
+            [&] { f.initialize(make3(p.nx, p.ny), "estimate", p.nz); },
+            [&] { f.fft_3d_r2c_par(); },
+            plan_keys,
+            shared_3d_keys,
+            wrong);
+    }
+    {
+        hpxfft::fft3D::shared::naive f;
+        check_measurements(
+            "shared3d_naive",
+            f,
+            [&] { f.initialize(make3(p.nx, p.ny), "estimate", p.nz); },
+            [&] { f.fft_3d_r2c(); },
+            plan_keys,
+            { "total" },
+            wrong);
+    }
+    {
+        hpxfft::fft3D::shared::sync f;
+        check_measurements(
+            "shared3d_sync",
+            f,
+            [&] { f.initialize(make3(p.nx, p.ny), "estimate", p.nz); },
+            [&] { f.fft_3d_r2c(); },
+            plan_keys,
+            shared_3d_keys,
+            wrong);
+    }
+    {
+        hpxfft::fft2D::shared::loop f;
+        check_measurements(
+            "shared2d_loop",
+            f,
+            [&] { f.initialize(make2(p.nx), "estimate", p.ny); },
+            [&] { f.fft_2d_r2c_par(); },
+            plan_keys,
+            shared_2d_keys,
+            wrong);
+    }
+    {
+        hpxfft::fft2D::shared::sync f;
+        check_measurements(
+            "shared2d_sync",
+            f,
+            [&] { f.initialize(make2(p.nx), "estimate", p.ny); },
+            [&] { f.fft_2d_r2c(); },
+            {},
+            shared_2d_keys,
+            wrong);
+    }
+    {
+        hpxfft::fft2D::shared::naive f;
+        check_measurements(
+            "shared2d_naive",
+            f,
+            [&] { f.initialize(make2(p.nx), "estimate", p.ny); },
+            [&] { f.fft_2d_r2c(); },
+            {},
+            { "total" },
+            wrong);
+    }
+    {
+        hpxfft::fft2D::shared::opt f;
+        check_measurements(
+            "shared2d_opt",
+            f,
+            [&] { f.initialize(make2(p.nx), "estimate", p.ny); },
+            [&] { f.fft_2d_r2c(); },
+            {},
+            { "total" },
+            wrong);
+    }
+    // distributed classes: initialize and the transform are collective, every locality runs the same sequence
+    {
+        hpxfft::fft2D::distributed::loop f;
+        check_measurements(
+            "2d_loop",
+            f,
+            [&]
+            {
+                f.initialize(make2(p.nx / nl), "scatter", "estimate", p.ny);
+                hpx::distributed::barrier(barrier_name("test_measurements")).wait();
+            },
+            [&] { f.fft_2d_r2c(); },
+            {},
+            { "total",
+              "first_fftw",
+              "first_split",
+              "first_comm",
+              "first_trans",
+              "second_fftw",
+              "second_split",
+              "second_comm",
+              "second_trans" },
+            wrong);
+    }
+    {
+        hpxfft::fft3D::distributed::loop::slab f;
+        check_measurements(
+            "slab",
+            f,
+            [&]
+            {
+                f.initialize(make3(p.nx / nl, p.ny), "scatter", "estimate", p.nz);
+                hpx::distributed::barrier(barrier_name("test_measurements")).wait();
+            },
+            [&] { f.fft_3d_r2c(); },
+            {},
+            { "total",
+              "first_fftw",
+              "first_permute",
+              "second_fftw",
+              "first_split",
+              "first_comm",
+              "second_permute",
+              "third_fftw",
+              "second_split",
+              "second_comm",
+              "third_permute" },
+            wrong);
+    }
+    if (P * P == nl)
+    {
+        require_divisible(p.nx, P, "nx");
+        hpxfft::fft3D::distributed::loop::pencil f;
+        check_measurements(
+            "pencil",
+            f,
+            [&]
+            {
+                f.initialize(make3(p.nx / P, p.ny / P), "scatter", "estimate", p.nz);
+                hpx::distributed::barrier(barrier_name("test_measurements")).wait();
+            },
+            [&] { f.fft_3d_r2c(); },
+            {},
+            { "total",
+              "first_fftw",
+              "first_split",
+              "first_comm",
+              "first_permute",
+              "second_fftw",
+              "second_split",
+              "second_comm",
+              "second_permute",
+              "third_fftw",
+              "third_split",
+              "third_comm",
+              "third_permute",
+              "fourth_split",
+              "fourth_comm",
+              "fourth_permute" },
+            wrong);
+    }
+    report(p, me, wrong.empty(), wrong.empty() ? "measurements" : "wrong:" + wrong);
+}
+
 int hpx_main(hpx::program_options::variables_map &vm)
 {
     params p;
@@ -947,6 +1209,10 @@ int hpx_main(hpx::program_options::variables_map &vm)
         else if (p.mode == "shape")
         {
             run_shape(p);
+        }
+        else if (p.mode == "measurements")
+        {
+            run_measurements(p);
         }
         else if (p.mode == "slab" || p.mode == "pencil")
         {

@@ -231,6 +231,12 @@ add_distributed_test(dist_wisdom_L4 4 --mode=wisdom --nx=48)
 foreach(l 1 2 3 4)
   add_distributed_test(dist_shape_L${l} ${l} --mode=shape)
 endforeach()
+# get_measurement: unknown names throw std::out_of_range, the recorded ones can
+# be read (shared classes and the distributed ones)
+foreach(l 1 4)
+  add_distributed_test(dist_measurements_L${l} ${l} --mode=measurements --nx=8
+                       --ny=8 --nz=6)
+endforeach()
 # a second transform without a new initialize throws on every locality
 add_distributed_test(
   dist_twice_slab_L2

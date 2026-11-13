@@ -6,6 +6,7 @@
 #include "../../util/blocks.hpp"
 #include "../../util/check_shape.hpp"
 #include "../../util/comm_flag.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
 #include "../../util/transform_guard.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
@@ -35,7 +36,7 @@ struct base
     // calling it again without a new initialize throws std::logic_error.
     virtual vector_3d fft_3d_r2c() = 0;
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
     // Skip the final exchange(s) and keep the result in the transposed layout (like FFTW_MPI_TRANSPOSED_OUT).
     void set_transposed_output(bool transposed_out) { transposed_out_ = transposed_out; }
@@ -145,7 +146,10 @@ struct base
     std::size_t hierarchical_flat_threshold_ = 16;
 };
 
-inline real hpxfft::fft3D::distributed::base::get_measurement(std::string name) { return measurements_[name]; }
+inline real hpxfft::fft3D::distributed::base::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}
 
 inline void hpxfft::fft3D::distributed::base::fft_1d_r2c_inplace(const std::size_t i, const std::size_t j)
 {

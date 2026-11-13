@@ -3,6 +3,7 @@
 #define hpxfft_shared_base_3D_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
 #include "../../util/real.hpp"
 #include "../../util/vector_3d.hpp"              // for hpxfft::util::vector_3d
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
@@ -16,7 +17,7 @@ struct base
   public:
     base() = default;
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
   protected:
     // FFT backend
@@ -48,7 +49,10 @@ struct base
     bool ready_ = false;
 };
 
-inline real hpxfft::fft3D::shared::base::get_measurement(std::string name) { return measurements_[name]; }
+inline real hpxfft::fft3D::shared::base::get_measurement(const std::string &name) const
+{
+    return hpxfft::util::get_measurement(measurements_, name);
+}
 
 inline void hpxfft::fft3D::shared::base::fft_1d_r2c_inplace(const std::size_t i, const std::size_t j)
 {
