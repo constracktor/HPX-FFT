@@ -1,6 +1,8 @@
 #!/usr/bin/bash
 #SBATCH --output=output_compile_tests_%j.log      # Standard output log
 #SBATCH --error=output_error_compile_tests_%j.log        # Error log file
+# run from the repository root, also when started from another directory (sbatch: the submit directory)
+cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" || exit 1
 ################################################################################
 # Config
 ################################################################################
