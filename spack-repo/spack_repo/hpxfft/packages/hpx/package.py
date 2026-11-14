@@ -138,8 +138,9 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("mpi", when="networking=mpi")
     depends_on("mpi", when="networking=all")
     depends_on("mpi", when="+async_mpi")
-    depends_on("lci", when="networking=lci")
-    depends_on("lci", when="networking=all")
+    # HPX 2 needs LCI 2.0 or newer, which the lci package does not offer: HPX fetches it itself (HPX_WITH_FETCH_LCI)
+    depends_on("lci", when="@:1 networking=lci")
+    depends_on("lci", when="@:1 networking=all")
 
     depends_on("cuda", when="+async_cuda")
 
@@ -282,6 +283,7 @@ class Hpx(CMakePackage, CudaPackage, ROCmPackage):
                 format_max_cpu_count(spec.variants["max_cpu_count"].value),
             ),
             self.define("HPX_WITH_PARCELPORT_LCI", spec.satisfies("networking=lci") or spec.satisfies("networking=all")),
+            self.define("HPX_WITH_FETCH_LCI", spec.satisfies("@2:")),
             self.define_from_variant("HPX_WITH_GENERIC_CONTEXT_COROUTINES", "generic_coroutines"),
             self.define("BOOST_ROOT", spec["boost"].prefix),
             self.define("HWLOC_ROOT", spec["hwloc"].prefix),
