@@ -23,7 +23,7 @@ PARTITION=$8
 # Get run command
 COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((NODES_START**2 - 1))] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
 EXECUTABLE=$1
-ARGUMENTS="$BASE_SIZE $BASE_SIZE $BASE_SIZE 2 0"
+ARGUMENTS="$BASE_SIZE $BASE_SIZE $BASE_SIZE 2"
 # Strong scaling loop from 2^pow_start to 2^pow_stop nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $THREADS $ARGUMENTS
 $COMMAND $EXECUTABLE $THREADS $ARGUMENTS 1
