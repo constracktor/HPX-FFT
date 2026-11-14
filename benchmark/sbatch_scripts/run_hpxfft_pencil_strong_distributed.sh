@@ -27,7 +27,7 @@ PARCELPORT=${10}
 OPTIONS=""
 COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - NODES_START**2)))-15] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
 EXECUTABLE=$1
-ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"
+ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$BASE_SIZE --plan=$2 --run=$6"
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
 # Strong scaling loop from NODES_START^2 to NODES_STOP^2 nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS

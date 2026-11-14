@@ -26,7 +26,7 @@ COMMAND="srun -N 1 -n 1 -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="$((2**POW_START)) $((2**POW_START)) $2"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
-    ARGUMENTS="$((2**POW_START)) $((2**POW_START)) $((2**POW_START-2)) $2"
+    ARGUMENTS="$((2**POW_START)) $((2**POW_START)) $((2**POW_START)) $2"
 fi
 # Problem size scaling loop from 2^pow_start to 2^pow_stop
 $COMMAND $EXECUTABLE $THREADS $ARGUMENTS 1

@@ -24,7 +24,7 @@ COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((2**POW_START
 EXECUTABLE=$1
 ARGUMENTS="$BASE_SIZE $BASE_SIZE $2"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
-    ARGUMENTS="$BASE_SIZE $BASE_SIZE $((BASE_SIZE-2)) $2"
+    ARGUMENTS="$BASE_SIZE $BASE_SIZE $BASE_SIZE $2"
 fi
 # Strong scaling loop from 2^pow_start to 2^pow_stop nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $THREADS $ARGUMENTS
