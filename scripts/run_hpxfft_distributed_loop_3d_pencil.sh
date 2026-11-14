@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-#SBATCH --output=output/output_hpxfft_distributed_loop_3d_%j.log        # Standard output log
-#SBATCH --error=output/error/error_hpxfft_distributed_loop_3d_%j.log      # Error log file
+#SBATCH --output=output_hpxfft_distributed_loop_3d_%j.log        # Standard output log
+#SBATCH --error=output_error_hpxfft_distributed_loop_3d_%j.log      # Error log file
 #SBATCH --ntasks=4
 #SBATCH --partition=buran
 #SBATCH --nodes=4
