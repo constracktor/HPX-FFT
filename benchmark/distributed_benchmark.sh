@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 # Benchmark script for distributed memory
+# Runs one benchmark after the other in the foreground (each step is an srun from this shell, not an sbatch job):
+# start it in tmux/screen or with nohup, it takes hours.
 # $1: FFTW planning flag (estimate/measure)
 # $2: Collective (scatter/all_to_all)
 # $3: HPX Parcelport (tcp/mpi/lci)
@@ -81,7 +83,7 @@ START_NODES_POW=0
 # Loop over HPX-FFT executables
 RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_strong_distributed.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
+  echo "Running executable: $EXE"
 
   $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_NODES_POW $NODES_POW $BASE_SIZE $COLLECTIVE $THREADS $LOOP $PARTITION $PARCELPORT
@@ -91,7 +93,7 @@ done
 RUN_SCRIPT="$SCRIPT_DIR/run_fftw_strong_distributed.sh"
 # Loop over executables
 for EXE in "${FFTW_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
+  echo "Running executable: $EXE"
 
   $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_NODES_POW $NODES_POW $BASE_SIZE $THREADS $LOOP $PARTITION
@@ -112,7 +114,7 @@ START_THREAD_POW=0
 # Loop over HPX-FFT executables
 RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_weak_distributed.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
+  echo "Running executable: $EXE"
 
   $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_NODES_POW $NODES_POW $BASE_SIZE $COLLECTIVE $THREADS $LOOP $PARTITION $PARCELPORT
@@ -122,7 +124,7 @@ done
 RUN_SCRIPT="$SCRIPT_DIR/run_fftw_weak_distributed.sh"
 # Loop over executables
 for EXE in "${FFTW_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
+  echo "Running executable: $EXE"
 
   $RUN_SCRIPT \
     $EXE $FFTW_PLAN $START_NODES_POW $NODES_POW $BASE_SIZE $THREADS $LOOP $PARTITION
