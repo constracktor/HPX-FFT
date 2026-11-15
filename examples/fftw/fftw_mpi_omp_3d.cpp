@@ -1,6 +1,7 @@
 #include "fftw3-mpi.h"
 #include "omp.h"
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -14,6 +15,11 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char *argv[])
 {
+    // output directories of the runtime and plan files
+    std::error_code dir_ec;
+    std::filesystem::create_directories("runtimes", dir_ec);
+    std::filesystem::create_directories("plans", dir_ec);
+
     // nodes ranks  prog         threads N_X  N_Y  N_Z   plan  header
     // srun   -N 2  -n 4 fftw_mpi_omp_3d   4     8   14   20  estimate  0
     // mpirun       -n 4 fftw_mpi_omp_3d   4     8   14   20  estimate  0

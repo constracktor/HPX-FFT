@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -18,6 +19,11 @@ using namespace p3dfft;
 
 int main(int argc, char *argv[])
 {
+    // output directories of the runtime and plan files
+    std::error_code dir_ec;
+    std::filesystem::create_directories("runtimes", dir_ec);
+    std::filesystem::create_directories("plans", dir_ec);
+
     // nodes ranks    prog          threads N_X  N_Y  N_Z   ndim  header
     // srun   -N 2  -n 4 p3dfft_mpi_omp      4      8   14   20    2     0
     // mpirun       -n 4 p3dfft_mpi_omp      4      8   14   20    2     0
