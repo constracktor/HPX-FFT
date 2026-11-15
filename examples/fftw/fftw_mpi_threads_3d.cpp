@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         {
             for (int k = 0; k < dim_r_z; ++k)
             {
-                input[(dim_r_z + 2) * i * dim_c_y + (dim_r_z + 2) * j + k] = k;
+                input[std::size_t(dim_r_z + 2) * i * dim_c_y + std::size_t(dim_r_z + 2) * j + k] = k;
             }
         }
     }

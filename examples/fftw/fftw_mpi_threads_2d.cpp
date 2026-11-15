@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     {
         for (int j = 0; j < dim_r_y; ++j)
         {
-            input[(dim_r_y + 2) * i + j] = j;
+            input[std::size_t(dim_r_y + 2) * i + j] = j;
         }
     }
     // std::cout << "Node: " << rank + 1 << " / " << n_ranks << std::endl;

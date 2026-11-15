@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
     ////////////////////////////////////////////////////////////////
     // FFTW plan
-    vector input(2 * dim_c_x * dim_c_y);
+    vector input(std::size_t(2) * dim_c_x * dim_c_y);
     auto start_plan_fftw_r2c = t.now();
     fftw_plan plan_r2c_2d = fftw_plan_dft_r2c_2d(
         dim_c_x, dim_r_y, input.data(), reinterpret_cast<fftw_complex *>(input.data()), FFTW_PLAN_FLAG);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
     {
         for (int j = 0; j < dim_r_y; ++j)
         {
-            input[(dim_r_y + 2) * i + j] = j;
+            input[std::size_t(dim_r_y + 2) * i + j] = j;
         }
     }
     // print_real(input, dim_c_x, dim_r_y, 0);
