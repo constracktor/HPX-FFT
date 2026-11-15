@@ -28,11 +28,8 @@ ARGUMENTS="--nx=$((2**POW_START)) --ny=$((2**POW_START)) --plan=$2"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="--nx=$((2**POW_START)) --ny=$((2**POW_START)) --nz=$((2**POW_START)) --plan=$2"
 fi
-# the agas components start one task per row, the guard pages of their thread stacks exceed vm.max_map_count
-EXTRA_ARGS=""
-if [[ "$(basename "$EXECUTABLE")" == *"agas"* ]]; then
-    EXTRA_ARGS="--hpx:ini=hpx.stacks.use_guard_pages=0"
-fi
+# the large sizes start one task per row: with guard pages the thread stacks exceed vm.max_map_count (HPX then hangs)
+EXTRA_ARGS="--hpx:ini=hpx.stacks.use_guard_pages=0"
 # Problem size scaling loop from 2^pow_start to 2^pow_stop
 $COMMAND $EXECUTABLE $ARGUMENTS $EXTRA_ARGS --header=true
 for (( j=1; j<$LOOP; j=j+1 ))
