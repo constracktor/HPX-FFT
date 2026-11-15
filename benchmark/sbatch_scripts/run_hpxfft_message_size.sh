@@ -20,7 +20,7 @@ PARTITION=$7
 PARCELPORT=$8
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-01] -N 2 -n 2 -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N 2 -n 2 -c $THREADS"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan="estimate" --run=$4"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
