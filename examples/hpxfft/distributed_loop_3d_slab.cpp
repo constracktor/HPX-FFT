@@ -141,7 +141,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
             runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;plan;comm_flag;total;initialization;" << "fft_3d_total;"
                          << "first_fftw;" << "first_permute;" << "second_fftw;" << "first_split;" << "first_comm;"
                          << "second_permute;" << "third_fftw;" << "second_split;" << "second_comm;"
-                         << "third_permute\n";
+                         << "third_permute;\n";
         }
         runtime_file << num_localities << ";" << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";"
                      << dim_r_z << ";" << plan_flag << ";" << run_flag << ";" << total << ";" << init << ";"

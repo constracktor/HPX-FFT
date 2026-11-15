@@ -156,7 +156,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
                          << "first_fftw;" << "first_split;" << "first_comm;" << "first_permute;" << "second_fftw;"
                          << "second_split;" << "second_comm;" << "second_permute;" << "third_fftw;" << "third_split;"
                          << "third_comm;" << "third_permute;" << "fourth_split;" << "fourth_comm;"
-                         << "fourth_permute\n";
+                         << "fourth_permute;\n";
         }
         runtime_file
             << num_localities << ";" << hpx::get_os_thread_count() << ";" << dim_c_x << ";" << dim_c_y << ";" << dim_r_z
