@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
             runtime_file.open("runtimes/runtimes_p3dfft_mpi_omp_3d.txt", std::ios_base::app);
             if (print_header)
             {
-                runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;ndim;planning;initialization,p3dfft_3d_r2c;\n";
+                runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;ndim;planning;initialization;p3dfft_3d_r2c;\n";
             }
             runtime_file << n_ranks << ";" << n_threads << ";" << dim_r_x << ";" << dim_r_y << ";" << dim_r_z << ";"
                          << ndim << ";" << runtimes["plan_p3dfft_r2c"] << ";" << runtimes["init_p3dfft_r2c"] << ";"
