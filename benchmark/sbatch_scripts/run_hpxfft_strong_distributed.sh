@@ -26,7 +26,12 @@ PARCELPORT=${10}
 OPTIONS=""
 COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
 EXECUTABLE=$1
-ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2 --run=$6"
+# the 2D agas component needs ny / 2 + 1 divisible by the number of localities: ny = size - 2 (nx = size)
+NY_OFFSET=0
+if [[ "$(basename "$EXECUTABLE")" == *"agas"* ]]; then
+    NY_OFFSET=2
+fi
+ARGUMENTS="--nx=$BASE_SIZE --ny=$((BASE_SIZE - NY_OFFSET)) --plan=$2 --run=$6"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
     ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$BASE_SIZE --plan=$2 --run=$6"
 fi
