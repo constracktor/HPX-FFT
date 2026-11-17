@@ -13,6 +13,9 @@
 
 # Log Info
 pwd; hostname; date
+# Pin OpenMP threads to cores (inside the CPUs Slurm gives each task)
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
 # Parameters
 NODES_START=$3
 NODES_STOP=$4
