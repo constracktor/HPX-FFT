@@ -15,8 +15,6 @@ pwd; hostname; date
 # Pin OpenMP threads to cores (inside the CPUs Slurm gives each task)
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
-# Sleeping instead of spinning idle OpenMP threads: with 48 spinning threads on 48 cores FFTW omp is up to 100x slower
-export OMP_WAIT_POLICY=passive
 # Parameters
 POW_START=$3
 POW_STOP=$4
