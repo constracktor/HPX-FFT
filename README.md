@@ -222,8 +222,19 @@ and write the runtimes to `<shared|distributed|message>_benchmark_on_<partition>
   `--run`.
 - `message_3D_benchmark.sh <run> tcp/mpi/lci`: message size scaling of the slab example on two nodes.
 - `shared_benchmark.sh`, `distributed_benchmark.sh`, `message_benchmark.sh`: the 2D counterparts (same arguments)
-  with the `*_2d` examples. The distributed and message scripts skip `hpxfft_distributed_agas_2d`: the 2D agas
-  component needs `ny / 2 + 1` divisible by the number of localities, which their power-of-two sizes never are.
+  with the `*_2d` examples. The 2D agas component needs an even `ny` with `ny / 2 + 1` divisible by the number of
+  localities, so the run scripts use `ny = size - 2` (and `nx = size`) for `hpxfft_distributed_agas_2d`.
+
+Notes on the run scripts:
+
+- The FFTW and P3DFFT++ scripts pin the OpenMP threads (`OMP_PROC_BIND=close`, `OMP_PLACES=cores`) inside the CPUs that
+  Slurm gives each task.
+- The HPX size runs pass `--hpx:ini=hpx.stacks.use_guard_pages=0`: every HPX thread stack with a guard page needs two
+  memory mappings, and at 65536 x 65536 (65536 tasks) the process reaches `vm.max_map_count` ("mmap() failed to
+  allocate thread stack") and hangs.
+- The FFTW and P3DFFT++ examples create `runtimes/` and `plans/` in the working directory.
+- Check that the nodes are healthy before timing: a node with stray processes that keep cores busy (`ps`, load average
+  of an idle node) slows 48-thread runs by up to two orders of magnitude.
 
 ## License
 
