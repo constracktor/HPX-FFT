@@ -232,6 +232,11 @@ Notes on the run scripts:
 - The HPX size runs pass `--hpx:ini=hpx.stacks.use_guard_pages=0`: every HPX thread stack with a guard page needs two
   memory mappings, and at 65536 x 65536 (65536 tasks) the process reaches `vm.max_map_count` ("mmap() failed to
   allocate thread stack") and hangs.
+- The run scripts start every program with `numactl --interleave=all` (if `numactl` exists; disable with
+  `NUMA_INTERLEAVE=0`). The examples fill their input from one thread, so without it all pages sit in one NUMA domain
+  and large sizes are up to 10x slower (65536 x 65536 2D on a node with 8 NUMA domains: 32 s instead of 2.8 s for the
+  HPX-FFT loop). The FFTW and P3DFFT++ examples additionally allocate without zero-filling and touch their input with
+  all threads (`examples/fftw/first_touch.hpp`).
 - The FFTW and P3DFFT++ examples create `runtimes/` and `plans/` in the working directory.
 - Check that the nodes are healthy before timing: a node with stray processes that keep cores busy (`ps`, load average
   of an idle node) slows 48-thread runs by up to two orders of magnitude.
