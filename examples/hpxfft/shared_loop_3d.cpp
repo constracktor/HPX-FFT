@@ -4,6 +4,7 @@
 #include "hpxfft/util/print_vector_3d.hpp"  // for hpxfft::util::print_vector_3d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
+#include <hpx/parallel/algorithms/for_loop.hpp>
 #include <iostream>  // for std::cout
 #include <numeric>   // for std::iota
 
@@ -34,17 +35,22 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::fft3D::shared::vector_3d values_vec(dim_c_x, dim_c_y, 2 * dim_c_z);
-    for (std::size_t i = 0; i < dim_c_x; ++i)
-    {
-        for (std::size_t j = 0; j < dim_c_y; ++j)
+    hpxfft::fft3D::shared::vector_3d values_vec(
+        dim_c_x, dim_c_y, 2 * dim_c_z, hpxfft::fft3D::shared::vector_3d::uninitialized);
+    hpx::experimental::for_loop(
+        hpx::execution::par,
+        std::size_t(0),
+        dim_c_x,
+        [&](std::size_t i)
         {
-            for (std::size_t k = 0; k < dim_r_z; ++k)
+            for (std::size_t j = 0; j < dim_c_y; ++j)
             {
-                values_vec(i, j, k) = k;
+                for (std::size_t k = 0; k < 2 * dim_c_z; ++k)
+                {
+                    values_vec(i, j, k) = k < dim_r_z ? double(k) : 0.0;
+                }
             }
-        }
-    }
+        });
 
     ////////////////////////////////////////////////////////////////
     // Computation

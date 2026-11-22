@@ -5,6 +5,7 @@
 #include <chrono>                           // for std::chrono::seconds
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
+#include <hpx/parallel/algorithms/for_loop.hpp>
 #include <iostream>  // for std::cout
 #include <numeric>   // for std::iota
 #include <thread>    // for std::this_thread::sleep_for
@@ -44,14 +45,19 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::fft2D::distributed::vector_2d values_vec(n_x_local, 2 * dim_c_y);
-    for (std::size_t i = 0; i < n_x_local; ++i)
-    {
-        for (std::size_t j = 0; j < dim_r_y; ++j)
+    hpxfft::fft2D::distributed::vector_2d values_vec(
+        n_x_local, 2 * dim_c_y, hpxfft::fft2D::distributed::vector_2d::uninitialized);
+    hpx::experimental::for_loop(
+        hpx::execution::par,
+        std::size_t(0),
+        n_x_local,
+        [&](std::size_t i)
         {
-            values_vec(i, j) = j;
-        }
-    }
+            for (std::size_t j = 0; j < 2 * dim_c_y; ++j)
+            {
+                values_vec(i, j) = j < dim_r_y ? double(j) : 0.0;
+            }
+        });
 
     ////////////////////////////////////////////////////////////////
     // Computation

@@ -5,6 +5,7 @@
 #include <chrono>                           // for std::chrono::seconds
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
+#include <hpx/parallel/algorithms/for_loop.hpp>
 #include <iostream>  // for std::cout
 #include <numeric>   // for std::iota
 #include <thread>    // for std::this_thread::sleep_for
@@ -43,23 +44,28 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::fft3D::distributed::vector_3d values_vec =
-        hpxfft::fft3D::distributed::vector_3d(n_x_local, dim_c_y, 2 * dim_c_z);
+    hpxfft::fft3D::distributed::vector_3d values_vec = hpxfft::fft3D::distributed::vector_3d(
+        n_x_local, dim_c_y, 2 * dim_c_z, hpxfft::fft3D::distributed::vector_3d::uninitialized);
     hpxfft::fft3D::distributed::loop::slab fft_computer;
     fft_computer.set_transposed_output(transposed_out);
     fft_computer.set_hierarchical_parameters(
         vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
 
-    for (std::size_t i = 0; i < n_x_local; ++i)
-    {
-        for (std::size_t j = 0; j < dim_c_y; ++j)
+    hpx::experimental::for_loop(
+        hpx::execution::par,
+        std::size_t(0),
+        n_x_local,
+        [&](std::size_t i)
         {
-            for (std::size_t k = 0; k < dim_r_z; k++)
+            for (std::size_t j = 0; j < dim_c_y; ++j)
             {
-                values_vec(i, j, k) = (this_locality * n_x_local + i) * 10'000 + j * 100 + k;
+                for (std::size_t k = 0; k < 2 * dim_c_z; ++k)
+                {
+                    values_vec(i, j, k) =
+                        k < dim_r_z ? double((this_locality * n_x_local + i) * 10'000 + j * 100 + k) : 0.0;
+                }
             }
-        }
-    }
+        });
 
     ////////////////////////////////////////////////////////////////
     // Computation
