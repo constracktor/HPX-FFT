@@ -48,17 +48,18 @@ void hpxfft::fft3D::distributed::loop::pencil::initialize(
     z_offsets_ = hpxfft::util::block_offsets(dim_c_z_, localities_per_dir_);
     n_z_local_ = z_offsets_[pos_dir_y_ + 1] - z_offsets_[pos_dir_y_];
     // resize other data structures
-    permuted_vec_ = std::move(vector_3d(n_x_local_, n_z_local_, 2 * dim_c_y_));
+    permuted_vec_ = std::move(vector_3d(n_x_local_, n_z_local_, 2 * dim_c_y_, vector_3d::uninitialized));
     values_prep_.resize(localities_per_dir_);
     permuted_values_prep_.resize(localities_per_dir_);
     values_prep2_.resize(localities_per_dir_);
     permuted_values_prep2_.resize(localities_per_dir_);
     for (std::size_t i = 0; i < localities_per_dir_; ++i)
     {
-        permuted_values_prep_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_);
-        values_prep_[i] = vector_3d(n_x_local_, n_y_local_, 2 * (z_offsets_[i + 1] - z_offsets_[i]));
-        permuted_values_prep2_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_);
-        values_prep2_[i] = vector_3d(n_y_local_, n_z_local_, 2 * n_x_local_);
+        permuted_values_prep_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_, vector_3d::uninitialized);
+        values_prep_[i] =
+            vector_3d(n_x_local_, n_y_local_, 2 * (z_offsets_[i + 1] - z_offsets_[i]), vector_3d::uninitialized);
+        permuted_values_prep2_[i] = vector_3d(n_x_local_, n_z_local_, 2 * n_y_local_, vector_3d::uninitialized);
+        values_prep2_[i] = vector_3d(n_y_local_, n_z_local_, 2 * n_x_local_, vector_3d::uninitialized);
     }
     // create FFTW plans
     // r2c in z-direction

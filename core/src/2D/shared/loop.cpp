@@ -170,7 +170,7 @@ void hpxfft::fft2D::shared::loop::initialize(vector_2d values_vec, const std::st
     dim_c_y_ = values_vec_.n_col() / 2;
     dim_r_y_ = hpxfft::util::real_length(dim_c_y_, ny, "ny");
     // resize transposed data structure
-    trans_values_vec_ = std::move(vector_2d(dim_c_y_, 2 * dim_c_x_));
+    trans_values_vec_ = std::move(vector_2d(dim_c_y_, 2 * dim_c_x_, vector_2d::uninitialized));
     // create FFTW plans
     auto start_plan = t_.now();
     // r2c in y-direction

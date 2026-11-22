@@ -13,7 +13,7 @@ void hpxfft::fft3D::shared::loop::initialize(vector_3d values_vec, const std::st
     dim_c_z_ = values_vec_.n_z() / 2;
     dim_r_z_ = hpxfft::util::real_length(dim_c_z_, nz, "nz");
     // resize transposed data structure
-    permuted_vec_ = vector_3d(dim_c_x_, dim_c_z_, 2 * dim_c_y_);
+    permuted_vec_ = vector_3d(dim_c_x_, dim_c_z_, 2 * dim_c_y_, vector_3d::uninitialized);
     auto start_plan = t_.now();
     // initialize FFTW adapters
     fftw_r2c_adapter_dir_z_ = hpxfft::util::fftw_adapter::r2c_1d();

@@ -27,6 +27,14 @@ struct vector_2d
     // default constructor
     vector_2d();
     vector_2d(std::size_t n_row, std::size_t n_col);
+
+    // allocate without zero-filling (for buffers that are completely overwritten before they are read); the first
+    // write places the pages
+    struct uninitialized_t
+    { };
+
+    constexpr static uninitialized_t uninitialized{};
+    vector_2d(std::size_t n_row, std::size_t n_col, uninitialized_t);
     // explicit contructors
     vector_2d(std::size_t n_row, std::size_t n_col, const T &v);
     // copy constructor
@@ -125,6 +133,16 @@ inline vector_2d<T>::vector_2d(std::size_t n_row, std::size_t n_col) :
 {
     // value-initialized (zero for arithmetic T)
     values_ = new T[size_]();
+}
+
+template <typename T>
+inline vector_2d<T>::vector_2d(std::size_t n_row, std::size_t n_col, uninitialized_t) :
+    values_(nullptr),
+    size_(n_row * n_col),
+    n_row_(n_row),
+    n_col_(n_col)
+{
+    values_ = size_ > 0 ? new T[size_] : nullptr;
 }
 
 template <typename T>

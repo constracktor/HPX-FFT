@@ -379,7 +379,7 @@ void hpxfft::fft2D::distributed::loop::initialize(hpxfft::fft2D::distributed::ve
     dim_c_y_part_ = 2 * n_y_local_;
     dim_c_x_part_ = 2 * dim_c_x_ / num_localities_;
     // resize other data structures
-    trans_values_vec_ = std::move(hpxfft::fft2D::distributed::vector_2d(n_y_local_, 2 * dim_c_x_));
+    trans_values_vec_ = std::move(vector_2d(n_y_local_, 2 * dim_c_x_, vector_2d::uninitialized));
     values_prep_.resize(num_localities_);
     trans_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)

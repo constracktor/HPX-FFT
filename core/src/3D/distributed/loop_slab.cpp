@@ -42,7 +42,7 @@ void hpxfft::fft3D::distributed::loop::slab::initialize(
     }
 
     // resize other data structures
-    permuted_vec_ = std::move(vector_3d(n_x_local_, dim_c_z_, 2 * dim_c_y_));
+    permuted_vec_ = std::move(vector_3d(n_x_local_, dim_c_z_, 2 * dim_c_y_, vector_3d::uninitialized));
     values_prep_.resize(num_localities_);
     permuted_values_prep_.resize(num_localities_);
     for (std::size_t i = 0; i < num_localities_; ++i)
