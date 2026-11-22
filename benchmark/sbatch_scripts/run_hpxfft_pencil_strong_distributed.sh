@@ -15,6 +15,12 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
+# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
 # Parameters
 NODES_START=$3
 NODES_STOP=$4
@@ -25,7 +31,7 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS $NUMA"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$BASE_SIZE --plan=$2 --run=$6"
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
@@ -40,7 +46,7 @@ done
 for (( i=NODES_START+1; i<=NODES_STOP; i=i+1 ))
 do
     SIZE=$((i**2))
-    COMMAND="srun --mpi=pmix -p $PARTITION -N $SIZE -n $SIZE -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $SIZE -n $SIZE -c $THREADS $NUMA"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS

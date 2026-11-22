@@ -14,6 +14,12 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
+# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
 # Parameters
 POW_START=$3
 POW_STOP=$4
@@ -24,7 +30,7 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS $NUMA"
 EXECUTABLE=$1
 # the 2D agas component needs ny / 2 + 1 divisible by the number of localities: ny = size - 2 (nx = size)
 NY_OFFSET=0
@@ -47,7 +53,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun --mpi=pmix -p $PARTITION -N $i -n $i -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $i -n $i -c $THREADS $NUMA"
     ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE*i - NY_OFFSET)) --plan=$2 --run=$6"
     if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
         ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE)) --nz=$BASE_SIZE --plan=$2 --run=$6"

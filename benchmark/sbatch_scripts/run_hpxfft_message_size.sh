@@ -11,6 +11,12 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
+# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
 # Parameters
 BASE_SIZE=$2
 POW_STOP=$3
@@ -20,7 +26,7 @@ PARTITION=$7
 PARCELPORT=$8
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION -N 2 -n 2 -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N 2 -n 2 -c $THREADS $NUMA"
 EXECUTABLE=$1
 # the 2D agas component needs ny / 2 + 1 divisible by the number of localities: ny = size - 2 (nx = size)
 NY_OFFSET=0

@@ -16,13 +16,19 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
+# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
 # Parameters
 POW_START=$3
 POW_STOP=$4
 BASE_SIZE=$5
 LOOP=$6
 # Get run command
-COMMAND="srun -N 1 -n 1 -c $((2**POW_START))"
+COMMAND="srun -N 1 -n 1 -c $((2**POW_START)) $NUMA"
 EXECUTABLE=$1
 ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
@@ -36,7 +42,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun -N 1 -n 1 -c $i"
+    COMMAND="srun -N 1 -n 1 -c $i $NUMA"
     ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE*i)) --plan=$2"
     if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
         ARGUMENTS="--nx=$((BASE_SIZE*i)) --ny=$((BASE_SIZE)) --nz=$BASE_SIZE --plan=$2"

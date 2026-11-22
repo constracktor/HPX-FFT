@@ -12,6 +12,12 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
+# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
 # Pin OpenMP threads to cores (inside the CPUs Slurm gives each task)
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
@@ -23,7 +29,7 @@ THREADS=$6
 LOOP=$7
 PARTITION=$8
 # Get run command
-COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS $NUMA"
 EXECUTABLE=$1
 ARGUMENTS="$BASE_SIZE $BASE_SIZE $2"
 if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
@@ -39,7 +45,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun --mpi=pmix -p $PARTITION -N $i -n $i -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $i -n $i -c $THREADS $NUMA"
     ARGUMENTS="$((BASE_SIZE*i)) $((BASE_SIZE*i)) $2"
     if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
         ARGUMENTS="$((BASE_SIZE*i)) $((BASE_SIZE)) $BASE_SIZE $2"
