@@ -1,4 +1,5 @@
 #include "fftw3.h"
+#include "first_touch.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -9,7 +10,7 @@
 #include <vector>
 
 typedef double real;
-typedef std::vector<real, std::allocator<real>> vector;
+typedef std::vector<real, first_touch::default_init_allocator<real>> vector;
 typedef std::chrono::duration<real> duration;
 
 // debug helper
@@ -103,14 +104,23 @@ int main(int argc, char *argv[])
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    // intialize row-wise from 0 with complex spacers at the end
-    for (int i = 0; i < int(dim_c_x); ++i)
-    {
-        for (int j = 0; j < dim_r_y; ++j)
+    // initialize row-wise from 0 with complex spacers at the end; every thread touches the rows it transforms
+    first_touch::for_each_row_block(
+        std::size_t(dim_c_x),
+        n_threads,
+        [&](std::size_t i_begin, std::size_t i_end)
         {
-            input[std::size_t(dim_r_y + 2) * i + j] = j;
-        }
-    }
+            for (std::size_t i = i_begin; i < i_end; ++i)
+            {
+                const std::size_t row = std::size_t(dim_r_y + 2) * i;
+                for (std::size_t j = 0; j < dim_r_y; ++j)
+                {
+                    input[row + j] = j;
+                }
+                input[row + dim_r_y] = 0.0;
+                input[row + dim_r_y + 1] = 0.0;
+            }
+        });
     // print_real(input, dim_c_x, dim_r_y, 0);
 
     ////////////////////////////////////////////////////////////////
