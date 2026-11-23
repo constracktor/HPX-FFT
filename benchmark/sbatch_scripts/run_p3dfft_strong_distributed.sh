@@ -13,8 +13,8 @@
 
 # Log Info
 pwd; hostname; date
-# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
-# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+# Interleave the memory pages over the NUMA domains as a safety net: pages that one thread touches first would all sit in
+# one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
 NUMA=""
 if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
     NUMA="numactl --interleave=all"

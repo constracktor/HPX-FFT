@@ -16,11 +16,17 @@
 
 # Log Info
 pwd; hostname; date
-# Interleave the memory pages over the NUMA domains: the examples touch their input from one thread, so all pages
-# would sit in one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+# Interleave the memory pages over the NUMA domains as a safety net: pages that one thread touches first would all sit in
+# one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
 NUMA=""
 if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
     NUMA="numactl --interleave=all"
+fi
+# FFTW wisdom: with measure/patient/exhaustive the first run of a configuration (example, size, threads, ranks) saves
+# its wisdom in $WISDOM_DIR and the repeats load it, so every repeat uses the same plans and does not plan again. The
+# directory must be on a shared file system for multi-node runs. Disable with WISDOM=0; estimate never uses wisdom.
+if [[ "${WISDOM:-1}" == "1" && "$2" != "estimate" ]]; then
+    export FFTW_WISDOM_DIR="${WISDOM_DIR:-$PWD/wisdom}"
 fi
 # Parameters
 THREADS=$3

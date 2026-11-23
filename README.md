@@ -171,6 +171,20 @@ localities may export to the same file safely, but the last writer wins; use one
 locality id in the name) to keep all of them. The distributed examples export from locality 0 only. Wisdom is only
 valid for the FFTW build and machine type it was created on.
 
+The FFTW reference examples take the file as an optional last argument (after `header`): `./fftw_omp_2d 8 4096 4096
+measure 0 wisdom/omp_2d.wis`. The MPI variants read it on rank 0 and broadcast it (`fftw_mpi_broadcast_wisdom`) before
+planning and gather it (`fftw_mpi_gather_wisdom`) before rank 0 writes it. P3DFFT++ has no plan flag and no wisdom.
+
+The benchmark scripts create and reuse wisdom automatically. With `measure`, `patient` or `exhaustive` they set
+`FFTW_WISDOM_DIR` (default `wisdom/` in the directory the benchmark runs in, `WISDOM_DIR` overrides it, `WISDOM=0`
+turns it off). When no `--wisdom_file` is given, the examples then use
+`<FFTW_WISDOM_DIR>/<example>_<plan>_<sizes>_n<ranks>_t<threads>.wis`. The first run of a configuration plans and writes
+the file, and the repeats load it, so all repeats use the same plans and only the first one pays for planning (the
+reported planning time of the repeats is then almost zero). `estimate` never uses wisdom. For multi-node runs the
+directory must be on a shared file system, because every locality reads the file itself. Keep the wisdom of different
+machines or FFTW builds apart: it is only valid for the build and machine type it was created on.
+`hpxfft::util::wisdom_file_name` builds the name in code.
+
 ### FFTW
 
 The reference executables in `examples/fftw/build` are `fftw_omp_*`, `fftw_threads_*` (shared) and
