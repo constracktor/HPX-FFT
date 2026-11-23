@@ -57,7 +57,7 @@ mkdir -p $RESULT_DIR/plans
 cd $RESULT_DIR
 
 # Config
-LOOP=2
+LOOP=10
 BASE_SIZE=128
 STOP_POW=5
 
