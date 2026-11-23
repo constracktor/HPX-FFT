@@ -1,6 +1,7 @@
 #include "fftw3-mpi.h"
 #include "first_touch.hpp"
 #include "omp.h"
+#include "wisdom_mpi.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -28,6 +29,7 @@ int main(int argc, char *argv[])
     // Parameters and Data Structures
     int n_threads = std::stoi(argv[1]);
     bool print_header = std::stoi(argv[6]);
+    std::string wisdom_file = argc > 7 ? argv[7] : "";
     // FFT dimension parameters
     const std::uint32_t dim_c_x = std::stoi(argv[2]);  // N_X;
     const std::uint32_t dim_c_y = std::stoi(argv[3]);  // N_Y;
@@ -86,12 +88,22 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////
     // FFTW plan
     MPI_Barrier(comm);
+    wisdom_file = fftw_wisdom::file_name(
+        wisdom_file, "fftw_mpi_omp_3d", plan_flag, { dim_c_x, dim_c_y, dim_r_z }, n_ranks, n_threads);
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::import_mpi(wisdom_file, comm);
+    }
     auto start_plan_fftw_r2c = t.now();
     fftw_plan plan_r2c_3d = fftw_mpi_plan_dft_r2c_3d(
         dim_c_x, dim_c_y, dim_r_z, input.data(), reinterpret_cast<fftw_complex *>(input.data()), comm, FFTW_PLAN_FLAG);
     MPI_Barrier(comm);
     auto stop_plan_fftw_r2c = t.now();
     runtimes["plan_fftw_r2c"] = duration(stop_plan_fftw_r2c - start_plan_fftw_r2c).count();
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::export_mpi(wisdom_file, comm);
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization

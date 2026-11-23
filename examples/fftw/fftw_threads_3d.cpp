@@ -1,5 +1,6 @@
 #include "fftw3.h"
 #include "first_touch.hpp"
+#include "wisdom.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -63,6 +64,7 @@ int main(int argc, char *argv[])
     // Parameters and Data Structures
     int n_threads = std::stoi(argv[1]);
     bool print_header = std::stoi(argv[6]);
+    std::string wisdom_file = argc > 7 ? argv[7] : "";
     // FFT dimension parameters
     const std::uint32_t dim_c_x = std::stoi(argv[2]);  // N_X;
     const std::uint32_t dim_c_y = std::stoi(argv[3]);  // N_Y;
@@ -97,11 +99,21 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////
     // FFTW plan
     vector input(std::size_t(2) * dim_c_x * dim_c_y * dim_c_z);
+    wisdom_file =
+        fftw_wisdom::file_name(wisdom_file, "fftw_threads_3d", plan_flag, { dim_c_x, dim_c_y, dim_r_z }, 1, n_threads);
+    if (!wisdom_file.empty() && !fftw_wisdom::import_file(wisdom_file))
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     auto start_plan_fftw_r2c = t.now();
     fftw_plan plan_r2c_3d = fftw_plan_dft_r2c_3d(
         dim_c_x, dim_c_y, dim_r_z, input.data(), reinterpret_cast<fftw_complex *>(input.data()), FFTW_PLAN_FLAG);
     auto stop_plan_fftw_r2c = t.now();
     runtimes["plan_fftw_r2c"] = duration(stop_plan_fftw_r2c - start_plan_fftw_r2c).count();
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::export_file(wisdom_file);
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
