@@ -1,6 +1,8 @@
 #!/usr/bin/bash
-#SBATCH --output=output/output_compile_%j.log      # Standard output log
-#SBATCH --error=output/error_compile_%j.log        # Error log file
+#SBATCH --output=output_compile_%j.log      # Standard output log
+#SBATCH --error=output_error_compile_%j.log        # Error log file
+# run from the repository root, also when started from another directory (sbatch: the submit directory)
+cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" || exit 1
 ################################################################################
 # Config
 ################################################################################
@@ -24,14 +26,6 @@ if command -v spack &> /dev/null; then
 	spack load gcc@14.2.0
 	# Check if the spack environment exists
 	SPACK_ENV=hpxfft_arm_ookami
-	if spack env list | grep -q "${SPACK_ENV}"; then
-	    echo "Found ${SPACK_ENV} environment, activating it."
-	    spack env activate ${SPACK_ENV}
-	fi
-    elif [[ "$HOSTNAME" == "simcl1n1" || "$HOSTNAME" == "simcl1n2" ]]; then
-	module load gcc/14.1.0
-	# Check if the spack environment exists
-	SPACK_ENV=hpxfft_x86_simcl
 	if spack env list | grep -q "${SPACK_ENV}"; then
 	    echo "Found ${SPACK_ENV} environment, activating it."
 	    spack env activate ${SPACK_ENV}

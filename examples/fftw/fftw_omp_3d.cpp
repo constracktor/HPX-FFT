@@ -1,6 +1,9 @@
 #include "fftw3.h"
+#include "first_touch.hpp"
 #include "omp.h"
+#include "wisdom.hpp"
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -9,7 +12,7 @@
 #include <vector>
 
 typedef double real;
-typedef std::vector<real, std::allocator<real>> vector;
+typedef std::vector<real, first_touch::default_init_allocator<real>> vector;
 typedef std::chrono::duration<real> duration;
 
 // debug helper
@@ -51,19 +54,25 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char *argv[])
 {
+    // output directories of the runtime and plan files
+    std::error_code dir_ec;
+    std::filesystem::create_directories("runtimes", dir_ec);
+    std::filesystem::create_directories("plans", dir_ec);
+
     // threads  N_X N_Y N_Z  plan     header
     // fftw_omp   1      8  14  20  estimate    0
     ////////////////////////////////////////////////////////////////
     // Parameters and Data Structures
     int n_threads = std::stoi(argv[1]);
     bool print_header = std::stoi(argv[6]);
+    std::string wisdom_file = argc > 7 ? argv[7] : "";
     // FFT dimension parameters
     const std::uint32_t dim_c_x = std::stoi(argv[2]);  // N_X;
     const std::uint32_t dim_c_y = std::stoi(argv[3]);  // N_Y;
     const std::uint32_t dim_r_z = std::stoi(argv[4]);  // N_Z;
     const std::uint32_t dim_c_z = dim_r_z / 2 + 1;
     // FFTW plans
-    std::string plan_flag = argv[4];
+    std::string plan_flag = argv[5];
     unsigned FFTW_PLAN_FLAG = FFTW_ESTIMATE;
     if (plan_flag == "measure")
     {
@@ -91,26 +100,45 @@ int main(int argc, char *argv[])
 
     ////////////////////////////////////////////////////////////////
     // FFTW plan
-    vector input(2 * dim_c_x * dim_c_y * dim_c_z);
+    vector input(std::size_t(2) * dim_c_x * dim_c_y * dim_c_z);
+    wisdom_file =
+        fftw_wisdom::file_name(wisdom_file, "fftw_omp_3d", plan_flag, { dim_c_x, dim_c_y, dim_r_z }, 1, n_threads);
+    if (!wisdom_file.empty() && !fftw_wisdom::import_file(wisdom_file))
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     auto start_plan_fftw_r2c = t.now();
     fftw_plan plan_r2c_3d = fftw_plan_dft_r2c_3d(
         dim_c_x, dim_c_y, dim_r_z, input.data(), reinterpret_cast<fftw_complex *>(input.data()), FFTW_PLAN_FLAG);
     auto stop_plan_fftw_r2c = t.now();
     runtimes["plan_fftw_r2c"] = duration(stop_plan_fftw_r2c - start_plan_fftw_r2c).count();
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::export_file(wisdom_file);
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    // intialize row-wise from 0 with complex spacers at the end
-    for (int i = 0; i < int(dim_c_x); ++i)
-    {
-        for (int j = 0; j < dim_c_y; ++j)
+    // initialize row-wise from 0 with complex spacers at the end; every thread touches the rows it transforms
+    first_touch::for_each_row_block(
+        std::size_t(dim_c_x),
+        n_threads,
+        [&](std::size_t i_begin, std::size_t i_end)
         {
-            for (int k = 0; k < dim_r_z; ++k)
+            for (std::size_t i = i_begin; i < i_end; ++i)
             {
-                input[(dim_r_z + 2) * i * dim_c_y + (dim_r_z + 2) * j + k] = k;
+                for (std::size_t j = 0; j < dim_c_y; ++j)
+                {
+                    const std::size_t row = std::size_t(dim_r_z + 2) * i * dim_c_y + std::size_t(dim_r_z + 2) * j;
+                    for (std::size_t k = 0; k < dim_r_z; ++k)
+                    {
+                        input[row + k] = k;
+                    }
+                    input[row + dim_r_z] = 0.0;
+                    input[row + dim_r_z + 1] = 0.0;
+                }
             }
-        }
-    }
+        });
     // print_real(input, dim_c_x, dim_r_y, 0);
 
     ////////////////////////////////////////////////////////////////

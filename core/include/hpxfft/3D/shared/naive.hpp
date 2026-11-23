@@ -2,12 +2,11 @@
 #ifndef hpxfft_shared_naive_3D_H_INCLUDED
 #define hpxfft_shared_naive_3D_H_INCLUDED
 
+#include "../../util/real.hpp"
 #include "../../util/vector_3d.hpp"  // for hpxfft::util::vector_3d
 #include "shared_base.hpp"
 #include <hpx/future.hpp>
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft3D::shared
 {
@@ -20,8 +19,11 @@ struct naive : public base
   public:
     naive() = default;
 
-    void initialize(vector_3d values_vec, const std::string PLAN_FLAG);
+    // nz: number of real values per row; 0 derives it from the row length as 2 * (n_z / 2 - 1)
+    void initialize(vector_3d values_vec, const std::string PLAN_FLAG, const std::size_t nz = 0);
 
+    // One transform per initialize: the result is moved out of the object, so calling the transform again without a
+    // new initialize throws std::logic_error.
     vector_3d fft_3d_r2c();
 
     void write_plans_to_file(std::string file_path);

@@ -1,6 +1,8 @@
 #!/usr/bin/bash
-#SBATCH --output=output/output_compile_hpxfft_examples_%j.log      # Standard output log
-#SBATCH --error=output/error_compile_hpxfft_examples_%j.log        # Error log file
+#SBATCH --output=output_compile_hpxfft_examples_%j.log      # Standard output log
+#SBATCH --error=output_error_compile_hpxfft_examples_%j.log        # Error log file
+# run from the repository root, also when started from another directory (sbatch: the submit directory)
+cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" || exit 1
 ################################################################################
 # Config
 ################################################################################
@@ -12,7 +14,6 @@ if command -v spack &> /dev/null; then
 
     if [[ "$HOSTNAME" == "ipvs-epyc1" ]]; then
 	module load gcc/14.2.0
-	LIB_DIR=lib
 	# Check if the spack environment exists
 	SPACK_ENV=hpxfft_x86_epyc
 	if spack env list | grep -q "${SPACK_ENV}"; then
@@ -23,25 +24,14 @@ if command -v spack &> /dev/null; then
         echo "tbd."
     elif [[ $(uname -i) == "aarch64" ]]; then
 	spack load gcc@14.2.0
-	LIB_DIR=lib64
 	# Check if the spack environment exists
 	SPACK_ENV=hpxfft_arm_ookami
 	if spack env list | grep -q "${SPACK_ENV}"; then
 	    echo "Found ${SPACK_ENV} environment, activating it."
 	    spack env activate ${SPACK_ENV}
 	fi
-    elif [[ "$HOSTNAME" == "simcl1n1" || "$HOSTNAME" == "simcl1n2" ]]; then
-	module load gcc/14.1.0
-	LIB_DIR=lib
-        # Check if the spack environment exists
-        SPACK_ENV=hpxfft_x86_simcl
-        if spack env list | grep -q "${SPACK_ENV}"; then
-            echo "Found ${SPACK_ENV} environment, activating it."
-            spack env activate ${SPACK_ENV}
-        fi
     elif [[ "$HOSTNAME" == buran0[0-9] || "$HOSTNAME" == buran1[0-5] ]]; then
 	module load gcc/14.2.0
-	LIB_DIR=lib64
 	# Check if the spack environment exists
 	SPACK_ENV=hpxfft_x86_buran
 	if spack env list | grep -q "${SPACK_ENV}"; then
@@ -58,9 +48,11 @@ fi
 ################################################################################
 # Compilation
 ################################################################################
+# compile.sh installs the library to install/; GNUInstallDirs picks lib or lib64 depending on the host
+HPXFFT_DIR=$(dirname "$(find "$(pwd)/install" -name HPXFFTConfig.cmake -print -quit)")
 cd examples/hpxfft
 BUILD_DIR=build
 CMAKE_COMMAND=cmake
 rm -rf $BUILD_DIR && mkdir $BUILD_DIR && cd $BUILD_DIR
-$CMAKE_COMMAND .. -Wno-dev -DCMAKE_BUILD_TYPE=Release -DHPXFFT_DIR=../../install/$LIB_DIR/cmake/HPXFFT
+$CMAKE_COMMAND .. -Wno-dev -DCMAKE_BUILD_TYPE=Release -DHPXFFT_DIR=$HPXFFT_DIR
 make -j

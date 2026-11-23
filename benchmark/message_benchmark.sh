@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 # Benchmark script for message size scaling between two nodes
+# Runs one benchmark after the other in the foreground (each step is an srun from this shell, not an sbatch job):
+# start it in tmux/screen or with nohup, it takes hours.
 # $1: Collective (scatter/all_to_all)
 # $2: HPX Parcelport (tcp/mpi/lci)
 ################################################################################
@@ -10,8 +12,9 @@ EXAMPLES_DIR=$TOP_DIR/examples
 
 # HPX-FFT implementations
 HPXFFT_EXECUTABLES=(
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop"
-    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas"
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_loop_2d"
+    # the 2D agas component needs ny / 2 + 1 divisible by the number of localities: the run scripts use ny = size - 2
+    "$EXAMPLES_DIR/hpxfft/build/hpxfft_distributed_agas_2d"
 )
 
 # Get current hostname
@@ -54,14 +57,14 @@ mkdir -p $RESULT_DIR/plans
 cd $RESULT_DIR
 
 # Config
-LOOP=2
+LOOP=10
 BASE_SIZE=128
 STOP_POW=5
 
 # Loop over HPX-FFT executables
 RUN_SCRIPT="$SCRIPT_DIR/run_hpxfft_message_size.sh"
 for EXE in "${HPXFFT_EXECUTABLES[@]}"; do
-  echo "Submitting job for executable: $EXE"
+  echo "Running executable: $EXE"
 
     $RUN_SCRIPT \
     $EXE $BASE_SIZE $STOP_POW $COLLECTIVE $THREADS $LOOP $PARTITION $PARCELPORT

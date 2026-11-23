@@ -15,6 +15,18 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains as a safety net: pages that one thread touches first would all sit in
+# one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
+# FFTW wisdom: with measure/patient/exhaustive the first run of a configuration (example, size, threads, ranks) saves
+# its wisdom in $WISDOM_DIR and the repeats load it, so every repeat uses the same plans and does not plan again. The
+# directory must be on a shared file system for multi-node runs. Disable with WISDOM=0; estimate never uses wisdom.
+if [[ "${WISDOM:-1}" == "1" && "$2" != "estimate" ]]; then
+    export FFTW_WISDOM_DIR="${WISDOM_DIR:-$PWD/wisdom}"
+fi
 # Parameters
 NODES_START=$3
 NODES_STOP=$4
@@ -25,11 +37,11 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - 2**POW_START)))-15] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS $NUMA"
 EXECUTABLE=$1
-ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"
+ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$BASE_SIZE --plan=$2 --run=$6"
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
-# Strong scaling loop from 2^pow_start to 2^pow_stop nodes
+# Strong scaling loop from NODES_START^2 to NODES_STOP^2 nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS
 HPX_COMMANDLINE_OPTIONS=$OPTIONS $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS --header=true
 for (( j=1; j<$LOOP; j=j+1 ))
@@ -40,7 +52,7 @@ done
 for (( i=NODES_START+1; i<=NODES_STOP; i=i+1 ))
 do
     SIZE=$((i**2))
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[$(printf '%02d' $((16 - SIZE)))-15] -N $SIZE -n $SIZE -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $SIZE -n $SIZE -c $THREADS $NUMA"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS

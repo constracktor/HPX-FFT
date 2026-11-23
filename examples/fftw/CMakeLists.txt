@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.23)
 project(fftw_examples CXX)
 
 find_package(MPI REQUIRED)
@@ -70,16 +70,20 @@ find_library(
   FFTW_SINGLE_LIB
   NAMES "fftw3f"
   PATHS $ENV{FFTW_DIR})
-add_executable(p3dfft_mpi_omp p3dfft_mpi_omp.cpp)
-target_include_directories(p3dfft_mpi_omp PRIVATE ${P3DFFT_INCLUDE_DIR})
-target_link_libraries(
-  p3dfft_mpi_omp
-  ${P3DFFT_LIB}
-  PkgConfig::FFTW
-  ${FFTW_OMP_LIB}
-  ${FFTW_SINGLE_LIB}
-  ${FFTW_SINGLE_OMP_LIB}
-  OpenMP::OpenMP_CXX
-  MPI::MPI_CXX
-  gfortran
-  m)
+if(P3DFFT_LIB AND P3DFFT_INCLUDE_DIR)
+  add_executable(p3dfft_mpi_omp p3dfft_mpi_omp.cpp)
+  target_include_directories(p3dfft_mpi_omp PRIVATE ${P3DFFT_INCLUDE_DIR})
+  target_link_libraries(
+    p3dfft_mpi_omp
+    ${P3DFFT_LIB}
+    PkgConfig::FFTW
+    ${FFTW_OMP_LIB}
+    ${FFTW_SINGLE_LIB}
+    ${FFTW_SINGLE_OMP_LIB}
+    OpenMP::OpenMP_CXX
+    MPI::MPI_CXX
+    gfortran
+    m)
+else()
+  message(STATUS "P3DFFT not found: p3dfft_mpi_omp is not built")
+endif()

@@ -13,6 +13,15 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains as a safety net: pages that one thread touches first would all sit in
+# one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
+# Pin OpenMP threads to cores (inside the CPUs Slurm gives each task)
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
 # Parameters
 NODES_START=$3
 NODES_STOP=$4
@@ -21,9 +30,9 @@ THREADS=$6
 LOOP=$7
 PARTITION=$8
 # Get run command
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((NODES_START**2 - 1))] -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((NODES_START**2)) -n $((NODES_START**2)) -c $THREADS $NUMA"
 EXECUTABLE=$1
-ARGUMENTS="$BASE_SIZE $BASE_SIZE $BASE_SIZE 2 0"
+ARGUMENTS="$BASE_SIZE $BASE_SIZE $BASE_SIZE 2"
 # Strong scaling loop from 2^pow_start to 2^pow_stop nodes
 echo 'Submiting:' $COMMAND $EXECUTABLE $THREADS $ARGUMENTS
 $COMMAND $EXECUTABLE $THREADS $ARGUMENTS 1
@@ -35,7 +44,7 @@ done
 for (( i=NODES_START+1; i<=NODES_STOP; i=i+1 ))
 do
     SIZE=$((i**2))
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-$(printf '%02d' $((SIZE - 1)))] -N $SIZE -n $SIZE -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $SIZE -n $SIZE -c $THREADS $NUMA"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $THREADS $ARGUMENTS

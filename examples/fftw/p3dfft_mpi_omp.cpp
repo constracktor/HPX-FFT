@@ -1,10 +1,12 @@
 #define FFTW
 #define FFTW_FLAG_ESTIMATE
+#include "first_touch.hpp"
 #include "omp.h"
 #include "p3dfft.h"
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -18,6 +20,11 @@ using namespace p3dfft;
 
 int main(int argc, char *argv[])
 {
+    // output directories of the runtime and plan files
+    std::error_code dir_ec;
+    std::filesystem::create_directories("runtimes", dir_ec);
+    std::filesystem::create_directories("plans", dir_ec);
+
     // nodes ranks    prog          threads N_X  N_Y  N_Z   ndim  header
     // srun   -N 2  -n 4 p3dfft_mpi_omp      4      8   14   20    2     0
     // mpirun       -n 4 p3dfft_mpi_omp      4      8   14   20    2     0
@@ -111,8 +118,10 @@ int main(int argc, char *argv[])
         long int size_in = (long int) sdims1[0] * sdims1[1] * sdims1[2];
         long int size_out = (long int) sdims2[0] * sdims2[1] * sdims2[2];
 
-        std::vector<double> input(size_in);
-        std::vector<complex_double> output(size_out);
+        // allocated without zero-filling; the pages are touched by the threads below and by P3DFFT
+        std::vector<double, first_touch::default_init_allocator<double>> input(size_in);
+        std::vector<double, first_touch::default_init_allocator<double>> output_storage(2 * std::size_t(size_out));
+        complex_double *output = reinterpret_cast<complex_double *>(output_storage.data());
 
         ////////////////////////////////////////////////////////////////
         // Plan creation
@@ -125,22 +134,28 @@ int main(int argc, char *argv[])
 
         ////////////////////////////////////////////////////////////////
         // Initialization (row-wise from 0 in X, contiguous)
-        for (int k = 0; k < sdims1[2]; ++k)
-        {
-            for (int j = 0; j < sdims1[1]; ++j)
+        first_touch::for_each_row_block(
+            std::size_t(sdims1[2]),
+            n_threads,
+            [&](std::size_t k_begin, std::size_t k_end)
             {
-                for (int i = 0; i < sdims1[0]; ++i)
+                for (std::size_t k = k_begin; k < k_end; ++k)
                 {
-                    input[(long int) k * sdims1[1] * sdims1[0] + (long int) j * sdims1[0] + i] = i;
+                    for (long int j = 0; j < sdims1[1]; ++j)
+                    {
+                        for (long int i = 0; i < sdims1[0]; ++i)
+                        {
+                            input[k * sdims1[1] * sdims1[0] + j * sdims1[0] + i] = i;
+                        }
+                    }
                 }
-            }
-        }
+            });
 
         ////////////////////////////////////////////////////////////////
         // Computation
         MPI_Barrier(comm);
         auto start_r2c = t.now();
-        trans_f.exec(input.data(), output.data(), false);
+        trans_f.exec(input.data(), output, false);
         MPI_Barrier(comm);
         auto stop_r2c = t.now();
         runtimes["p3dfft_r2c"] = duration(stop_r2c - start_r2c).count();
@@ -159,7 +174,7 @@ int main(int argc, char *argv[])
             runtime_file.open("runtimes/runtimes_p3dfft_mpi_omp_3d.txt", std::ios_base::app);
             if (print_header)
             {
-                runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;ndim;planning;initialization,p3dfft_3d_r2c;\n";
+                runtime_file << "n_ranks;n_threads;n_x;n_y;n_z;ndim;planning;initialization;p3dfft_3d_r2c;\n";
             }
             runtime_file << n_ranks << ";" << n_threads << ";" << dim_r_x << ";" << dim_r_y << ";" << dim_r_z << ";"
                          << ndim << ";" << runtimes["plan_p3dfft_r2c"] << ";" << runtimes["init_p3dfft_r2c"] << ";"

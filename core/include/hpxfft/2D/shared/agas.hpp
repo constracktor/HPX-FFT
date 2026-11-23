@@ -16,11 +16,12 @@ struct agas : ::hpx::components::client_base<agas, agas_server>
         base_type(hpx::new_<agas_server>(hpx::find_here()))
     { }
 
-    hpx::future<vector_2d> fft_2d_r2c() { return ::hpx::async(fft_2d_r2c_action(), get_id()); }
+    hpx::future<vector_2d> fft_2d_r2c() { return ::hpx::async(agas_server::fft_2d_r2c_action(), get_id()); }
 
-    hpx::future<void> initialize(vector_2d values_vec, const std::string PLAN_FLAG)
+    // ny: see agas_server::initialize (0: derive an even ny from the row length)
+    hpx::future<void> initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0)
     {
-        return ::hpx::async(initialize_action(), get_id(), std::move(values_vec), PLAN_FLAG);
+        return ::hpx::async(agas_server::initialize_action(), get_id(), std::move(values_vec), PLAN_FLAG, ny);
     }
 
     ~agas() = default;

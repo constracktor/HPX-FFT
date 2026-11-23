@@ -1,9 +1,12 @@
 #include "hpxfft/2D/shared/loop.hpp"        // for hpxfft::fft2D::shared::loop, hpxfft::fft2D::shared::vector_2d
 #include "hpxfft/util/create_dir.hpp"       // for hpxfft::util::create_parent_dir
+#include "hpxfft/util/fftw_wisdom.hpp"      // for hpxfft::util::import_wisdom, hpxfft::util::export_wisdom
 #include "hpxfft/util/print_vector_2d.hpp"  // for hpxfft::util::print_vector_2d
 #include <fstream>                          // for std::ofstream
 #include <hpx/hpx_init.hpp>
-#include <numeric>  // for std::iota
+#include <hpx/parallel/algorithms/for_loop.hpp>
+#include <iostream>  // for std::cout
+#include <numeric>   // for std::iota
 
 int hpx_main(hpx::program_options::variables_map &vm)
 {
@@ -19,6 +22,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Parameters and Data structures
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
+    std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     // time measurement
@@ -30,20 +34,36 @@ int hpx_main(hpx::program_options::variables_map &vm)
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    hpxfft::fft2D::shared::vector_2d values_vec(dim_c_x, 2 * dim_c_y);
-    for (std::size_t i = 0; i < dim_c_x; ++i)
-    {
-        for (std::size_t j = 0; j < dim_r_y; ++j)
+    hpxfft::fft2D::shared::vector_2d values_vec(dim_c_x, 2 * dim_c_y, hpxfft::fft2D::shared::vector_2d::uninitialized);
+    hpx::experimental::for_loop(
+        hpx::execution::par,
+        std::size_t(0),
+        dim_c_x,
+        [&](std::size_t i)
         {
-            values_vec(i, j) = j;
-        }
-    }
+            for (std::size_t j = 0; j < 2 * dim_c_y; ++j)
+            {
+                values_vec(i, j) = j < dim_r_y ? double(j) : 0.0;
+            }
+        });
 
     ////////////////////////////////////////////////////////////////
     // Computation
     hpxfft::fft2D::shared::loop fft_computer;
+    // optional: import saved planner knowledge before the first plan
+    wisdom_file = hpxfft::util::wisdom_file_name(
+        wisdom_file,
+        "shared_loop_2d",
+        plan_flag,
+        { dim_c_x, dim_r_y },
+        hpx::get_num_localities(hpx::launch::sync),
+        hpx::get_os_thread_count());
+    if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
+    {
+        std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
+    }
     auto start_total = t.now();
-    fft_computer.initialize(std::move(values_vec), plan_flag);
+    fft_computer.initialize(std::move(values_vec), plan_flag, dim_r_y);
     auto stop_init = t.now();
     if (run_flag == "seq")
     {
@@ -127,6 +147,12 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // store plan
     fft_computer.write_plans_to_file(plan_file_path);
 
+    // export the planner knowledge while the plans are alive (fftw_cleanup discards it)
+    if (!wisdom_file.empty())
+    {
+        hpxfft::util::export_wisdom(wisdom_file);
+    }
+
     ////////////////////////////////////////////////////////////////
     // Finalize HPX runtime
     return hpx::finalize();
@@ -142,6 +168,9 @@ int main(int argc, char *argv[])
         "nx", value<std::size_t>()->default_value(8), "Total x dimension")(
         "ny", value<std::size_t>()->default_value(14), "Total y dimension")(
         "plan", value<std::string>()->default_value("estimate"), "FFTW plan (default: estimate)")(
+        "wisdom_file",
+        value<std::string>()->default_value(""),
+        "FFTW wisdom file: imported before and exported after planning (default: none)")(
         "run", value<std::string>()->default_value("par"), "Choose 2d FFT algorithm: par or seq")(
         "header", value<bool>()->default_value(0), "Write runtime file header");
 

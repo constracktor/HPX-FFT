@@ -3,10 +3,10 @@
 #define hpxfft_shared_loop_H_INCLUDED
 
 #include "../../util/adapter_fftw.hpp"
+#include "../../util/measurement.hpp"  // for hpxfft::util::get_measurement
+#include "../../util/real.hpp"
 #include "../../util/vector_2d.hpp"              // for hpxfft::util::vector_2d
 #include <hpx/timing/high_resolution_timer.hpp>  // for hpx::chrono::high_resolution_timer
-
-typedef double real;
 
 namespace hpxfft::fft2D::shared
 {
@@ -17,17 +17,18 @@ struct loop
   public:
     loop() = default;
 
-    void initialize(vector_2d values_vec, const std::string PLAN_FLAG);
+    // ny: number of real values per row; 0 derives it from the row length as 2 * (n_col / 2 - 1)
+    void initialize(vector_2d values_vec, const std::string PLAN_FLAG, const std::size_t ny = 0);
 
+    // One transform per initialize: the result is moved out of the object, so calling a transform (par or seq) again
+    // without a new initialize throws std::logic_error.
     vector_2d fft_2d_r2c_par();
 
     vector_2d fft_2d_r2c_seq();
 
-    real get_measurement(std::string name);
+    real get_measurement(const std::string &name) const;
 
     void write_plans_to_file(std::string file_path);
-
-    ~loop() { hpxfft::util::fftw_adapter::cleanup(); }
 
   private:
     // FFT backend
@@ -46,6 +47,8 @@ struct loop
     // parameters
     std::size_t dim_r_y_, dim_c_y_, dim_c_x_;
     // 1D adapters
+    // must precede the plans: destroyed after them
+    hpxfft::util::fftw_adapter::cleanup_guard fftw_cleanup_guard_;
     hpxfft::util::fftw_adapter::r2c_1d fft_r2c_adapter_;
     hpxfft::util::fftw_adapter::c2c_1d fft_c2c_adapter_;
     // value vectors
@@ -54,6 +57,8 @@ struct loop
     // time measurement
     hpx::chrono::high_resolution_timer t_ = hpx::chrono::high_resolution_timer();
     std::map<std::string, real> measurements_;
+    // set by a successful initialize, cleared by the transform (initialize + one transform per object)
+    bool ready_ = false;
 };
 }  // namespace hpxfft::fft2D::shared
 #endif  // hpxfft_shared_loop_H_INCLUDED

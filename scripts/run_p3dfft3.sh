@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-#SBATCH --output=output/output_p3dfft_%j.log
-#SBATCH --error=output/error/error_p3dfft_%j.log
+#SBATCH --output=output_p3dfft_%j.log
+#SBATCH --error=output_error_p3dfft_%j.log
 #SBATCH --ntasks=4
 #SBATCH --partition=buran
 #SBATCH --nodes=2

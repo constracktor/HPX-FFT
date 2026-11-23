@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.23)
 
 project(
   HPXFFT
-  VERSION 0.1.0
-  DESCRIPTION "Distributed 2D FFT using HPX"
+  VERSION 0.2.0
+  DESCRIPTION "Distributed 2D and 3D FFTs using HPX"
   HOMEPAGE_URL "https://github.com/constracktor/HPX-FFT"
   LANGUAGES CXX)
 
@@ -25,7 +25,7 @@ if(HPXFFT_ENABLE_FORMAT_TARGETS)
   endif()
 endif()
 if(HPXFFT_BUILD_CORE)
-  find_package(HPX REQUIRED)
+  find_package(HPX 2.0 REQUIRED)
   find_package(PkgConfig REQUIRED)
   pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
   if(NOT CMAKE_SKIP_INSTALL_RULES)
@@ -42,8 +42,11 @@ if(HPXFFT_BUILD_CORE)
     # find_package(<package>) call for consumers to find this project
     set(package HPXFFT)
 
+    # While the major version is 0, every minor release may break the API: a
+    # request for 0.x only accepts 0.x.y (SameMajorVersion would accept 0.2.0
+    # for 0.1). Switch to SameMajorVersion with 1.0.
     write_basic_package_version_file("${package}ConfigVersion.cmake"
-                                     COMPATIBILITY SameMajorVersion)
+                                     COMPATIBILITY SameMinorVersion)
     # Allow package maintainers to freely override the path for the configs
     set(HPXFFT_INSTALL_CMAKEDIR
         "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"

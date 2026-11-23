@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.23)
 project(hpxfft_examples CXX)
 
 find_package(HPXFFT REQUIRED)

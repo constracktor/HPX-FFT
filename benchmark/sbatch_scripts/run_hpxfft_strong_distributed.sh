@@ -14,6 +14,18 @@
 
 # Log Info
 pwd; hostname; date
+# Interleave the memory pages over the NUMA domains as a safety net: pages that one thread touches first would all sit in
+# one domain (up to 10x slower at large sizes). Disable with NUMA_INTERLEAVE=0.
+NUMA=""
+if [[ "${NUMA_INTERLEAVE:-1}" == "1" ]] && command -v numactl >/dev/null 2>&1; then
+    NUMA="numactl --interleave=all"
+fi
+# FFTW wisdom: with measure/patient/exhaustive the first run of a configuration (example, size, threads, ranks) saves
+# its wisdom in $WISDOM_DIR and the repeats load it, so every repeat uses the same plans and does not plan again. The
+# directory must be on a shared file system for multi-node runs. Disable with WISDOM=0; estimate never uses wisdom.
+if [[ "${WISDOM:-1}" == "1" && "$2" != "estimate" ]]; then
+    export FFTW_WISDOM_DIR="${WISDOM_DIR:-$PWD/wisdom}"
+fi
 # Parameters
 POW_START=$3
 POW_STOP=$4
@@ -24,11 +36,16 @@ PARTITION=$9
 PARCELPORT=${10}
 # Get run command
 OPTIONS=""
-COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$((2**POW_START - 1))] -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS"
+COMMAND="srun --mpi=pmix -p $PARTITION -N $((2**POW_START)) -n $((2**POW_START)) -c $THREADS $NUMA"
 EXECUTABLE=$1
-ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --plan=$2 --run=$6"
-if [[ "$EXECUTABLE" == *"3d"* ]]; then
-    ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$((BASE_SIZE-2)) --plan=$2 --run=$6"
+# the 2D agas component needs ny / 2 + 1 divisible by the number of localities: ny = size - 2 (nx = size)
+NY_OFFSET=0
+if [[ "$(basename "$EXECUTABLE")" == *"agas"* ]]; then
+    NY_OFFSET=2
+fi
+ARGUMENTS="--nx=$BASE_SIZE --ny=$((BASE_SIZE - NY_OFFSET)) --plan=$2 --run=$6"
+if [[ "$(basename "$EXECUTABLE")" == *"3d"* ]]; then
+    ARGUMENTS="--nx=$BASE_SIZE --ny=$BASE_SIZE --nz=$BASE_SIZE --plan=$2 --run=$6"
 fi
 PARCELPORTS="--hpx:ini=hpx.parcel.mpi.enable=0 --hpx:ini=hpx.parcel.tcp.enable=0 --hpx:ini=hpx.parcel.lci.enable=0 --hpx:ini=hpx.parcel.$PARCELPORT.enable=1"
 # Strong scaling loop from 2^pow_start to 2^pow_stop nodes
@@ -41,7 +58,7 @@ do
 done
 for (( i=2**($POW_START+1); i<=2**$POW_STOP; i=i*2 ))
 do
-    COMMAND="srun --mpi=pmix -p $PARTITION --nodelist=$PARTITION[00-0$(($i - 1))] -N $i -n $i -c $THREADS"
+    COMMAND="srun --mpi=pmix -p $PARTITION -N $i -n $i -c $THREADS $NUMA"
     for (( j=0; j<$LOOP; j=j+1 ))
     do
         echo 'Submiting:' $COMMAND $EXECUTABLE $ARGUMENTS $PARCELPORTS

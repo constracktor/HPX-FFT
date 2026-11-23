@@ -1,6 +1,9 @@
 #include "fftw3-mpi.h"
+#include "first_touch.hpp"
 #include "omp.h"
+#include "wisdom_mpi.hpp"
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -9,7 +12,7 @@
 #include <vector>
 
 typedef double real;
-typedef std::vector<real, std::allocator<real>> vector;
+typedef std::vector<real, first_touch::default_init_allocator<real>> vector;
 typedef std::chrono::duration<real> duration;
 
 // debug helper
@@ -51,6 +54,11 @@ typedef std::chrono::duration<real> duration;
 
 int main(int argc, char *argv[])
 {
+    // output directories of the runtime and plan files
+    std::error_code dir_ec;
+    std::filesystem::create_directories("runtimes", dir_ec);
+    std::filesystem::create_directories("plans", dir_ec);
+
     // nodes ranks     prog   threads N_X N_Y    plan  header
     // srun -N 2  -n 4 fftw_mpi_omp   4     8   14  estimate  0
     // mpirun -n 4 fftw_mpi_omp   4     8   14  estimate  0
@@ -58,6 +66,7 @@ int main(int argc, char *argv[])
     // Parameters and Data Structures
     int n_threads = std::stoi(argv[1]);
     bool print_header = std::stoi(argv[5]);
+    std::string wisdom_file = argc > 6 ? argv[6] : "";
     // FFT dimension parameters
     const std::uint32_t dim_c_x = std::stoi(argv[2]);  // N_X;
     const std::uint32_t dim_r_y = std::stoi(argv[3]);  // N_Y;
@@ -115,23 +124,42 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////
     // FFTW plan
     MPI_Barrier(comm);
+    wisdom_file =
+        fftw_wisdom::file_name(wisdom_file, "fftw_mpi_omp_2d", plan_flag, { dim_c_x, dim_r_y }, n_ranks, n_threads);
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::import_mpi(wisdom_file, comm);
+    }
     auto start_plan_fftw_r2c = t.now();
     fftw_plan plan_r2c_2d = fftw_mpi_plan_dft_r2c_2d(
         dim_c_x, dim_r_y, input.data(), reinterpret_cast<fftw_complex *>(input.data()), comm, FFTW_PLAN_FLAG);
     MPI_Barrier(comm);
     auto stop_plan_fftw_r2c = t.now();
     runtimes["plan_fftw_r2c"] = duration(stop_plan_fftw_r2c - start_plan_fftw_r2c).count();
+    if (!wisdom_file.empty())
+    {
+        fftw_wisdom::export_mpi(wisdom_file, comm);
+    }
 
     ////////////////////////////////////////////////////////////////
     // Initialization
-    // intialize row-wise from 0 with complex spacers at the end
-    for (int i = 0; i < int(local_n0); ++i)
-    {
-        for (int j = 0; j < dim_r_y; ++j)
+    // initialize row-wise from 0 with complex spacers at the end; every thread touches the rows it transforms
+    first_touch::for_each_row_block(
+        std::size_t(local_n0),
+        n_threads,
+        [&](std::size_t i_begin, std::size_t i_end)
         {
-            input[(dim_r_y + 2) * i + j] = j;
-        }
-    }
+            for (std::size_t i = i_begin; i < i_end; ++i)
+            {
+                const std::size_t row = std::size_t(dim_r_y + 2) * i;
+                for (std::size_t j = 0; j < dim_r_y; ++j)
+                {
+                    input[row + j] = j;
+                }
+                input[row + dim_r_y] = 0.0;
+                input[row + dim_r_y + 1] = 0.0;
+            }
+        });
     // std::cout << "Node: " << rank + 1 << " / " << n_ranks << std::endl;
     // print_real(input, local_n0, dim_r_y, 0);
 

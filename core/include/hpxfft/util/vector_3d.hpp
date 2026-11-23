@@ -22,6 +22,13 @@ struct vector_3d
     // default constructor
     vector_3d();
     vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z);
+
+    // allocate without zero-filling (for buffers that are completely overwritten before they are read)
+    struct uninitialized_t
+    { };
+
+    constexpr static uninitialized_t uninitialized{};
+    vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z, uninitialized_t);
     // explicit contructors
     vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z, const T &v);
     // copy constructor
@@ -77,10 +84,8 @@ struct vector_3d
     void save(Archive &ar, const unsigned int) const
     {
         ar << n_x_ << n_y_ << n_z_ << size_;
-        for (std::size_t i = 0; i < size_; ++i)
-        {
-            ar << values_[i];
-        }
+        // bitwise array: one memcpy / zero-copy chunk instead of one archive call per element
+        ar << hpx::serialization::make_array(values_, size_);
     }
 
     template <typename Archive>
@@ -93,10 +98,7 @@ struct vector_3d
         {
             values_ = new T[size_];
         }
-        for (std::size_t i = 0; i < size_; ++i)
-        {
-            ar >> values_[i];
-        }
+        ar >> hpx::serialization::make_array(values_, size_);
     }
 
     HPX_SERIALIZATION_SPLIT_MEMBER()
@@ -125,6 +127,16 @@ inline vector_3d<T>::vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z
     {
         values_[i] = T();
     }
+}
+
+template <typename T>
+inline vector_3d<T>::vector_3d(std::size_t n_x, std::size_t n_y, std::size_t n_z, uninitialized_t)
+{
+    n_x_ = n_x;
+    n_y_ = n_y;
+    n_z_ = n_z;
+    size_ = n_x_ * n_y_ * n_z_;
+    values_ = new T[size_];
 }
 
 template <typename T>
