@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -55,6 +56,28 @@ TEST_CASE("wisdom round trip allows planning with FFTW_WISDOM_ONLY", "[util][wis
 
     fftw_forget_wisdom();
     std::filesystem::remove_all(base);
+}
+
+TEST_CASE("wisdom_file_name builds one file per configuration from FFTW_WISDOM_DIR", "[util][wisdom]")
+{
+    unsetenv("FFTW_WISDOM_DIR");
+    // no directory: no wisdom, unless a file is given explicitly
+    CHECK(hpxfft::util::wisdom_file_name("", "shared_loop_2d", "measure", { 1024, 512 }, 1, 8).empty());
+    CHECK(hpxfft::util::wisdom_file_name("my.wis", "shared_loop_2d", "measure", { 1024, 512 }, 1, 8) == "my.wis");
+
+    setenv("FFTW_WISDOM_DIR", "/tmp/wis", 1);
+    CHECK(hpxfft::util::wisdom_file_name("", "shared_loop_2d", "measure", { 1024, 512 }, 1, 8)
+          == "/tmp/wis/shared_loop_2d_measure_1024x512_n1_t8.wis");
+    CHECK(hpxfft::util::wisdom_file_name("", "slab_3d", "patient", { 64, 64, 64 }, 4, 48)
+          == "/tmp/wis/slab_3d_patient_64x64x64_n4_t48.wis");
+    // an explicit file wins over the directory
+    CHECK(hpxfft::util::wisdom_file_name("my.wis", "shared_loop_2d", "measure", { 1024, 512 }, 1, 8) == "my.wis");
+    // estimate does not measure: no wisdom
+    CHECK(hpxfft::util::wisdom_file_name("", "shared_loop_2d", "estimate", { 1024, 512 }, 1, 8).empty());
+    // an empty directory counts as unset
+    setenv("FFTW_WISDOM_DIR", "", 1);
+    CHECK(hpxfft::util::wisdom_file_name("", "shared_loop_2d", "measure", { 1024, 512 }, 1, 8).empty());
+    unsetenv("FFTW_WISDOM_DIR");
 }
 
 TEST_CASE("import_wisdom returns false for a missing file", "[util][wisdom]")

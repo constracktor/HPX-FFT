@@ -1,6 +1,8 @@
 #ifndef fftw_wisdom_H_INCLUDED
 #define fftw_wisdom_H_INCLUDED
 
+#include <cstddef>
+#include <initializer_list>
 #include <string>
 
 // FFTW wisdom: saved planner knowledge that makes measure/patient/exhaustive planning fast and reproducible.
@@ -18,5 +20,16 @@ bool import_wisdom(const std::string &path);
 // file. Each locality is a separate process: if several localities export to the same path, the last writer
 // wins; use one file per locality to keep all of them. Throws std::runtime_error on failure.
 void export_wisdom(const std::string &path);
+
+// Wisdom file of one benchmark configuration. Returns explicit_path if it is not empty. Otherwise, if the environment
+// variable FFTW_WISDOM_DIR is set and plan is not "estimate" (estimate does not measure, so wisdom adds nothing),
+// returns <FFTW_WISDOM_DIR>/<tag>_<plan>_<dims joined by x>_n<n_ranks>_t<n_threads>.wis, else "" (no wisdom).
+// Every locality computes the same name, so a run on several localities shares one file.
+std::string wisdom_file_name(const std::string &explicit_path,
+                             const std::string &tag,
+                             const std::string &plan,
+                             std::initializer_list<std::size_t> dims,
+                             std::size_t n_ranks,
+                             std::size_t n_threads);
 }  // namespace hpxfft::util
 #endif  // fftw_wisdom_H_INCLUDED

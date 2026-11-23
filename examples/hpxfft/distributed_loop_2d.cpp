@@ -18,7 +18,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     const std::size_t num_localities = hpx::get_num_localities(hpx::launch::sync);
     const std::string run_flag = vm["run"].as<std::string>();
     const std::string plan_flag = vm["plan"].as<std::string>();
-    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
+    std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     bool transposed_out = vm["transposed_out"].as<bool>();
@@ -64,6 +64,13 @@ int hpx_main(hpx::program_options::variables_map &vm)
     fft_computer.set_hierarchical_parameters(
         vm["hier_arity"].as<std::size_t>(), vm["hier_threshold"].as<std::size_t>());
     // optional: import saved planner knowledge before the first plan
+    wisdom_file = hpxfft::util::wisdom_file_name(
+        wisdom_file,
+        "distributed_loop_2d",
+        plan_flag,
+        { dim_c_x, dim_r_y },
+        hpx::get_num_localities(hpx::launch::sync),
+        hpx::get_os_thread_count());
     if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
     {
         std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";

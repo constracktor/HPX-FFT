@@ -3,6 +3,7 @@
 #include "../../include/hpxfft/util/adapter_fftw.hpp"
 #include "../../include/hpxfft/util/create_dir.hpp"
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <mutex>
@@ -48,4 +49,31 @@ void hpxfft::util::export_wisdom(const std::string &path)
         std::filesystem::remove(tmp_path, ignored);
         throw std::runtime_error("Failed to write FFTW wisdom file: " + path + " (" + ec.message() + ")");
     }
+}
+
+std::string hpxfft::util::wisdom_file_name(
+    const std::string &explicit_path,
+    const std::string &tag,
+    const std::string &plan,
+    std::initializer_list<std::size_t> dims,
+    std::size_t n_ranks,
+    std::size_t n_threads)
+{
+    if (!explicit_path.empty())
+    {
+        return explicit_path;
+    }
+    const char *dir = std::getenv("FFTW_WISDOM_DIR");
+    if (dir == nullptr || *dir == '\0' || plan == "estimate")
+    {
+        return "";
+    }
+    std::string name = std::string(dir) + "/" + tag + "_" + plan + "_";
+    bool first = true;
+    for (const std::size_t d : dims)
+    {
+        name += (first ? "" : "x") + std::to_string(d);
+        first = false;
+    }
+    return name + "_n" + std::to_string(n_ranks) + "_t" + std::to_string(n_threads) + ".wis";
 }

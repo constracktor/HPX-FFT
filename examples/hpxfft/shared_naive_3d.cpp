@@ -21,7 +21,7 @@ int hpx_main(hpx::program_options::variables_map &vm)
     ////////////////////////////////////////////////////////////////
     // Parameters and Data structures
     const std::string plan_flag = vm["plan"].as<std::string>();
-    const std::string wisdom_file = vm["wisdom_file"].as<std::string>();
+    std::string wisdom_file = vm["wisdom_file"].as<std::string>();
     bool print_result = vm["result"].as<bool>();
     bool print_header = vm["header"].as<bool>();
     // time measurement
@@ -55,6 +55,13 @@ int hpx_main(hpx::program_options::variables_map &vm)
     // Computation
     hpxfft::fft3D::shared::naive fft_computer;
     // optional: import saved planner knowledge before the first plan
+    wisdom_file = hpxfft::util::wisdom_file_name(
+        wisdom_file,
+        "shared_naive_3d",
+        plan_flag,
+        { dim_c_x, dim_c_y, dim_r_z },
+        hpx::get_num_localities(hpx::launch::sync),
+        hpx::get_os_thread_count());
     if (!wisdom_file.empty() && !hpxfft::util::import_wisdom(wisdom_file) && hpx::get_locality_id() == 0)
     {
         std::cout << "No FFTW wisdom imported from " << wisdom_file << "\n";
